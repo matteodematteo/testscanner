@@ -496,7 +496,7 @@
     if (!state.els?.historyCountBadge) {
       return;
     }
-    state.els.historyCountBadge.textContent = String(state.history.length);
+    state.els.historyCountBadge.textContent = `Count: ${state.history.length}`;
   }
 
   function renderHistory() {
@@ -619,6 +619,14 @@
     saveHistoryState();
     renderHistory();
     return entry.id;
+  }
+
+  function addFallbackHistoryItem(barcode) {
+    const code = String(barcode || "").trim();
+    if (!code) {
+      return null;
+    }
+    return addHistoryItem(code);
   }
 
   function addHistoryRecord(record, fallbackBarcode) {
@@ -1780,6 +1788,7 @@
         setStatus("Exact barcode not found. Select one of the closest matches.");
         return;
       } catch (closestError) {
+        addFallbackHistoryItem(code);
         const message = closestError.message || error.message || "Could not load product info";
         setStatus(message);
         throw new Error(message);
