@@ -15,7 +15,10 @@
     cookieStatusStorageKey: "web_barcode_scanner_cookie_status",
     historyStorageKey: "web_barcode_scanner_history",
     cameraStorageKey: "web_barcode_scanner_camera",
-    scanIntervalMs: 1200,
+    scanIntervalMs: 240,
+    mobileScanIntervalMs: 170,
+    iosScanIntervalMs: 130,
+    duplicateScanCooldownMs: 600,
     previewWatchIntervalMs: 3500,
     previewStallThreshold: 2,
     preferredSquareSize: 960,
@@ -70,8 +73,8 @@
       audio: false,
       video: {
         facingMode: { ideal: "environment" },
-        width: { ideal: 1280, max: 1920 },
-        height: { ideal: 960, max: 1440 }
+        width: { ideal: 1280, max: 1440 },
+        height: { ideal: 960, max: 1080 }
       }
     },
     androidVideoConstraints: {
@@ -124,19 +127,16 @@
     cameraStartPromise: null,
     focusRefreshTimers: [],
     iosWarmRestartDone: false,
+    isIOS: false,
+    captureContext: null,
+    lastDetectedBarcode: "",
+    lastDetectedAt: 0,
+    scanAnimationFrame: 0,
     closestSearchResults: [],
     closestSearchCode: "",
+    closestSearchPendingHistoryId: "",
     isClosestSearchLoading: false
   };
-
-  const OPTIONAL_ELEMENT_KEYS = new Set([
-    "closestSearchBackBtn",
-    "closestSearchDialog",
-    "closestSearchList",
-    "closestSearchStatus",
-    "closestSearchTitle",
-    "historyCountBadge"
-  ]);
 
   function queryElements() {
     return {
@@ -201,9 +201,7 @@
   }
 
   function requireElements(els) {
-    const missing = Object.entries(els)
-      .filter(([key, value]) => !value && !OPTIONAL_ELEMENT_KEYS.has(key))
-      .map(([key]) => key);
+    const missing = Object.entries(els).filter(([, value]) => !value).map(([key]) => key);
     if (missing.length > 0) {
       throw new Error(`Missing DOM elements: ${missing.join(", ")}`);
     }
@@ -503,18 +501,15 @@
     renderCookieState();
   }
 
-  function updateHistoryCountBadge() {
-    if (!state.els?.historyCountBadge) {
-      return;
-    }
-    state.els.historyCountBadge.textContent = `Count: ${state.history.length}`;
-  }
-
   function renderHistory() {
     state.els.clearAllBtn.disabled = state.history.length === 0;
     state.els.sendTxtBtn.disabled = state.history.length === 0;
     state.els.printBtn.disabled = state.history.length === 0;
-    updateHistoryCountBadge();
+    if (state.els.historyCountBadge) {
+      const countText = `Count: ${state.history.length}`;
+      state.els.historyCountBadge.textContent = countText;
+      state.els.historyCountBadge.setAttribute("aria-label", countText);
+    }
     if (state.history.length === 0) {
       state.selectedHistoryIndex = -1;
       state.els.clearSelectedBtn.disabled = true;
@@ -632,14 +627,6 @@
     return entry.id;
   }
 
-  function addFallbackHistoryItem(barcode) {
-    const code = String(barcode || "").trim();
-    if (!code) {
-      return null;
-    }
-    return addHistoryItem(code);
-  }
-
   function addHistoryRecord(record, fallbackBarcode) {
     const entry = normalizeHistoryItem({
       ...record,
@@ -654,6 +641,12 @@
     saveHistoryState();
     renderHistory();
     return entry.id;
+  }
+
+  function createNoExactMatchError() {
+    const error = new Error("No exact product match found.");
+    error.code = "NO_EXACT_MATCH";
+    return error;
   }
 
   function updateHistoryItem(entryId, updates) {
@@ -1092,21 +1085,13 @@
     state.els.closestSearchList.replaceChildren(fragment);
   }
 
-  function openClosestSearchDialog(barcode, results) {
-    if (
-      !state.els.closestSearchDialog ||
-      !state.els.closestSearchBackBtn ||
-      !state.els.closestSearchTitle ||
-      !state.els.closestSearchStatus
-    ) {
-      setStatus("Exact barcode not found.");
-      return;
-    }
+  function openClosestSearchDialog(barcode, results, pendingHistoryId) {
     state.closestSearchCode = String(barcode || "").trim();
     state.closestSearchResults = Array.isArray(results) ? results.slice() : [];
+    state.closestSearchPendingHistoryId = String(pendingHistoryId || "").trim();
     state.isClosestSearchLoading = false;
     state.els.closestSearchBackBtn.disabled = false;
-    state.els.closestSearchTitle.textContent = "Closest Matches";
+    state.els.closestSearchTitle.textContent = `Closest Matches`;
     state.els.closestSearchStatus.textContent = state.closestSearchCode
       ? `No exact match found for ${state.closestSearchCode}. Select one product below.`
       : "Select one product below.";
@@ -1117,15 +1102,9 @@
   }
 
   function closeClosestSearchDialog() {
-    if (
-      !state.els.closestSearchDialog ||
-      !state.els.closestSearchBackBtn ||
-      !state.els.closestSearchStatus
-    ) {
-      return;
-    }
     state.closestSearchResults = [];
     state.closestSearchCode = "";
+    state.closestSearchPendingHistoryId = "";
     state.isClosestSearchLoading = false;
     state.els.closestSearchBackBtn.disabled = false;
     state.els.closestSearchStatus.textContent = "";
@@ -1137,13 +1116,7 @@
   }
 
   async function handleClosestSearchSelection(index) {
-    if (
-      !state.els.closestSearchBackBtn ||
-      !state.els.closestSearchStatus ||
-      index < 0 ||
-      index >= state.closestSearchResults.length ||
-      state.isClosestSearchLoading
-    ) {
+    if (index < 0 || index >= state.closestSearchResults.length || state.isClosestSearchLoading) {
       return;
     }
 
@@ -1167,7 +1140,11 @@
         sale: selectedData.sale
       });
       if (state.currentProductRecord) {
-        addHistoryRecord(state.currentProductRecord, barcode);
+        if (state.closestSearchPendingHistoryId) {
+          updateHistoryItem(state.closestSearchPendingHistoryId, state.currentProductRecord);
+        } else {
+          addHistoryRecord(state.currentProductRecord, barcode);
+        }
       }
       closeClosestSearchDialog();
       setStatus(`Selected ${barcode}`);
@@ -1189,19 +1166,12 @@
     const goodsCode = String(normalizedProduct.goods_code || "").trim();
     const id = String(normalizedProduct.id || "").trim();
     const italianName = String(normalizedProduct.italian_name || "").trim();
-    const pPrice = String(normalizedProduct.p_price || "").trim();
-    const sPrice = String(normalizedProduct.s_price || "").trim();
-    const inventory = String(normalizedProduct.real_inventory || "").trim();
 
-    if (normalizedBarcode) {
-      if (!goodsCode || goodsCode !== normalizedBarcode) {
-        return false;
-      }
-
-      return Boolean(italianName || pPrice || sPrice || inventory || id);
+    if (goodsCode && normalizedBarcode) {
+      return goodsCode === normalizedBarcode;
     }
 
-    return Boolean(goodsCode || italianName || pPrice || sPrice || inventory || id);
+    return Boolean(id || italianName);
   }
 
   function selectHistoryItem(index) {
@@ -1755,10 +1725,9 @@
 
   async function fetchProductInfo(barcode, options) {
     const code = String(barcode || "").trim();
-    const normalizedOptions = {
-      allowClosestSearch: Boolean(options?.allowClosestSearch),
-      addToHistoryImmediately: Boolean(options?.addToHistoryImmediately),
-      existingHistoryEntryId: String(options?.existingHistoryEntryId || "")
+    const lookupOptions = {
+      allowClosestSearch: false,
+      ...options
     };
     if (!code) {
       setStatus("Type or scan a barcode first");
@@ -1769,11 +1738,7 @@
     clearResultFields();
     const lookupSequence = state.lookupSequence + 1;
     state.lookupSequence = lookupSequence;
-    let historyEntryId = normalizedOptions.existingHistoryEntryId || (
-      normalizedOptions.addToHistoryImmediately
-      ? (addFallbackHistoryItem(code) || "")
-      : ""
-    );
+    const createdHistoryId = addHistoryItem(code);
 
     setStatus("Requesting product info...");
     try {
@@ -1789,19 +1754,15 @@
 
       const normalizedProduct = normalizeProductData(parsedProduct?.product || parsedProduct);
       if (!hasProductInDatabase(normalizedProduct, code)) {
-        throw new Error("No exact product match found.");
+        throw createNoExactMatchError();
       }
 
       renderProductData({
         product: parsedProduct?.product || parsedProduct,
         sale: null
       });
-      if (state.currentProductRecord) {
-        if (historyEntryId) {
-          updateHistoryItem(historyEntryId, state.currentProductRecord);
-        } else {
-          historyEntryId = addHistoryRecord(state.currentProductRecord, code);
-        }
+      if (createdHistoryId && state.currentProductRecord) {
+        updateHistoryItem(createdHistoryId, state.currentProductRecord);
       }
       setStatus("Product info loaded");
 
@@ -1821,8 +1782,8 @@
             state.currentProductRecord?.comparison_qty || 1
           );
 
-          if (historyEntryId) {
-            updateHistoryItem(historyEntryId, updatedRecord);
+          if (createdHistoryId) {
+            updateHistoryItem(createdHistoryId, updatedRecord);
           }
 
           if (lookupSequence === state.lookupSequence && String(state.els.barcodeInput.value || "").trim() === code) {
@@ -1836,20 +1797,25 @@
           // Temporary discount lookups are background-only for scan speed.
         });
     } catch (error) {
-      if (normalizedOptions.allowClosestSearch) {
-        try {
-          const closestMatches = await fetchClosestSearchResults(code);
-          openClosestSearchDialog(code, closestMatches);
-          setStatus("Exact barcode not found. Select one of the closest matches.");
-          return;
-        } catch (closestError) {
-          const message = closestError.message || error.message || "Could not load product info";
-          setStatus(message);
-          throw new Error(message);
+      if (error?.code === "NO_EXACT_MATCH") {
+        if (lookupOptions.allowClosestSearch) {
+          try {
+            const closestMatches = await fetchClosestSearchResults(code);
+            openClosestSearchDialog(code, closestMatches, createdHistoryId);
+            setStatus("Exact barcode not found. Select one of the closest matches.");
+            return;
+          } catch (closestError) {
+            const message = closestError.message || "No similar products found.";
+            setStatus(`No exact product match found. ${message}`);
+            return;
+          }
         }
+
+        setStatus("No exact product match found. Barcode added to list.");
+        return;
       }
 
-      const message = error.message || "Could not load product info";
+      const message = error?.message || "Could not load product info";
       setStatus(message);
       throw new Error(message);
     }
@@ -2133,6 +2099,10 @@
     if (state.scanTimer) {
       window.clearTimeout(state.scanTimer);
       state.scanTimer = 0;
+    }
+    if (state.scanAnimationFrame && typeof window.cancelAnimationFrame === "function") {
+      window.cancelAnimationFrame(state.scanAnimationFrame);
+      state.scanAnimationFrame = 0;
     }
     state.isScanLoopScheduled = false;
     state.isScanInFlight = false;
@@ -2434,18 +2404,17 @@
       return;
     }
 
-    state.els.barcodeInput.value = code;
+    if (state.els.barcodeInput.value !== code) {
+      state.els.barcodeInput.value = code;
+    }
     playCaptureSound();
     stopScanning(true);
 
     try {
-      const historyEntryId = addFallbackHistoryItem(code) || "";
-      await fetchProductInfo(code, {
-        allowClosestSearch: false,
-        addToHistoryImmediately: false,
-        existingHistoryEntryId: historyEntryId
-      });
+      await fetchProductInfo(code);
     } catch (error) {
+      state.lastDetectedBarcode = "";
+      state.lastDetectedAt = 0;
       setStatus(error.message || "Barcode was captured, but info request failed");
     }
   }
@@ -2458,18 +2427,18 @@
   }
 
   function getDetectionCropModes() {
-    if (isIOSDevice()) {
+    if (state.isIOS) {
       return ["full", "square", "wide"];
     }
     return CONFIG.detectionCropModes;
   }
 
   function getScanLoopIntervalMs() {
-    if (isIOSDevice()) {
-      return 450;
+    if (state.isIOS) {
+      return CONFIG.iosScanIntervalMs;
     }
     if (state.isMobileUi) {
-      return 750;
+      return CONFIG.mobileScanIntervalMs;
     }
     return CONFIG.scanIntervalMs;
   }
@@ -2477,14 +2446,14 @@
   function drawDetectionFrame(mode) {
     const video = state.els.cameraPreview;
     const canvas = state.els.captureCanvas;
-    const context = canvas.getContext("2d", { alpha: false });
+    const context = state.captureContext || canvas.getContext("2d", { alpha: false });
     const videoWidth = video.videoWidth || (state.isMobileUi ? CONFIG.mobilePreferredSquareSize : CONFIG.preferredSquareSize);
     const videoHeight = video.videoHeight || (state.isMobileUi ? CONFIG.mobilePreferredSquareSize : CONFIG.preferredSquareSize);
     let sx = 0;
     let sy = 0;
     let sw = videoWidth;
     let sh = videoHeight;
-    const isiOS = isIOSDevice();
+    const isiOS = state.isIOS;
 
     if (mode === "wide") {
       sw = Math.max(1, Math.floor(videoWidth * (isiOS ? 0.98 : 0.94)));
@@ -2506,8 +2475,16 @@
 
     const maxOutputSize = state.isMobileUi ? 720 : 960;
     const scale = Math.min(1, maxOutputSize / Math.max(sw, sh));
-    canvas.width = Math.max(1, Math.round(sw * scale));
-    canvas.height = Math.max(1, Math.round(sh * scale));
+    const outputWidth = Math.max(1, Math.round(sw * scale));
+    const outputHeight = Math.max(1, Math.round(sh * scale));
+
+    if (canvas.width !== outputWidth) {
+      canvas.width = outputWidth;
+    }
+    if (canvas.height !== outputHeight) {
+      canvas.height = outputHeight;
+    }
+
     context.drawImage(video, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
     return canvas;
   }
@@ -2528,17 +2505,12 @@
       return "";
     }
 
-    const sources = getDetectionCropModes().map(function (mode) {
-      return {
-        mode: mode,
-        source: mode === "full" ? state.els.cameraPreview : drawDetectionFrame(mode)
-      };
-    });
-
-    for (let index = 0; index < sources.length; index += 1) {
-      const currentSource = sources[index];
+    const detectionCropModes = getDetectionCropModes();
+    for (let index = 0; index < detectionCropModes.length; index += 1) {
+      const mode = detectionCropModes[index];
+      const source = mode === "full" ? state.els.cameraPreview : drawDetectionFrame(mode);
       try {
-        const results = await detector.detect(currentSource.source);
+        const results = await detector.detect(source);
         const detectedText = normalizeDetectedText(results?.[0]);
         if (detectedText) {
           return detectedText;
@@ -2564,7 +2536,7 @@
           }
           settled = true;
           resolve();
-        }, isIOSDevice() ? 140 : 90);
+        }, state.isIOS ? 55 : 35);
 
         video.requestVideoFrameCallback(function () {
           if (settled) {
@@ -2578,16 +2550,33 @@
     }
 
     return new Promise(function (resolve) {
-      window.setTimeout(resolve, isIOSDevice() ? 70 : 35);
+      window.setTimeout(resolve, state.isIOS ? 24 : 16);
     });
   }
 
-  async function captureAttempt() {
-    if (!state.isCameraRunning || !state.track || state.els.cameraPreview.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+  function wasRecentlyDetected(detectedText) {
+    const code = String(detectedText || "").trim();
+    if (!code) {
       return false;
     }
 
-    await waitForFreshVideoFrame(state.els.cameraPreview);
+    const now = Date.now();
+    if (state.lastDetectedBarcode === code && (now - state.lastDetectedAt) < CONFIG.duplicateScanCooldownMs) {
+      return true;
+    }
+
+    state.lastDetectedBarcode = code;
+    state.lastDetectedAt = now;
+    return false;
+  }
+
+  async function captureAttempt() {
+    const video = state.els.cameraPreview;
+    if (!state.isCameraRunning || !state.track || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+      return false;
+    }
+
+    await waitForFreshVideoFrame(video);
     const detectedText = await detectBarcodeInFrame();
 
     if (!detectedText) {
@@ -2595,17 +2584,27 @@
       return false;
     }
 
-    state.els.barcodeInput.value = detectedText;
-    playCaptureSound();
-    stopScanning(true);
-
-    try {
-      await fetchProductInfo(detectedText);
-      return true;
-    } catch (error) {
-      setStatus(error.message || "Barcode was captured, but info request failed");
-      return true;
+    if (wasRecentlyDetected(detectedText)) {
+      return false;
     }
+
+    await handleDetectedCode(detectedText);
+    return true;
+  }
+
+  function scheduleScanCallback(callback, delayMs) {
+    state.scanTimer = window.setTimeout(function () {
+      state.scanTimer = 0;
+      if (typeof window.requestAnimationFrame === "function") {
+        state.scanAnimationFrame = window.requestAnimationFrame(function () {
+          state.scanAnimationFrame = 0;
+          callback();
+        });
+        return;
+      }
+
+      callback();
+    }, delayMs);
   }
 
   async function runScanLoop() {
@@ -2614,7 +2613,7 @@
     }
 
     state.isScanLoopScheduled = true;
-    state.scanTimer = window.setTimeout(async function () {
+    scheduleScanCallback(function () {
       state.isScanLoopScheduled = false;
       if (!state.isScanning || state.isScanInFlight) {
         if (state.isScanning) {
@@ -2625,24 +2624,28 @@
         return;
       }
 
-      state.isScanInFlight = true;
-      try {
-        const detected = await captureAttempt();
-        if (!detected && state.isScanning) {
-          runScanLoop().catch(() => {
-            // Ignore transient reschedule issues.
-          });
+      (async function () {
+        state.isScanInFlight = true;
+        try {
+          const detected = await captureAttempt();
+          if (!detected && state.isScanning) {
+            runScanLoop().catch(() => {
+              // Ignore transient reschedule issues.
+            });
+          }
+        } catch {
+          setStatus("Scanning had a temporary read error");
+          if (state.isScanning) {
+            runScanLoop().catch(() => {
+              // Ignore transient reschedule issues.
+            });
+          }
+        } finally {
+          state.isScanInFlight = false;
         }
-      } catch {
-        setStatus("Scanning had a temporary read error");
-        if (state.isScanning) {
-          runScanLoop().catch(() => {
-            // Ignore transient reschedule issues.
-          });
-        }
-      } finally {
-        state.isScanInFlight = false;
-      }
+      }()).catch(() => {
+        // Ignore transient async scan loop issues.
+      });
     }, getScanLoopIntervalMs());
   }
 
@@ -2971,17 +2974,9 @@
     }
   }
 
-  async function handleBarcodeLookup(mode) {
-    const lookupMode = mode === "search" ? "search" : "enter";
+  async function handleBarcodeLookup(options) {
     try {
-      const historyEntryId = lookupMode !== "search"
-        ? (addFallbackHistoryItem(state.els.barcodeInput.value) || "")
-        : "";
-      await fetchProductInfo(state.els.barcodeInput.value, {
-        allowClosestSearch: lookupMode === "search",
-        addToHistoryImmediately: false,
-        existingHistoryEntryId: historyEntryId
-      });
+      await fetchProductInfo(state.els.barcodeInput.value, options);
     } catch (error) {
       setStatus(error.message || "Could not load product info");
     }
@@ -3007,7 +3002,7 @@
     state.els.searchBarcodeBtn.addEventListener("click", async function () {
       state.els.searchBarcodeBtn.disabled = true;
       try {
-        await handleBarcodeLookup("search");
+        await handleBarcodeLookup({ allowClosestSearch: true });
       } finally {
         state.els.searchBarcodeBtn.disabled = false;
       }
@@ -3073,13 +3068,11 @@
     });
 
     state.els.printBackBtn.addEventListener("click", closePrintDialog);
-    if (state.els.closestSearchBackBtn) {
-      state.els.closestSearchBackBtn.addEventListener("click", function () {
-        if (!state.isClosestSearchLoading) {
-          closeClosestSearchDialog();
-        }
-      });
-    }
+    state.els.closestSearchBackBtn.addEventListener("click", function () {
+      if (!state.isClosestSearchLoading) {
+        closeClosestSearchDialog();
+      }
+    });
 
     state.els.historyList.addEventListener("click", function (event) {
       const detailButton = event.target.closest('[data-action="detail"]');
@@ -3101,25 +3094,23 @@
       }
     });
 
-    if (state.els.closestSearchList) {
-      state.els.closestSearchList.addEventListener("click", async function (event) {
-        const selectButton = event.target.closest('[data-action="select-closest"]');
-        if (!selectButton) {
-          return;
-        }
+    state.els.closestSearchList.addEventListener("click", async function (event) {
+      const selectButton = event.target.closest('[data-action="select-closest"]');
+      if (!selectButton) {
+        return;
+      }
 
-        const matchIndex = Number(selectButton.dataset.index);
-        if (Number.isNaN(matchIndex)) {
-          return;
-        }
+      const matchIndex = Number(selectButton.dataset.index);
+      if (Number.isNaN(matchIndex)) {
+        return;
+      }
 
-        try {
-          await handleClosestSearchSelection(matchIndex);
-        } catch (error) {
-          setStatus(error.message || "Could not load selected product");
-        }
-      });
-    }
+      try {
+        await handleClosestSearchSelection(matchIndex);
+      } catch (error) {
+        setStatus(error.message || "Could not load selected product");
+      }
+    });
 
     state.els.historyList.addEventListener("keydown", function (event) {
       if (event.key !== "Enter" && event.key !== " ") return;
@@ -3135,7 +3126,7 @@
     state.els.barcodeInput.addEventListener("keydown", async function (event) {
       if (event.key !== "Enter") return;
       event.preventDefault();
-      await handleBarcodeLookup("enter");
+      await handleBarcodeLookup();
     });
 
     state.els.cameraSelect.addEventListener("change", async function () {
@@ -3229,13 +3220,11 @@
       }
     });
 
-    if (state.els.closestSearchDialog) {
-      state.els.closestSearchDialog.addEventListener("click", function (event) {
-        if (event.target === state.els.closestSearchDialog && !state.isClosestSearchLoading) {
-          closeClosestSearchDialog();
-        }
-      });
-    }
+    state.els.closestSearchDialog.addEventListener("click", function (event) {
+      if (event.target === state.els.closestSearchDialog && !state.isClosestSearchLoading) {
+        closeClosestSearchDialog();
+      }
+    });
 
     state.els.historyEditSaveBtn.addEventListener("click", async function () {
       state.els.historyEditSaveBtn.disabled = true;
@@ -3302,4 +3291,53 @@
   }
 
   async function init() {
-    await waitForPonyfil
+    await waitForPonyfillReady(2200);
+
+    state.els = queryElements();
+    requireElements(state.els);
+    state.isIOS = isIOSDevice();
+    state.isMobileUi = detectMobileUi();
+    state.captureContext = state.els.captureCanvas?.getContext("2d", { alpha: false }) || null;
+    cacheResultFieldElements();
+
+    const savedSettings = readSavedSettings();
+    loadCookieState();
+    loadHistoryState();
+    fillSettingsForm(savedSettings);
+    applyCompactMode(savedSettings.compactMode);
+    clearResultFields();
+    renderHistory();
+    bindEvents();
+
+    const supportIssue = getCameraSupportIssue();
+    if (supportIssue) {
+      setStatus(supportIssue);
+      state.els.scanBtn.disabled = true;
+      state.els.cameraSelect.disabled = true;
+      state.els.torchBtn.disabled = true;
+      return;
+    }
+
+    setStatus("Opening camera preview...");
+    refreshDevices(readSavedCameraId()).catch(() => {
+      // Ignore early device enumeration issues before permission is granted.
+    });
+    schedulePreviewWarmStart();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", function () {
+      init().catch((error) => {
+        if (state.els?.statusText) {
+          setStatus(error.message || "The app could not start");
+        }
+      });
+    });
+  } else {
+    init().catch((error) => {
+      if (state.els?.statusText) {
+        setStatus(error.message || "The app could not start");
+      }
+    });
+  }
+}());
