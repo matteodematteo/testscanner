@@ -1713,8 +1713,12 @@
     };
   }
 
-  async function fetchProductInfo(barcode) {
+  async function fetchProductInfo(barcode, options) {
     const code = String(barcode || "").trim();
+    const normalizedOptions = {
+      allowClosestSearch: Boolean(options?.allowClosestSearch),
+      addToHistoryImmediately: Boolean(options?.addToHistoryImmediately)
+    };
     if (!code) {
       setStatus("Type or scan a barcode first");
       return;
@@ -1724,6 +1728,9 @@
     clearResultFields();
     const lookupSequence = state.lookupSequence + 1;
     state.lookupSequence = lookupSequence;
+    let historyEntryId = normalizedOptions.addToHistoryImmediately
+      ? (addFallbackHistoryItem(code) || "")
+      : "";
 
     setStatus("Requesting product info...");
     try {
@@ -1746,9 +1753,13 @@
         product: parsedProduct?.product || parsedProduct,
         sale: null
       });
-      const createdHistoryId = state.currentProductRecord
-        ? addHistoryRecord(state.currentProductRecord, code)
-        : "";
+      if (state.currentProductRecord) {
+        if (historyEntryId) {
+          updateHistoryItem(historyEntryId, state.currentProductRecord);
+        } else {
+          historyEntryId = addHistoryRecord(state.currentProductRecord, code);
+        }
+      }
       setStatus("Product info loaded");
 
       fetchDiscountInfoThroughProxy(code, cookie)
@@ -1767,8 +1778,8 @@
             state.currentProductRecord?.comparison_qty || 1
           );
 
-          if (createdHistoryId) {
-            updateHistoryItem(createdHistoryId, updatedRecord);
+          if (historyEntryId) {
+            updateHistoryItem(historyEntryId, updatedRecord);
           }
 
           if (lookupSequence === state.lookupSequence && String(state.els.barcodeInput.value || "").trim() === code) {
@@ -1782,17 +1793,22 @@
           // Temporary discount lookups are background-only for scan speed.
         });
     } catch (error) {
-      try {
-        const closestMatches = await fetchClosestSearchResults(code);
-        openClosestSearchDialog(code, closestMatches);
-        setStatus("Exact barcode not found. Select one of the closest matches.");
-        return;
-      } catch (closestError) {
-        addFallbackHistoryItem(code);
-        const message = closestError.message || error.message || "Could not load product info";
-        setStatus(message);
-        throw new Error(message);
+      if (normalizedOptions.allowClosestSearch) {
+        try {
+          const closestMatches = await fetchClosestSearchResults(code);
+          openClosestSearchDialog(code, closestMatches);
+          setStatus("Exact barcode not found. Select one of the closest matches.");
+          return;
+        } catch (closestError) {
+          const message = closestError.message || error.message || "Could not load product info";
+          setStatus(message);
+          throw new Error(message);
+        }
       }
+
+      const message = error.message || "Could not load product info";
+      setStatus(message);
+      throw new Error(message);
     }
   }
 
@@ -2380,7 +2396,10 @@
     stopScanning(true);
 
     try {
-      await fetchProductInfo(code);
+      await fetchProductInfo(code, {
+        allowClosestSearch: false,
+        addToHistoryImmediately: true
+      });
     } catch (error) {
       setStatus(error.message || "Barcode was captured, but info request failed");
     }
@@ -2907,9 +2926,13 @@
     }
   }
 
-  async function handleBarcodeLookup() {
+  async function handleBarcodeLookup(mode) {
+    const lookupMode = mode === "search" ? "search" : "enter";
     try {
-      await fetchProductInfo(state.els.barcodeInput.value);
+      await fetchProductInfo(state.els.barcodeInput.value, {
+        allowClosestSearch: lookupMode === "search",
+        addToHistoryImmediately: lookupMode !== "search"
+      });
     } catch (error) {
       setStatus(error.message || "Could not load product info");
     }
@@ -2935,7 +2958,7 @@
     state.els.searchBarcodeBtn.addEventListener("click", async function () {
       state.els.searchBarcodeBtn.disabled = true;
       try {
-        await handleBarcodeLookup();
+        await handleBarcodeLookup("search");
       } finally {
         state.els.searchBarcodeBtn.disabled = false;
       }
@@ -3059,7 +3082,7 @@
     state.els.barcodeInput.addEventListener("keydown", async function (event) {
       if (event.key !== "Enter") return;
       event.preventDefault();
-      await handleBarcodeLookup();
+      await handleBarcodeLookup("enter");
     });
 
     state.els.cameraSelect.addEventListener("change", async function () {
