@@ -1156,12 +1156,19 @@
     const goodsCode = String(normalizedProduct.goods_code || "").trim();
     const id = String(normalizedProduct.id || "").trim();
     const italianName = String(normalizedProduct.italian_name || "").trim();
+    const pPrice = String(normalizedProduct.p_price || "").trim();
+    const sPrice = String(normalizedProduct.s_price || "").trim();
+    const inventory = String(normalizedProduct.real_inventory || "").trim();
 
-    if (goodsCode && normalizedBarcode) {
-      return goodsCode === normalizedBarcode;
+    if (normalizedBarcode) {
+      if (!goodsCode || goodsCode !== normalizedBarcode) {
+        return false;
+      }
+
+      return Boolean(italianName || pPrice || sPrice || inventory || id);
     }
 
-    return Boolean(id || italianName);
+    return Boolean(goodsCode || italianName || pPrice || sPrice || inventory || id);
   }
 
   function selectHistoryItem(index) {
@@ -3289,18 +3296,4 @@
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", function () {
-      init().catch((error) => {
-        if (state.els?.statusText) {
-          setStatus(error.message || "The app could not start");
-        }
-      });
-    });
-  } else {
-    init().catch((error) => {
-      if (state.els?.statusText) {
-        setStatus(error.message || "The app could not start");
-      }
-    });
-  }
-}());
+    document.addEventListener
