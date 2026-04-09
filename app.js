@@ -964,6 +964,40 @@
     return results;
   }
 
+  async function handleClosestSearchLookup() {
+    const code = String(state.els.barcodeInput.value || "").trim();
+    if (!code) {
+      setStatus("Type a barcode first");
+      return;
+    }
+
+    state.els.barcodeInput.value = code;
+    state.isClosestSearchLoading = true;
+    state.closestSearchCode = code;
+    state.closestSearchPendingHistoryId = "";
+    state.closestSearchResults = [];
+    state.els.closestSearchBackBtn.disabled = true;
+    state.els.closestSearchTitle.textContent = "Closest Matches";
+    state.els.closestSearchStatus.textContent = `Searching matches for ${code}...`;
+    renderClosestSearchResults();
+    lockPageScroll();
+    state.els.closestSearchDialog.classList.add("is-open");
+    state.els.closestSearchDialog.setAttribute("aria-hidden", "false");
+
+    try {
+      const closestMatches = await fetchClosestSearchResults(code);
+      openClosestSearchDialog(code, closestMatches, "");
+      setStatus("Select one of the closest matches.");
+    } catch (error) {
+      state.isClosestSearchLoading = false;
+      state.els.closestSearchBackBtn.disabled = false;
+      state.closestSearchResults = [];
+      state.els.closestSearchStatus.textContent = error?.message || "No similar products found.";
+      renderClosestSearchResults();
+      setStatus(error?.message || "No similar products found.");
+    }
+  }
+
   function normalizeClosestSearchResult(item) {
     if (!item || typeof item !== "object") {
       return null;
@@ -1084,7 +1118,7 @@
       const metaLine = document.createElement("div");
       metaLine.className = "closest-search-meta";
       metaLine.innerHTML =
-        `<span>${escapeHtml(item.barcode)}</span>` +
+        `<span class="closest-search-barcode">${escapeHtml(item.barcode)}</span>` +
         `<span>Cost: ${escapeHtml(formatPrice(item.p_price) || "-")}</span>` +
         `<span>Price: ${escapeHtml(formatPrice(item.s_price) || "-")}</span>`;
 
@@ -3023,7 +3057,7 @@
     state.els.searchBarcodeBtn.addEventListener("click", async function () {
       state.els.searchBarcodeBtn.disabled = true;
       try {
-        await handleBarcodeLookup({ allowClosestSearch: true });
+        await handleClosestSearchLookup();
       } finally {
         state.els.searchBarcodeBtn.disabled = false;
       }
@@ -3147,7 +3181,7 @@
     state.els.barcodeInput.addEventListener("keydown", async function (event) {
       if (event.key !== "Enter") return;
       event.preventDefault();
-      await handleBarcodeLookup({ allowClosestSearch: true });
+      await handleBarcodeLookup();
     });
 
     state.els.cameraSelect.addEventListener("change", async function () {
