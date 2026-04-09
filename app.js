@@ -129,6 +129,15 @@
     isClosestSearchLoading: false
   };
 
+  const OPTIONAL_ELEMENT_KEYS = new Set([
+    "closestSearchBackBtn",
+    "closestSearchDialog",
+    "closestSearchList",
+    "closestSearchStatus",
+    "closestSearchTitle",
+    "historyCountBadge"
+  ]);
+
   function queryElements() {
     return {
       barcodeInput: document.getElementById("barcodeInput"),
@@ -192,7 +201,9 @@
   }
 
   function requireElements(els) {
-    const missing = Object.entries(els).filter(([, value]) => !value).map(([key]) => key);
+    const missing = Object.entries(els)
+      .filter(([key, value]) => !value && !OPTIONAL_ELEMENT_KEYS.has(key))
+      .map(([key]) => key);
     if (missing.length > 0) {
       throw new Error(`Missing DOM elements: ${missing.join(", ")}`);
     }
@@ -1082,6 +1093,15 @@
   }
 
   function openClosestSearchDialog(barcode, results) {
+    if (
+      !state.els.closestSearchDialog ||
+      !state.els.closestSearchBackBtn ||
+      !state.els.closestSearchTitle ||
+      !state.els.closestSearchStatus
+    ) {
+      setStatus("Exact barcode not found.");
+      return;
+    }
     state.closestSearchCode = String(barcode || "").trim();
     state.closestSearchResults = Array.isArray(results) ? results.slice() : [];
     state.isClosestSearchLoading = false;
@@ -1097,6 +1117,13 @@
   }
 
   function closeClosestSearchDialog() {
+    if (
+      !state.els.closestSearchDialog ||
+      !state.els.closestSearchBackBtn ||
+      !state.els.closestSearchStatus
+    ) {
+      return;
+    }
     state.closestSearchResults = [];
     state.closestSearchCode = "";
     state.isClosestSearchLoading = false;
@@ -1110,7 +1137,13 @@
   }
 
   async function handleClosestSearchSelection(index) {
-    if (index < 0 || index >= state.closestSearchResults.length || state.isClosestSearchLoading) {
+    if (
+      !state.els.closestSearchBackBtn ||
+      !state.els.closestSearchStatus ||
+      index < 0 ||
+      index >= state.closestSearchResults.length ||
+      state.isClosestSearchLoading
+    ) {
       return;
     }
 
@@ -3040,11 +3073,13 @@
     });
 
     state.els.printBackBtn.addEventListener("click", closePrintDialog);
-    state.els.closestSearchBackBtn.addEventListener("click", function () {
-      if (!state.isClosestSearchLoading) {
-        closeClosestSearchDialog();
-      }
-    });
+    if (state.els.closestSearchBackBtn) {
+      state.els.closestSearchBackBtn.addEventListener("click", function () {
+        if (!state.isClosestSearchLoading) {
+          closeClosestSearchDialog();
+        }
+      });
+    }
 
     state.els.historyList.addEventListener("click", function (event) {
       const detailButton = event.target.closest('[data-action="detail"]');
@@ -3066,23 +3101,25 @@
       }
     });
 
-    state.els.closestSearchList.addEventListener("click", async function (event) {
-      const selectButton = event.target.closest('[data-action="select-closest"]');
-      if (!selectButton) {
-        return;
-      }
+    if (state.els.closestSearchList) {
+      state.els.closestSearchList.addEventListener("click", async function (event) {
+        const selectButton = event.target.closest('[data-action="select-closest"]');
+        if (!selectButton) {
+          return;
+        }
 
-      const matchIndex = Number(selectButton.dataset.index);
-      if (Number.isNaN(matchIndex)) {
-        return;
-      }
+        const matchIndex = Number(selectButton.dataset.index);
+        if (Number.isNaN(matchIndex)) {
+          return;
+        }
 
-      try {
-        await handleClosestSearchSelection(matchIndex);
-      } catch (error) {
-        setStatus(error.message || "Could not load selected product");
-      }
-    });
+        try {
+          await handleClosestSearchSelection(matchIndex);
+        } catch (error) {
+          setStatus(error.message || "Could not load selected product");
+        }
+      });
+    }
 
     state.els.historyList.addEventListener("keydown", function (event) {
       if (event.key !== "Enter" && event.key !== " ") return;
@@ -3192,11 +3229,13 @@
       }
     });
 
-    state.els.closestSearchDialog.addEventListener("click", function (event) {
-      if (event.target === state.els.closestSearchDialog && !state.isClosestSearchLoading) {
-        closeClosestSearchDialog();
-      }
-    });
+    if (state.els.closestSearchDialog) {
+      state.els.closestSearchDialog.addEventListener("click", function (event) {
+        if (event.target === state.els.closestSearchDialog && !state.isClosestSearchLoading) {
+          closeClosestSearchDialog();
+        }
+      });
+    }
 
     state.els.historyEditSaveBtn.addEventListener("click", async function () {
       state.els.historyEditSaveBtn.disabled = true;
@@ -3263,37 +3302,4 @@
   }
 
   async function init() {
-    await waitForPonyfillReady(2200);
-
-    state.els = queryElements();
-    requireElements(state.els);
-    state.isMobileUi = detectMobileUi();
-    cacheResultFieldElements();
-
-    const savedSettings = readSavedSettings();
-    loadCookieState();
-    loadHistoryState();
-    fillSettingsForm(savedSettings);
-    applyCompactMode(savedSettings.compactMode);
-    clearResultFields();
-    renderHistory();
-    bindEvents();
-
-    const supportIssue = getCameraSupportIssue();
-    if (supportIssue) {
-      setStatus(supportIssue);
-      state.els.scanBtn.disabled = true;
-      state.els.cameraSelect.disabled = true;
-      state.els.torchBtn.disabled = true;
-      return;
-    }
-
-    setStatus("Opening camera preview...");
-    refreshDevices(readSavedCameraId()).catch(() => {
-      // Ignore early device enumeration issues before permission is granted.
-    });
-    schedulePreviewWarmStart();
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener
+    await waitForPonyfil
