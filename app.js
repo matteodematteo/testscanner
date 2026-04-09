@@ -2875,44 +2875,85 @@
     await requestFocusRefresh(track);
   }
 
+  function getTorchTrack() {
+    return state.track || getActiveStreamTrackFromPreview() || null;
+  }
+
+  function readTorchStateFromTrack(track) {
+    if (!track?.getSettings) {
+      return state.torchOn;
+    }
+
+    try {
+      const settings = track.getSettings();
+      if (typeof settings.torch === "boolean") {
+        return settings.torch;
+      }
+    } catch {
+      // Ignore unsupported settings reads.
+    }
+
+    return state.torchOn;
+  }
+
   function updateTorchUi(supported, enabled) {
+    const isEnabled = Boolean(enabled);
     state.els.torchBtn.disabled = !supported || !state.isCameraRunning;
-    state.els.torchBtn.textContent = enabled ? "Torch On" : "Torch Off";
+    state.els.torchBtn.classList.toggle("is-on", supported && isEnabled);
+    state.els.torchBtn.setAttribute(
+      "aria-label",
+      supported ? (isEnabled ? "Torch on" : "Torch off") : "Torch unavailable"
+    );
+    state.els.torchBtn.title = supported ? (isEnabled ? "Torch on" : "Torch off") : "Torch unavailable";
   }
 
   async function syncTorchSupport() {
-    if (!state.track?.getCapabilities) {
+    const liveTrack = getTorchTrack();
+    if (!liveTrack?.getCapabilities) {
+      state.torchOn = false;
       updateTorchUi(false, false);
       return;
     }
 
-    const capabilities = state.track.getCapabilities();
+    const capabilities = liveTrack.getCapabilities();
     const supported = !!capabilities.torch;
     if (!supported) {
       state.torchOn = false;
+    } else {
+      state.torchOn = readTorchStateFromTrack(liveTrack);
     }
     updateTorchUi(supported, state.torchOn);
   }
 
   async function toggleTorch() {
-    if (!state.track?.applyConstraints || !state.track.getCapabilities) return;
+    const liveTrack = getTorchTrack();
+    if (!liveTrack?.applyConstraints || !liveTrack.getCapabilities) {
+      setStatus("Torch is not available because the camera is not ready");
+      updateTorchUi(false, false);
+      return;
+    }
 
-    const capabilities = state.track.getCapabilities();
+    const capabilities = liveTrack.getCapabilities();
     if (!capabilities.torch) {
+      state.torchOn = false;
       updateTorchUi(false, false);
       setStatus("Torch is not supported on this camera");
       return;
     }
 
-    state.torchOn = !state.torchOn;
+    const nextTorchState = !readTorchStateFromTrack(liveTrack);
     try {
-      await state.track.applyConstraints({ advanced: [{ torch: state.torchOn }] });
+      await liveTrack.applyConstraints({ advanced: [{ torch: nextTorchState }] });
+      state.torchOn = readTorchStateFromTrack(liveTrack);
+      if (state.torchOn !== nextTorchState) {
+        state.torchOn = nextTorchState;
+      }
       updateTorchUi(true, state.torchOn);
       setStatus(state.torchOn ? "Torch enabled" : "Torch disabled");
-    } catch {
+    } catch (error) {
       state.torchOn = false;
       updateTorchUi(true, false);
-      setStatus("Torch control failed on this device");
+      setStatus(error?.message || "Torch control failed on this device");
     }
   }
 
