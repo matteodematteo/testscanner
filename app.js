@@ -872,10 +872,21 @@
     }
 
     const cookie = await getCookieForRequests();
-    const [productResponseText, discountResponseText] = await Promise.all([
+    const [productResult, discountResult] = await Promise.allSettled([
       fetchProductInfoThroughProxy(code, cookie),
       fetchDiscountInfoThroughProxy(code, cookie)
     ]);
+
+    if (productResult.status !== "fulfilled") {
+      throw productResult.reason instanceof Error
+        ? productResult.reason
+        : new Error("Could not load product info.");
+    }
+
+    const productResponseText = productResult.value;
+    const discountResponseText = discountResult.status === "fulfilled"
+      ? discountResult.value
+      : "";
 
     let parsedProduct;
     let parsedDiscount = null;
@@ -959,10 +970,20 @@
     }
 
     const barcode = String(
+      item.bh ||
+      item.goods_bh ||
+      item.goodsBh ||
       item.goods_code ||
       item.goodsCode ||
+      item.bar_code ||
+      item.barCode ||
       item.barcode ||
       item.code ||
+      item.ean ||
+      item.ean13 ||
+      item.upc ||
+      item.upcA ||
+      item.upc_a ||
       item.content ||
       ""
     ).trim();
@@ -977,7 +998,7 @@
     const pPrice = String(item.p_price || item.pPrice || item.purchase_price || item.buying_price || item.cost || "").trim();
     const sPrice = String(item.s_price || item.sPrice || item.sale_price || item.price || "").trim();
 
-    if (!barcode || (!italianName && !pPrice && !sPrice && !goodsId)) {
+    if (!barcode) {
       return null;
     }
 
@@ -1054,8 +1075,8 @@
 
       const nameLine = document.createElement("div");
       nameLine.className = "closest-search-name";
-      nameLine.textContent = item.italian_name || "Unnamed product";
-      nameLine.title = item.italian_name || "";
+      nameLine.textContent = item.italian_name || item.barcode || "Unnamed product";
+      nameLine.title = item.italian_name || item.barcode || "";
 
       const footer = document.createElement("div");
       footer.className = "closest-search-footer";
@@ -3126,7 +3147,7 @@
     state.els.barcodeInput.addEventListener("keydown", async function (event) {
       if (event.key !== "Enter") return;
       event.preventDefault();
-      await handleBarcodeLookup();
+      await handleBarcodeLookup({ allowClosestSearch: true });
     });
 
     state.els.cameraSelect.addEventListener("change", async function () {
