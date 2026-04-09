@@ -1717,7 +1717,8 @@
     const code = String(barcode || "").trim();
     const normalizedOptions = {
       allowClosestSearch: Boolean(options?.allowClosestSearch),
-      addToHistoryImmediately: Boolean(options?.addToHistoryImmediately)
+      addToHistoryImmediately: Boolean(options?.addToHistoryImmediately),
+      existingHistoryEntryId: String(options?.existingHistoryEntryId || "")
     };
     if (!code) {
       setStatus("Type or scan a barcode first");
@@ -1728,9 +1729,11 @@
     clearResultFields();
     const lookupSequence = state.lookupSequence + 1;
     state.lookupSequence = lookupSequence;
-    let historyEntryId = normalizedOptions.addToHistoryImmediately
+    let historyEntryId = normalizedOptions.existingHistoryEntryId || (
+      normalizedOptions.addToHistoryImmediately
       ? (addFallbackHistoryItem(code) || "")
-      : "";
+      : ""
+    );
 
     setStatus("Requesting product info...");
     try {
@@ -2396,9 +2399,11 @@
     stopScanning(true);
 
     try {
+      const historyEntryId = addFallbackHistoryItem(code) || "";
       await fetchProductInfo(code, {
         allowClosestSearch: false,
-        addToHistoryImmediately: true
+        addToHistoryImmediately: false,
+        existingHistoryEntryId: historyEntryId
       });
     } catch (error) {
       setStatus(error.message || "Barcode was captured, but info request failed");
@@ -2929,9 +2934,13 @@
   async function handleBarcodeLookup(mode) {
     const lookupMode = mode === "search" ? "search" : "enter";
     try {
+      const historyEntryId = lookupMode !== "search"
+        ? (addFallbackHistoryItem(state.els.barcodeInput.value) || "")
+        : "";
       await fetchProductInfo(state.els.barcodeInput.value, {
         allowClosestSearch: lookupMode === "search",
-        addToHistoryImmediately: lookupMode !== "search"
+        addToHistoryImmediately: false,
+        existingHistoryEntryId: historyEntryId
       });
     } catch (error) {
       setStatus(error.message || "Could not load product info");
