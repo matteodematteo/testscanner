@@ -101,6 +101,7 @@
     scannerEngine: "",
     isCameraRunning: false,
     isScanning: false,
+    torchOn: false,
     scanTimer: 0,
     authCookie: "",
     authStatus: "",
@@ -194,7 +195,8 @@
       settingsSaveNote: document.getElementById("settingsSaveNote"),
       shopKeyInput: document.getElementById("shopKeyInput"),
       statusText: document.getElementById("statusText"),
-      toast: document.getElementById("toast")
+      toast: document.getElementById("toast"),
+      torchBtn: document.getElementById("torchBtn")
     };
   }
 
@@ -1217,14 +1219,22 @@
     }
 
     const goodsCode = String(normalizedProduct.goods_code || "").trim();
-    const id = String(normalizedProduct.id || "").trim();
     const italianName = String(normalizedProduct.italian_name || "").trim();
+    const pPrice = String(normalizedProduct.p_price || "").trim();
+    const sPrice = String(normalizedProduct.s_price || "").trim();
+    const inventory = String(normalizedProduct.real_inventory || "").trim();
+    const supplierName = String(normalizedProduct.supplier_name || "").trim();
+    const id = String(normalizedProduct.id || "").trim();
 
-    if (goodsCode && normalizedBarcode) {
-      return goodsCode === normalizedBarcode;
+    if (!goodsCode || !normalizedBarcode || goodsCode !== normalizedBarcode) {
+      return false;
     }
 
-    return Boolean(id || italianName);
+    if (!italianName) {
+      return false;
+    }
+
+    return Boolean(pPrice || sPrice || inventory || supplierName || id);
   }
 
   function selectHistoryItem(index) {
@@ -2244,6 +2254,8 @@
     stopPreviewWatchdog();
     clearFocusRefreshTimers();
     state.isCameraRunning = false;
+    state.torchOn = false;
+    updateTorchUi(false, false);
     const scanner = state.scanner;
     const currentStream = state.stream;
     state.scanner = null;
@@ -2869,6 +2881,92 @@
     await requestFocusRefresh(track);
   }
 
+  function getTorchTrack() {
+    return state.track || getActiveStreamTrackFromPreview() || null;
+  }
+
+  function readTorchStateFromTrack(track) {
+    if (!track?.getSettings) {
+      return state.torchOn;
+    }
+
+    try {
+      const settings = track.getSettings();
+      if (typeof settings.torch === "boolean") {
+        return settings.torch;
+      }
+    } catch {
+      // Ignore unsupported settings reads.
+    }
+
+    return state.torchOn;
+  }
+
+  function updateTorchUi(supported, enabled) {
+    if (!state.els?.torchBtn) {
+      return;
+    }
+
+    const isEnabled = Boolean(enabled);
+    state.els.torchBtn.disabled = !supported || !state.isCameraRunning;
+    state.els.torchBtn.classList.toggle("is-on", supported && isEnabled);
+    state.els.torchBtn.setAttribute(
+      "aria-label",
+      supported ? (isEnabled ? "Torch on" : "Torch off") : "Torch unavailable"
+    );
+    state.els.torchBtn.title = supported ? (isEnabled ? "Torch on" : "Torch off") : "Torch unavailable";
+  }
+
+  async function syncTorchSupport() {
+    const liveTrack = getTorchTrack();
+    if (!liveTrack?.getCapabilities) {
+      state.torchOn = false;
+      updateTorchUi(false, false);
+      return;
+    }
+
+    const capabilities = liveTrack.getCapabilities();
+    const supported = !!capabilities.torch;
+    if (!supported) {
+      state.torchOn = false;
+    } else {
+      state.torchOn = readTorchStateFromTrack(liveTrack);
+    }
+    updateTorchUi(supported, state.torchOn);
+  }
+
+  async function toggleTorch() {
+    const liveTrack = getTorchTrack();
+    if (!liveTrack?.applyConstraints || !liveTrack.getCapabilities) {
+      setStatus("Torch is not available because the camera is not ready");
+      updateTorchUi(false, false);
+      return;
+    }
+
+    const capabilities = liveTrack.getCapabilities();
+    if (!capabilities.torch) {
+      state.torchOn = false;
+      updateTorchUi(false, false);
+      setStatus("Torch is not supported on this camera");
+      return;
+    }
+
+    const nextTorchState = !readTorchStateFromTrack(liveTrack);
+    try {
+      await liveTrack.applyConstraints({ advanced: [{ torch: nextTorchState }] });
+      state.torchOn = readTorchStateFromTrack(liveTrack);
+      if (state.torchOn !== nextTorchState) {
+        state.torchOn = nextTorchState;
+      }
+      updateTorchUi(true, state.torchOn);
+      setStatus(state.torchOn ? "Torch enabled" : "Torch disabled");
+    } catch (error) {
+      state.torchOn = false;
+      updateTorchUi(true, false);
+      setStatus(error?.message || "Torch control failed on this device");
+    }
+  }
+
   async function startCamera(deviceId) {
     if (state.cameraStartPromise) {
       await state.cameraStartPromise;
@@ -2901,6 +2999,7 @@
 
       state.isCameraRunning = true;
       state.isScanning = false;
+      await syncTorchSupport();
       setPreviewActive(true);
       updateResolutionBadge();
       updateScanButton();
@@ -3076,6 +3175,15 @@
     });
 
     state.els.printBackBtn.addEventListener("click", closePrintDialog);
+    state.els.torchBtn.addEventListener("click", async function () {
+      state.els.torchBtn.disabled = true;
+      try {
+        await toggleTorch();
+      } finally {
+        await syncTorchSupport();
+      }
+    });
+
     state.els.closestSearchBackBtn.addEventListener("click", function () {
       if (!state.isClosestSearchLoading) {
         closeClosestSearchDialog();
@@ -3313,6 +3421,7 @@
       setStatus(supportIssue);
       state.els.scanBtn.disabled = true;
       state.els.cameraSelect.disabled = true;
+      state.els.torchBtn.disabled = true;
       return;
     }
 
