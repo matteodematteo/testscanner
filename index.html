@@ -101,12 +101,41 @@
 
     .top-status {
       display: inline-flex;
-      margin-top: 6px;
       padding: 6px 10px;
       border-radius: 999px;
       background: rgba(20, 28, 36, 0.06);
       color: var(--muted);
       font-size: 0.78rem;
+    }
+
+    .status-row {
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .torch-icon-btn {
+      width: 34px;
+      min-width: 34px;
+      height: 34px;
+      min-height: 34px;
+      padding: 0;
+      border: 1px solid rgba(20, 28, 36, 0.12);
+      border-radius: 999px;
+      background: rgba(20, 28, 36, 0.06);
+      color: #b6bec7;
+      font-size: 1rem;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .torch-icon-btn.is-on {
+      color: #161c22;
+      background: rgba(255, 249, 233, 0.96);
     }
 
     .preview-frame {
@@ -1003,7 +1032,10 @@
           <select class="select" id="cameraSelect" disabled></select>
         </label>
       </div>
-      <div class="top-status" id="statusText" aria-live="polite">Opening camera preview...</div>
+      <div class="status-row">
+        <div class="top-status" id="statusText" aria-live="polite">Opening camera preview...</div>
+        <button class="torch-icon-btn" id="torchBtn" type="button" aria-label="Torch off" title="Torch off" disabled>☀</button>
+      </div>
 
       <div class="preview-frame" id="previewFrame">
         <video id="cameraPreview" autoplay playsinline muted></video>
