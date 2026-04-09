@@ -208,14 +208,6 @@
       pointer-events: none;
     }
 
-    .preview-meta-left,
-    .preview-meta-right {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      min-width: 0;
-    }
-
     .badge,
     .mini-pill {
       padding: 5px 9px;
@@ -227,44 +219,6 @@
       background: rgba(8, 12, 16, 0.58);
       color: #fff;
       backdrop-filter: blur(12px);
-    }
-
-    .preview-icon-btn {
-      width: 34px;
-      min-width: 34px;
-      height: 34px;
-      min-height: 34px;
-      padding: 0;
-      border-radius: 999px;
-      border: 1px solid rgba(20, 28, 36, 0.12);
-      background: rgba(255, 255, 255, 0.84);
-      color: #7d8791;
-      box-shadow: 0 10px 22px rgba(17, 24, 31, 0.16);
-      pointer-events: auto;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .preview-icon-btn:hover:not(:disabled) {
-      background: rgba(255, 255, 255, 0.94);
-    }
-
-    .preview-icon-btn:disabled {
-      opacity: 0.55;
-      box-shadow: none;
-    }
-
-    .preview-icon-btn svg {
-      width: 18px;
-      height: 18px;
-      display: block;
-    }
-
-    .preview-icon-btn.is-on {
-      color: #1f252b;
-      background: rgba(255, 248, 220, 0.96);
-      border-color: rgba(20, 28, 36, 0.16);
     }
 
     .controls,
@@ -445,7 +399,7 @@
       background: rgba(20, 28, 36, 0.06);
       border: 1px solid rgba(20, 28, 36, 0.08);
       color: var(--text);
-      font-size: 0.88rem;
+      font-size: 0.8rem;
       font-weight: 400;
     }
 
@@ -1059,25 +1013,8 @@
         <div class="scan-line" aria-hidden="true"></div>
 
         <div class="preview-meta">
-          <div class="preview-meta-left">
-            <div class="badge" id="cameraBadge">Preview off</div>
-          </div>
-          <div class="preview-meta-right">
-            <div class="badge" id="resolutionBadge">0 x 0</div>
-            <button class="preview-icon-btn" id="torchBtn" type="button" aria-label="Torch off" title="Torch off" disabled>
-              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="3.2"></circle>
-                <path d="M12 2.5v2.2"></path>
-                <path d="M12 19.3v2.2"></path>
-                <path d="M4.9 4.9l1.6 1.6"></path>
-                <path d="M17.5 17.5l1.6 1.6"></path>
-                <path d="M2.5 12h2.2"></path>
-                <path d="M19.3 12h2.2"></path>
-                <path d="M4.9 19.1l1.6-1.6"></path>
-                <path d="M17.5 6.5l1.6-1.6"></path>
-              </svg>
-            </button>
-          </div>
+          <div class="badge" id="cameraBadge">Preview off</div>
+          <div class="badge" id="resolutionBadge">0 x 0</div>
         </div>
 
         <div class="preview-placeholder" id="previewPlaceholder">
