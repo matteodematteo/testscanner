@@ -1829,6 +1829,9 @@
       try {
         parsedProduct = JSON.parse(productResponseText);
       } catch {
+        if (lookupOptions.allowClosestSearch) {
+          throw createNoExactMatchError();
+        }
         throw new Error("Product info response was not valid JSON.");
       }
 
