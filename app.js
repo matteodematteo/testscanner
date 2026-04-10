@@ -1156,6 +1156,22 @@
     state.els.closestSearchDialog.setAttribute("aria-hidden", "false");
   }
 
+  function openClosestSearchLoadingDialog(barcode, pendingHistoryId) {
+    state.closestSearchCode = String(barcode || "").trim();
+    state.closestSearchResults = [];
+    state.closestSearchPendingHistoryId = String(pendingHistoryId || "").trim();
+    state.isClosestSearchLoading = true;
+    state.els.closestSearchBackBtn.disabled = true;
+    state.els.closestSearchTitle.textContent = "Closest Matches";
+    state.els.closestSearchStatus.textContent = state.closestSearchCode
+      ? `Searching closest matches for ${state.closestSearchCode}...`
+      : "Searching closest matches...";
+    renderClosestSearchResults();
+    lockPageScroll();
+    state.els.closestSearchDialog.classList.add("is-open");
+    state.els.closestSearchDialog.setAttribute("aria-hidden", "false");
+  }
+
   function closeClosestSearchDialog() {
     state.closestSearchResults = [];
     state.closestSearchCode = "";
@@ -1790,6 +1806,7 @@
     const code = String(barcode || "").trim();
     const lookupOptions = {
       allowClosestSearch: false,
+      addToHistoryBeforeLookup: true,
       ...options
     };
     if (!code) {
@@ -1801,7 +1818,7 @@
     clearResultFields();
     const lookupSequence = state.lookupSequence + 1;
     state.lookupSequence = lookupSequence;
-    const createdHistoryId = addHistoryItem(code);
+    const createdHistoryId = lookupOptions.addToHistoryBeforeLookup ? addHistoryItem(code) : "";
 
     setStatus("Requesting product info...");
     try {
@@ -1824,8 +1841,12 @@
         product: parsedProduct?.product || parsedProduct,
         sale: null
       });
-      if (createdHistoryId && state.currentProductRecord) {
-        updateHistoryItem(createdHistoryId, state.currentProductRecord);
+      if (state.currentProductRecord) {
+        if (createdHistoryId) {
+          updateHistoryItem(createdHistoryId, state.currentProductRecord);
+        } else {
+          addHistoryRecord(state.currentProductRecord, code);
+        }
       }
       setStatus("Product info loaded");
 
@@ -1863,6 +1884,7 @@
       if (error?.code === "NO_EXACT_MATCH") {
         if (lookupOptions.allowClosestSearch) {
           try {
+            openClosestSearchLoadingDialog(code, createdHistoryId);
             const closestMatches = await fetchClosestSearchResults(code);
             openClosestSearchDialog(code, closestMatches, createdHistoryId);
             setStatus("Exact barcode not found. Select one of the closest matches.");
@@ -3109,7 +3131,10 @@
     state.els.searchBarcodeBtn.addEventListener("click", async function () {
       state.els.searchBarcodeBtn.disabled = true;
       try {
-        await handleBarcodeLookup({ allowClosestSearch: true });
+        await handleBarcodeLookup({
+          allowClosestSearch: true,
+          addToHistoryBeforeLookup: false
+        });
       } finally {
         state.els.searchBarcodeBtn.disabled = false;
       }
