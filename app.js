@@ -3330,11 +3330,7 @@
       event.stopPropagation();
       await handleBarcodeLookup();
       window.setTimeout(function () {
-        try {
-          state.els.barcodeInput.focus({ preventScroll: true });
-        } catch {
-          state.els.barcodeInput.focus();
-        }
+        state.els.barcodeInput.blur();
       }, 0);
     });
 
@@ -3343,11 +3339,7 @@
       event.preventDefault();
       event.stopPropagation();
       window.setTimeout(function () {
-        try {
-          state.els.barcodeInput.focus({ preventScroll: true });
-        } catch {
-          state.els.barcodeInput.focus();
-        }
+        state.els.barcodeInput.blur();
       }, 0);
     });
 
