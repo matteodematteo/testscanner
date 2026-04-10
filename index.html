@@ -128,6 +128,8 @@
       align-items: center;
       justify-content: center;
       box-shadow: 0 16px 30px rgba(17, 24, 31, 0.2);
+      pointer-events: auto;
+      cursor: pointer;
     }
 
     .torch-icon-btn.is-on {
@@ -598,7 +600,7 @@
     body.display-mode-compact #field_saved_inventory_supplier_row {
       display: grid !important;
       grid-column: 1 / -1;
-      grid-template-columns: minmax(0, 4fr) minmax(0, 3fr) minmax(0, 3fr);
+      grid-template-columns: minmax(0, 45fr) minmax(0, 15fr) minmax(0, 40fr);
       gap: 8px;
       background: transparent;
       border: 0;
@@ -1208,7 +1210,7 @@
       <div class="helper-row">
         <label class="mode-select-wrap">
           <span class="visually-hidden">Choose display mode</span>
-          <select class="select" id="displayModeSelect">
+          <select class="select" id="displayModeSelect" tabindex="-1">
             <option value="full">F</option>
             <option value="normal">N</option>
             <option value="compact">C</option>
@@ -1227,7 +1229,7 @@
         <div class="field-card span-full" id="field_italian_name_card"><label for="field_italian_name">Italian Name</label><div class="field-value" id="field_italian_name"></div></div>
         <div class="field-card span-full" id="field_saved_inventory_supplier_row" hidden>
           <div class="field-card" id="field_create_time_compact_card" hidden><label for="field_create_time_compact">Saved</label><div class="field-value" id="field_create_time_compact"></div></div>
-          <div class="field-card" id="field_real_inventory_compact_card" hidden><label for="field_real_inventory_compact">Inventory</label><div class="field-value" id="field_real_inventory_compact"></div></div>
+          <div class="field-card" id="field_real_inventory_compact_card" hidden><label for="field_real_inventory_compact">INV</label><div class="field-value" id="field_real_inventory_compact"></div></div>
           <div class="field-card" id="field_supplier_name_compact_card" hidden><label for="field_supplier_name_compact">Supplier</label><div class="field-value" id="field_supplier_name_compact"></div></div>
         </div>
         <div class="field-card span-third" id="field_p_price_card"><label for="field_p_price">Cost</label><div class="field-value" id="field_p_price"></div></div>
