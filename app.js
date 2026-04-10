@@ -3328,6 +3328,13 @@
       if (event.key !== "Enter") return;
       event.preventDefault();
       await handleBarcodeLookup();
+      window.setTimeout(function () {
+        try {
+          state.els.barcodeInput.focus({ preventScroll: true });
+        } catch {
+          state.els.barcodeInput.focus();
+        }
+      }, 0);
     });
 
     state.els.cameraSelect.addEventListener("change", async function () {
