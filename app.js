@@ -123,7 +123,7 @@
     stalledPreviewChecks: 0,
     isRecoveringPreview: false,
     lookupSequence: 0,
-    isCompactMode: false,
+    displayMode: "full",
     lockedScrollY: 0,
     cameraStartPromise: null,
     focusRefreshTimers: [],
@@ -160,7 +160,7 @@
       confirmDialogText: document.getElementById("confirmDialogText"),
       captureCanvas: document.getElementById("captureCanvas"),
       closeSettingsBtn: document.getElementById("closeSettingsBtn"),
-      compactToggleBtn: document.getElementById("compactToggleBtn"),
+      displayModeSelect: document.getElementById("displayModeSelect"),
       historyEmpty: document.getElementById("historyEmpty"),
       historyEditBackBtn: document.getElementById("historyEditBackBtn"),
       historyEditBarcodeInput: document.getElementById("historyEditBarcodeInput"),
@@ -392,23 +392,32 @@
     try {
       const raw = localStorage.getItem(CONFIG.settingsStorageKey);
       const parsed = raw ? JSON.parse(raw) : null;
+      const savedDisplayMode = String(parsed?.displayMode || "").trim();
+      const legacyCompactMode = Boolean(parsed?.compactMode);
+      const displayMode = savedDisplayMode === "full" || savedDisplayMode === "normal" || savedDisplayMode === "compact"
+        ? savedDisplayMode
+        : (legacyCompactMode ? "compact" : "full");
       return {
         shopKey: parsed?.shopKey || "",
         login: parsed?.login || "",
         password: parsed?.password || "",
-        compactMode: Boolean(parsed?.compactMode)
+        displayMode: displayMode
       };
     } catch {
-      return { shopKey: "", login: "", password: "", compactMode: false };
+      return { shopKey: "", login: "", password: "", displayMode: "full" };
     }
   }
 
   function saveSettings(values, options) {
+    const displayMode = values?.displayMode === "normal" || values?.displayMode === "compact"
+      ? values.displayMode
+      : "full";
     const normalizedValues = {
       shopKey: values?.shopKey || "",
       login: values?.login || "",
       password: values?.password || "",
-      compactMode: Boolean(values?.compactMode)
+      displayMode: displayMode,
+      compactMode: displayMode === "compact"
     };
     localStorage.setItem(CONFIG.settingsStorageKey, JSON.stringify(normalizedValues));
     if (options?.silent) {
@@ -424,22 +433,26 @@
     state.els.passwordInput.value = values.password || "";
   }
 
-  function updateCompactToggleButton() {
-    if (!state.els.compactToggleBtn) {
+  function updateDisplayModeControl() {
+    if (!state.els.displayModeSelect) {
       return;
     }
-    state.els.compactToggleBtn.textContent = state.isCompactMode ? "+" : "-";
-    state.els.compactToggleBtn.setAttribute(
-      "aria-label",
-      state.isCompactMode ? "Expand app sections" : "Compact app sections"
-    );
-    state.els.compactToggleBtn.title = state.isCompactMode ? "Show hidden sections" : "Hide optional sections";
+    state.els.displayModeSelect.value = state.displayMode;
   }
 
-  function applyCompactMode(isCompact) {
-    state.isCompactMode = Boolean(isCompact);
-    document.body.classList.toggle("is-compact", state.isCompactMode);
-    updateCompactToggleButton();
+  function syncDisplayModeDiscountLayout() {
+    const hasDiscountFields = !document.getElementById("field_discount_price_card")?.hidden ||
+      !document.getElementById("field_discount_percent_card")?.hidden;
+    document.body.classList.toggle("has-discount-fields", hasDiscountFields);
+  }
+
+  function applyDisplayMode(mode) {
+    const nextMode = mode === "normal" || mode === "compact" ? mode : "full";
+    state.displayMode = nextMode;
+    document.body.classList.remove("display-mode-full", "display-mode-normal", "display-mode-compact");
+    document.body.classList.add(`display-mode-${nextMode}`);
+    updateDisplayModeControl();
+    syncDisplayModeDiscountLayout();
   }
 
   function openSettingsDialog() {
@@ -1657,6 +1670,7 @@
     if (percentCard) {
       percentCard.hidden = !visible;
     }
+    syncDisplayModeDiscountLayout();
   }
 
   function normalizeProductData(rawData) {
@@ -3309,12 +3323,12 @@
 
     state.els.settingsBtn.addEventListener("click", openSettingsDialog);
     state.els.closeSettingsBtn.addEventListener("click", closeSettingsDialog);
-    state.els.compactToggleBtn.addEventListener("click", function () {
-      const nextCompactMode = !state.isCompactMode;
-      applyCompactMode(nextCompactMode);
+    state.els.displayModeSelect.addEventListener("change", function () {
+      const nextDisplayMode = state.els.displayModeSelect.value;
+      applyDisplayMode(nextDisplayMode);
       saveSettings({
         ...readSavedSettings(),
-        compactMode: nextCompactMode
+        displayMode: nextDisplayMode
       }, { silent: true });
     });
 
@@ -3323,7 +3337,7 @@
         shopKey: state.els.shopKeyInput.value.trim(),
         login: state.els.loginInput.value.trim(),
         password: state.els.passwordInput.value,
-        compactMode: state.isCompactMode
+        displayMode: state.displayMode
       };
 
       saveSettings(values);
@@ -3462,7 +3476,7 @@
     loadCookieState();
     loadHistoryState();
     fillSettingsForm(savedSettings);
-    applyCompactMode(savedSettings.compactMode);
+    applyDisplayMode(savedSettings.displayMode);
     clearResultFields();
     renderHistory();
     bindEvents();
