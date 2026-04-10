@@ -571,8 +571,15 @@
     body.is-compact #productInfoTitle,
     body.is-compact #field_goods_code_card,
     body.is-compact #field_supplier_name_card,
+    body.is-compact #field_create_time_card,
+    body.is-compact #field_italian_name_card,
+    body.is-compact #field_p_price_card,
+    body.is-compact #field_s_price_card,
+    body.is-compact #field_discount_price_card,
+    body.is-compact #field_discount_percent_card,
     body.is-compact #field_spec_card,
     body.is-compact #field_id_card,
+    body.is-compact #field_real_inventory_card,
     body.is-compact #historyTitle {
       display: none !important;
     }
@@ -581,25 +588,29 @@
       grid-template-columns: repeat(10, minmax(0, 1fr));
     }
 
-    body.is-compact #field_italian_name_card {
-      grid-column: 1 / span 7;
+    body.is-compact #field_saved_inventory_supplier_row {
+      display: grid !important;
+      grid-column: 1 / -1;
+      grid-template-columns: minmax(0, 4fr) minmax(0, 3fr) minmax(0, 3fr);
+      gap: 8px;
+      background: transparent;
+      border: 0;
+      padding: 0;
+    }
+
+    body.is-compact #field_create_time_compact_card {
+      display: block !important;
+      min-width: 0;
+    }
+
+    body.is-compact #field_real_inventory_compact_card {
+      display: block !important;
+      min-width: 0;
     }
 
     body.is-compact #field_supplier_name_compact_card {
-      grid-column: 8 / span 3;
       display: block !important;
-    }
-
-    body.is-compact #field_p_price_card {
-      grid-column: 1 / span 3;
-    }
-
-    body.is-compact #field_s_price_card {
-      grid-column: 4 / span 3;
-    }
-
-    body.is-compact #field_real_inventory_card {
-      grid-column: 7 / span 4;
+      min-width: 0;
     }
 
     .dialog-backdrop {
@@ -1069,7 +1080,11 @@
         <div class="field-card span-half" id="field_goods_code_card"><label for="field_goods_code">Goods Code</label><div class="field-value" id="field_goods_code"></div></div>
         <div class="field-card span-half" id="field_supplier_name_card"><label for="field_supplier_name">Supplier</label><div class="field-value" id="field_supplier_name"></div></div>
         <div class="field-card span-full" id="field_italian_name_card"><label for="field_italian_name">Italian Name</label><div class="field-value" id="field_italian_name"></div></div>
-        <div class="field-card span-half" id="field_supplier_name_compact_card" hidden><label for="field_supplier_name_compact">Supplier</label><div class="field-value" id="field_supplier_name_compact"></div></div>
+        <div class="field-card span-full" id="field_saved_inventory_supplier_row" hidden>
+          <div class="field-card" id="field_create_time_compact_card" hidden><label for="field_create_time_compact">Saved</label><div class="field-value" id="field_create_time_compact"></div></div>
+          <div class="field-card" id="field_real_inventory_compact_card" hidden><label for="field_real_inventory_compact">Inventory</label><div class="field-value" id="field_real_inventory_compact"></div></div>
+          <div class="field-card" id="field_supplier_name_compact_card" hidden><label for="field_supplier_name_compact">Supplier</label><div class="field-value" id="field_supplier_name_compact"></div></div>
+        </div>
         <div class="field-card span-third" id="field_p_price_card"><label for="field_p_price">Cost</label><div class="field-value" id="field_p_price"></div></div>
         <div class="field-card span-third" id="field_s_price_card"><label for="field_s_price">Price</label><div class="field-value" id="field_s_price"></div></div>
         <div class="field-card span-third" id="field_real_inventory_card"><label for="field_real_inventory">Inventory</label><div class="field-value" id="field_real_inventory"></div></div>
@@ -1077,6 +1092,7 @@
         <div class="field-card span-half" id="field_discount_percent_card" hidden><label for="field_discount_percent">Discount%</label><div class="field-value is-discount" id="field_discount_percent"></div></div>
         <div class="field-card span-half" id="field_spec_card"><label for="field_spec">Spec</label><div class="field-value" id="field_spec"></div></div>
         <div class="field-card span-half" id="field_id_card"><label for="field_id">ID</label><div class="field-value" id="field_id"></div></div>
+        <div class="field-card span-full" id="field_create_time_card"><label for="field_create_time">Saved</label><div class="field-value" id="field_create_time"></div></div>
       </div>
     </section>
 
