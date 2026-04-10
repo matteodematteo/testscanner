@@ -280,6 +280,15 @@
 
     .mode-select-wrap {
       min-width: 0;
+      width: 40px;
+      max-width: 40px;
+      overflow: hidden;
+    }
+
+    #displayModeSelect {
+      padding: 0 2px;
+      text-align: center;
+      font-size: 0.68rem;
     }
 
     .dialog-actions {
@@ -612,6 +621,8 @@
     }
 
     body.display-mode-normal #field_goods_code_card,
+    body.display-mode-normal #productInfoTitle,
+    body.display-mode-normal #historyTitle,
     body.display-mode-normal #field_spec_card,
     body.display-mode-normal #field_id_card,
     body.display-mode-normal #field_saved_inventory_supplier_row {
@@ -669,6 +680,13 @@
     body.display-mode-normal.has-discount-fields #field_discount_percent_card {
       display: block !important;
       grid-column: 46 / span 15;
+    }
+
+    body.display-mode-normal #field_supplier_name_card .field-value,
+    body.display-mode-normal #field_create_time_card .field-value,
+    body.display-mode-normal #field_discount_price_card .field-value,
+    body.display-mode-normal #field_discount_percent_card .field-value {
+      font-size: 0.72rem;
     }
 
     .dialog-backdrop {
@@ -871,6 +889,67 @@
       .preview-frame { width: min(100%, 30vh); }
       .preview-meta { top: 8px; left: 8px; right: 8px; }
       .preview-placeholder { font-size: 0.74rem; }
+
+      .mode-select-wrap {
+        width: 34px;
+        max-width: 34px;
+      }
+
+      #displayModeSelect {
+        font-size: 0.62rem;
+        padding: 0 1px;
+      }
+
+      body.display-mode-normal .field-grid {
+        grid-template-columns: repeat(20, minmax(0, 1fr));
+      }
+
+      body.display-mode-normal #field_italian_name_card {
+        grid-column: 1 / span 13;
+      }
+
+      body.display-mode-normal #field_supplier_name_card {
+        grid-column: 14 / span 8;
+      }
+
+      body.display-mode-normal #field_p_price_card {
+        grid-column: 1 / span 7;
+      }
+
+      body.display-mode-normal #field_s_price_card {
+        grid-column: 8 / span 7;
+      }
+
+      body.display-mode-normal #field_real_inventory_card {
+        grid-column: 15 / span 6;
+      }
+
+      body.display-mode-normal.has-discount-fields #field_create_time_card {
+        grid-column: 1 / span 8;
+      }
+
+      body.display-mode-normal.has-discount-fields #field_discount_price_card {
+        grid-column: 9 / span 7;
+      }
+
+      body.display-mode-normal.has-discount-fields #field_discount_percent_card {
+        grid-column: 16 / span 5;
+      }
+
+      body.display-mode-normal #field_supplier_name_card label,
+      body.display-mode-normal #field_create_time_card label,
+      body.display-mode-normal #field_discount_price_card label,
+      body.display-mode-normal #field_discount_percent_card label {
+        font-size: 0.56rem;
+        letter-spacing: 0.02em;
+      }
+
+      body.display-mode-normal #field_supplier_name_card .field-value,
+      body.display-mode-normal #field_create_time_card .field-value,
+      body.display-mode-normal #field_discount_price_card .field-value,
+      body.display-mode-normal #field_discount_percent_card .field-value {
+        font-size: 0.66rem;
+      }
 
       #historyEditDialog .input {
         font-size: 16px;
