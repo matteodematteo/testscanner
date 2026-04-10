@@ -440,6 +440,26 @@
     state.els.displayModeSelect.value = state.displayMode;
   }
 
+  function setDisplayModeOptionLabels(expanded) {
+    if (!state.els.displayModeSelect) {
+      return;
+    }
+
+    const optionLabels = {
+      full: expanded ? "Full" : "F",
+      normal: expanded ? "Normal" : "N",
+      compact: expanded ? "Compact" : "C"
+    };
+
+    for (let index = 0; index < state.els.displayModeSelect.options.length; index += 1) {
+      const option = state.els.displayModeSelect.options[index];
+      const nextLabel = optionLabels[option.value];
+      if (nextLabel) {
+        option.textContent = nextLabel;
+      }
+    }
+  }
+
   function syncDisplayModeDiscountLayout() {
     const hasDiscountFields = !document.getElementById("field_discount_price_card")?.hidden ||
       !document.getElementById("field_discount_percent_card")?.hidden;
@@ -3330,6 +3350,15 @@
         ...readSavedSettings(),
         displayMode: nextDisplayMode
       }, { silent: true });
+      setDisplayModeOptionLabels(false);
+    });
+
+    state.els.displayModeSelect.addEventListener("focus", function () {
+      setDisplayModeOptionLabels(true);
+    });
+
+    state.els.displayModeSelect.addEventListener("blur", function () {
+      setDisplayModeOptionLabels(false);
     });
 
     state.els.loginSettingsBtn.addEventListener("click", async function () {
@@ -3477,6 +3506,7 @@
     loadHistoryState();
     fillSettingsForm(savedSettings);
     applyDisplayMode(savedSettings.displayMode);
+    setDisplayModeOptionLabels(false);
     clearResultFields();
     renderHistory();
     bindEvents();
