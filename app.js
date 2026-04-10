@@ -39,6 +39,7 @@
       "id",
       "goods_code",
       "italian_name",
+      "create_time",
       "p_price",
       "s_price",
       "real_inventory",
@@ -1607,6 +1608,14 @@
     if (compactSupplierField) {
       compactSupplierField.textContent = "";
     }
+    const compactInventoryField = document.getElementById("field_real_inventory_compact");
+    if (compactInventoryField) {
+      compactInventoryField.textContent = "";
+    }
+    const compactSavedField = document.getElementById("field_create_time_compact");
+    if (compactSavedField) {
+      compactSavedField.textContent = "";
+    }
     state.currentProductRecord = null;
     setDiscountVisibility(false);
   }
@@ -1621,6 +1630,20 @@
       const compactSupplierField = document.getElementById("field_supplier_name_compact");
       if (compactSupplierField) {
         compactSupplierField.textContent = normalizedValue;
+      }
+      return;
+    }
+    if (key === "real_inventory") {
+      const compactInventoryField = document.getElementById("field_real_inventory_compact");
+      if (compactInventoryField) {
+        compactInventoryField.textContent = normalizedValue;
+      }
+      return;
+    }
+    if (key === "create_time") {
+      const compactSavedField = document.getElementById("field_create_time_compact");
+      if (compactSavedField) {
+        compactSavedField.textContent = normalizedValue;
       }
     }
   }
