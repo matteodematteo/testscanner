@@ -3327,7 +3327,21 @@
     state.els.barcodeInput.addEventListener("keydown", async function (event) {
       if (event.key !== "Enter") return;
       event.preventDefault();
+      event.stopPropagation();
       await handleBarcodeLookup();
+      window.setTimeout(function () {
+        try {
+          state.els.barcodeInput.focus({ preventScroll: true });
+        } catch {
+          state.els.barcodeInput.focus();
+        }
+      }, 0);
+    });
+
+    state.els.barcodeInput.addEventListener("keyup", function (event) {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      event.stopPropagation();
       window.setTimeout(function () {
         try {
           state.els.barcodeInput.focus({ preventScroll: true });
