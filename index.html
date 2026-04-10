@@ -278,10 +278,8 @@
       margin-top: 8px;
     }
 
-    .compact-toggle-btn {
-      min-width: 44px;
-      padding: 0;
-      font-size: 1rem;
+    .mode-select-wrap {
+      min-width: 0;
     }
 
     .dialog-actions {
@@ -566,51 +564,111 @@
       transform: translateX(-50%);
     }
 
-    body.is-compact .top-tools,
-    body.is-compact #statusText,
-    body.is-compact #productInfoTitle,
-    body.is-compact #field_goods_code_card,
-    body.is-compact #field_supplier_name_card,
-    body.is-compact #field_create_time_card,
-    body.is-compact #field_italian_name_card,
-    body.is-compact #field_p_price_card,
-    body.is-compact #field_s_price_card,
-    body.is-compact #field_discount_price_card,
-    body.is-compact #field_discount_percent_card,
-    body.is-compact #field_spec_card,
-    body.is-compact #field_id_card,
-    body.is-compact #field_real_inventory_card,
-    body.is-compact #historyTitle {
+    body.display-mode-compact .top-tools,
+    body.display-mode-compact #statusText,
+    body.display-mode-compact #productInfoTitle,
+    body.display-mode-compact #field_goods_code_card,
+    body.display-mode-compact #field_supplier_name_card,
+    body.display-mode-compact #field_create_time_card,
+    body.display-mode-compact #field_italian_name_card,
+    body.display-mode-compact #field_p_price_card,
+    body.display-mode-compact #field_s_price_card,
+    body.display-mode-compact #field_discount_price_card,
+    body.display-mode-compact #field_discount_percent_card,
+    body.display-mode-compact #field_spec_card,
+    body.display-mode-compact #field_id_card,
+    body.display-mode-compact #field_real_inventory_card,
+    body.display-mode-compact #historyTitle {
       display: none !important;
     }
 
-    body.is-compact .field-grid {
+    body.display-mode-compact .field-grid {
       grid-template-columns: repeat(10, minmax(0, 1fr));
     }
 
-    body.is-compact #field_saved_inventory_supplier_row {
+    body.display-mode-compact #field_saved_inventory_supplier_row {
       display: grid !important;
       grid-column: 1 / -1;
-      grid-template-columns: minmax(0, 45fr) minmax(0, 15fr) minmax(0, 40fr);
+      grid-template-columns: minmax(0, 4fr) minmax(0, 3fr) minmax(0, 3fr);
       gap: 8px;
       background: transparent;
       border: 0;
       padding: 0;
     }
 
-    body.is-compact #field_create_time_compact_card {
+    body.display-mode-compact #field_create_time_compact_card {
       display: block !important;
       min-width: 0;
     }
 
-    body.is-compact #field_real_inventory_compact_card {
+    body.display-mode-compact #field_real_inventory_compact_card {
       display: block !important;
       min-width: 0;
     }
 
-    body.is-compact #field_supplier_name_compact_card {
+    body.display-mode-compact #field_supplier_name_compact_card {
       display: block !important;
       min-width: 0;
+    }
+
+    body.display-mode-normal #field_goods_code_card,
+    body.display-mode-normal #field_spec_card,
+    body.display-mode-normal #field_id_card,
+    body.display-mode-normal #field_saved_inventory_supplier_row {
+      display: none !important;
+    }
+
+    body.display-mode-normal .field-grid {
+      grid-template-columns: repeat(60, minmax(0, 1fr));
+    }
+
+    body.display-mode-normal #field_italian_name_card {
+      grid-column: 1 / span 42;
+      grid-row: 1;
+    }
+
+    body.display-mode-normal #field_supplier_name_card {
+      grid-column: 43 / span 18;
+      grid-row: 1;
+    }
+
+    body.display-mode-normal #field_p_price_card {
+      grid-column: 1 / span 20;
+      grid-row: 2;
+    }
+
+    body.display-mode-normal #field_s_price_card {
+      grid-column: 21 / span 20;
+      grid-row: 2;
+    }
+
+    body.display-mode-normal #field_real_inventory_card {
+      grid-column: 41 / span 20;
+      grid-row: 2;
+    }
+
+    body.display-mode-normal #field_create_time_card {
+      grid-column: 1 / -1;
+      grid-row: 3;
+    }
+
+    body.display-mode-normal #field_discount_price_card,
+    body.display-mode-normal #field_discount_percent_card {
+      grid-row: 3;
+    }
+
+    body.display-mode-normal.has-discount-fields #field_create_time_card {
+      grid-column: 1 / span 27;
+    }
+
+    body.display-mode-normal.has-discount-fields #field_discount_price_card {
+      display: block !important;
+      grid-column: 28 / span 18;
+    }
+
+    body.display-mode-normal.has-discount-fields #field_discount_percent_card {
+      display: block !important;
+      grid-column: 46 / span 15;
     }
 
     .dialog-backdrop {
@@ -844,7 +902,6 @@
       .history-qty { font-size: 0.68rem; }
       .history-name { font-size: 0.68rem; }
       .history-meta { gap: 10px; font-size: 0.68rem; }
-      .compact-toggle-btn { font-size: 0.92rem; }
       .history-detail-btn { min-height: 30px; width: auto; padding: 0 8px; margin-right: 32px; font-size: 0.68rem; }
       .toast { width: calc(100% - 28px); text-align: center; }
 
@@ -1068,7 +1125,14 @@
       </div>
 
       <div class="helper-row">
-        <button class="btn btn-muted compact-toggle-btn" id="compactToggleBtn" type="button" aria-label="Toggle compact mode">-</button>
+        <label class="mode-select-wrap">
+          <span class="visually-hidden">Choose display mode</span>
+          <select class="select" id="displayModeSelect">
+            <option value="full">F</option>
+            <option value="normal">N</option>
+            <option value="compact">C</option>
+          </select>
+        </label>
         <button class="btn btn-muted" id="refreshCookieBtn" type="button">Refresh Cookie</button>
         <button class="btn btn-primary" id="scanBtn" type="button" data-mode="start">Start Scanning</button>
       </div>
@@ -1082,7 +1146,7 @@
         <div class="field-card span-full" id="field_italian_name_card"><label for="field_italian_name">Italian Name</label><div class="field-value" id="field_italian_name"></div></div>
         <div class="field-card span-full" id="field_saved_inventory_supplier_row" hidden>
           <div class="field-card" id="field_create_time_compact_card" hidden><label for="field_create_time_compact">Saved</label><div class="field-value" id="field_create_time_compact"></div></div>
-          <div class="field-card" id="field_real_inventory_compact_card" hidden><label for="field_real_inventory_compact">Inv.</label><div class="field-value" id="field_real_inventory_compact"></div></div>
+          <div class="field-card" id="field_real_inventory_compact_card" hidden><label for="field_real_inventory_compact">Inventory</label><div class="field-value" id="field_real_inventory_compact"></div></div>
           <div class="field-card" id="field_supplier_name_compact_card" hidden><label for="field_supplier_name_compact">Supplier</label><div class="field-value" id="field_supplier_name_compact"></div></div>
         </div>
         <div class="field-card span-third" id="field_p_price_card"><label for="field_p_price">Cost</label><div class="field-value" id="field_p_price"></div></div>
