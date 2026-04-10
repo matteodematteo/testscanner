@@ -108,29 +108,26 @@
       font-size: 0.78rem;
     }
 
-    .status-row {
-      margin-top: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
     .torch-icon-btn {
-      width: 34px;
-      min-width: 34px;
-      height: 34px;
-      min-height: 34px;
+      position: fixed;
+      right: max(16px, env(safe-area-inset-right));
+      bottom: max(76px, calc(env(safe-area-inset-bottom) + 76px));
+      z-index: 18;
+      width: 42px;
+      min-width: 42px;
+      height: 42px;
+      min-height: 42px;
       padding: 0;
       border: 1px solid rgba(20, 28, 36, 0.12);
       border-radius: 999px;
-      background: rgba(20, 28, 36, 0.06);
+      background: rgba(255, 255, 255, 0.9);
       color: #b6bec7;
-      font-size: 1rem;
+      font-size: 1.05rem;
       line-height: 1;
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      box-shadow: 0 16px 30px rgba(17, 24, 31, 0.2);
     }
 
     .torch-icon-btn.is-on {
@@ -1032,10 +1029,7 @@
           <select class="select" id="cameraSelect" disabled></select>
         </label>
       </div>
-      <div class="status-row">
-        <div class="top-status" id="statusText" aria-live="polite">Opening camera preview...</div>
-        <button class="torch-icon-btn" id="torchBtn" type="button" aria-label="Torch off" title="Torch off" disabled>☀</button>
-      </div>
+      <div class="top-status" id="statusText" aria-live="polite">Opening camera preview...</div>
 
       <div class="preview-frame" id="previewFrame">
         <video id="cameraPreview" autoplay playsinline muted></video>
@@ -1104,6 +1098,7 @@
   </main>
 
   <div class="toast" id="toast" aria-live="polite"></div>
+  <button class="torch-icon-btn" id="torchBtn" type="button" aria-label="Torch off" title="Torch off" disabled>☀</button>
 
   <button class="fab" id="settingsBtn" type="button" aria-label="Open settings">
     <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -1247,6 +1242,6 @@
       window.__resolvePonyfillReady();
     }
   </script>
-  <script src="app.js?v=57" defer></script>
+  <script src="app.js?v=58" defer></script>
 </body>
 </html>
