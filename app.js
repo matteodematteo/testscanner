@@ -2990,13 +2990,13 @@
     }
 
     const isEnabled = Boolean(enabled);
-    state.els.torchBtn.disabled = !supported || !state.isCameraRunning;
-    state.els.torchBtn.classList.toggle("is-on", supported && isEnabled);
+    state.els.torchBtn.disabled = !state.isCameraRunning;
+    state.els.torchBtn.classList.toggle("is-on", isEnabled);
     state.els.torchBtn.setAttribute(
       "aria-label",
-      supported ? (isEnabled ? "Torch on" : "Torch off") : "Torch unavailable"
+      state.isCameraRunning ? (isEnabled ? "Torch on" : "Torch off") : "Torch unavailable"
     );
-    state.els.torchBtn.title = supported ? (isEnabled ? "Torch on" : "Torch off") : "Torch unavailable";
+    state.els.torchBtn.title = state.isCameraRunning ? (isEnabled ? "Torch on" : "Torch off") : "Torch unavailable";
   }
 
   async function syncTorchSupport() {
@@ -3010,11 +3010,11 @@
     const capabilities = liveTrack.getCapabilities();
     const supported = !!capabilities.torch;
     if (!supported) {
-      state.torchOn = false;
+      state.torchOn = readTorchStateFromTrack(liveTrack);
     } else {
       state.torchOn = readTorchStateFromTrack(liveTrack);
     }
-    updateTorchUi(supported, state.torchOn);
+    updateTorchUi(true, state.torchOn);
   }
 
   async function toggleTorch() {
@@ -3026,13 +3026,6 @@
     }
 
     const capabilities = liveTrack.getCapabilities();
-    if (!capabilities.torch) {
-      state.torchOn = false;
-      updateTorchUi(false, false);
-      setStatus("Torch is not supported on this camera");
-      return;
-    }
-
     const nextTorchState = !readTorchStateFromTrack(liveTrack);
     try {
       await liveTrack.applyConstraints({ advanced: [{ torch: nextTorchState }] });
@@ -3044,8 +3037,8 @@
       setStatus(state.torchOn ? "Torch enabled" : "Torch disabled");
     } catch (error) {
       state.torchOn = false;
-      updateTorchUi(true, false);
-      setStatus(error?.message || "Torch control failed on this device");
+      updateTorchUi(false, false);
+      setStatus(error?.message || (capabilities.torch ? "Torch control failed on this device" : "Torch is not supported on this camera"));
     }
   }
 
