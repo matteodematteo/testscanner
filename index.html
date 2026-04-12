@@ -217,7 +217,7 @@
 
     .controls { margin-top: 10px; }
 
-    .top-tools { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .top-tools { grid-template-columns: 1fr; }
     .button-row { grid-template-columns: 1fr; }
     .lookup-row { grid-template-columns: minmax(0, 1fr) 88px; }
 
@@ -239,6 +239,19 @@
       min-width: 44px;
       padding: 0;
       font-size: 1rem;
+    }
+
+    .floating-torch-btn {
+      position: fixed;
+      top: max(16px, env(safe-area-inset-top));
+      right: max(16px, env(safe-area-inset-right));
+      z-index: 18;
+      min-width: 54px;
+      width: auto;
+      padding: 0 12px;
+      border-radius: 999px;
+      box-shadow: 0 14px 28px rgba(17, 24, 31, 0.22);
+      backdrop-filter: blur(10px);
     }
 
     .dialog-actions {
@@ -370,6 +383,15 @@
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 10px;
       margin-bottom: 8px;
+    }
+
+    .history-actions .mini-pill {
+      display: grid;
+      place-items: center;
+      min-height: 42px;
+      padding: 0 10px;
+      font-weight: 700;
+      white-space: nowrap;
     }
 
     .history-empty {
@@ -575,7 +597,7 @@
         box-shadow: 0 12px 24px rgba(18, 24, 31, 0.1);
         backdrop-filter: none;
       }
-      .top-tools { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .top-tools { grid-template-columns: 1fr; }
       .button-row { grid-template-columns: 1fr; }
       .lookup-row { grid-template-columns: minmax(0, 1fr) 74px; }
       .field-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
@@ -602,6 +624,10 @@
       .history-name { font-size: 0.68rem; }
       .history-meta { gap: 10px; font-size: 0.68rem; }
       .compact-toggle-btn { font-size: 0.92rem; }
+      .floating-torch-btn {
+        top: max(12px, env(safe-area-inset-top));
+        right: max(12px, env(safe-area-inset-right));
+      }
       .history-detail-btn { min-height: 30px; width: auto; padding: 0 8px; margin-right: 32px; font-size: 0.68rem; }
       .toast { width: calc(100% - 28px); text-align: center; }
     }
@@ -621,7 +647,6 @@
   <main class="app-shell">
     <section class="card">
       <div class="controls top-tools">
-        <button class="btn btn-muted" id="torchBtn" type="button" disabled>Torch Off</button>
         <label id="cameraSelectWrap">
           <span class="visually-hidden">Choose camera</span>
           <select class="select" id="cameraSelect" disabled></select>
@@ -682,12 +707,11 @@
     <section class="card section-card">
       <div class="history-head">
         <h2 id="historyTitle">Barcode List View</h2>
-        <div class="mini-pill" id="historyCountBadge" aria-live="polite">Count: 0</div>
       </div>
       <div class="history-actions">
         <button class="btn btn-muted" id="clearSelectedBtn" type="button" disabled>Clean Selected</button>
         <button class="btn btn-muted" id="clearAllBtn" type="button">Clean All</button>
-        <button class="btn btn-primary" id="sendTxtBtn" type="button">Send TXT</button>
+        <div class="mini-pill" id="historyCountBadge" aria-live="polite">Count: 0</div>
         <button class="btn btn-primary" id="printBtn" type="button">Print</button>
       </div>
       <div class="history-list" id="historyList" aria-live="polite">
@@ -697,6 +721,8 @@
   </main>
 
   <div class="toast" id="toast" aria-live="polite"></div>
+
+  <button class="btn btn-muted floating-torch-btn" id="torchBtn" type="button" disabled>Torch Off</button>
 
   <button class="fab" id="settingsBtn" type="button" aria-label="Open settings">
     <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -749,6 +775,7 @@
       <div class="dialog-actions">
         <button class="btn btn-primary" id="printBigBtn" type="button">[BIG] 60*38</button>
         <button class="btn btn-primary" id="printStickerBtn" type="button">[STICKER] 40*25</button>
+        <button class="btn btn-primary" id="sendTxtBtn" type="button">Send TXT</button>
         <button class="btn btn-muted" id="printBackBtn" type="button">Back</button>
       </div>
     </div>
@@ -814,6 +841,6 @@
   <canvas id="captureCanvas" class="visually-hidden" width="720" height="720"></canvas>
   <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
   <script src="https://unpkg.com/@zxing/browser@0.1.5"></script>
-  <script src="app.js?v=44" defer></script>
+  <script src="app.js?v=45" defer></script>
 </body>
 </html>
