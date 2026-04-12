@@ -3310,6 +3310,7 @@
       state.els.sendTxtBtn.disabled = true;
       try {
         await sendTxtList();
+        closePrintDialog();
       } catch (error) {
         setStatus(error.message || "Send TXT failed");
       } finally {
