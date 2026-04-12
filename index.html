@@ -647,10 +647,11 @@
       </div>
 
       <div class="controls">
-        <div class="lookup-row">
-          <input class="input" id="barcodeInput" type="text" inputmode="numeric" autocomplete="off" placeholder="Barcode value" />
-          <button class="btn btn-muted" id="clearBarcodeBtn" type="button">Clear</button>
-        </div>
+      <div class="lookup-row">
+        <input class="input" id="barcodeInput" type="text" inputmode="numeric" autocomplete="off" placeholder="Barcode value" />
+        <button class="btn btn-muted" id="clearBarcodeBtn" type="button">Clear</button>
+      </div>
+      <button class="visually-hidden" id="searchBarcodeBtn" type="button" aria-hidden="true" tabindex="-1">Search</button>
       </div>
 
       <div class="helper-row">
@@ -681,6 +682,7 @@
     <section class="card section-card">
       <div class="history-head">
         <h2 id="historyTitle">Barcode List View</h2>
+        <div class="mini-pill" id="historyCountBadge" aria-live="polite">Count: 0</div>
       </div>
       <div class="history-actions">
         <button class="btn btn-muted" id="clearSelectedBtn" type="button" disabled>Clean Selected</button>
@@ -752,6 +754,19 @@
     </div>
   </div>
 
+  <div class="dialog-backdrop" id="closestSearchDialog" aria-hidden="true">
+    <div class="dialog-card" role="dialog" aria-modal="true" aria-labelledby="closestSearchTitle">
+      <h2 id="closestSearchTitle">Closest Matches</h2>
+      <p id="closestSearchStatus"></p>
+      <div class="history-list" id="closestSearchList" aria-live="polite">
+        <p class="history-empty">No similar products found.</p>
+      </div>
+      <div class="dialog-actions">
+        <button class="btn btn-muted" id="closestSearchBackBtn" type="button">Back</button>
+      </div>
+    </div>
+  </div>
+
   <div class="dialog-backdrop" id="historyEditDialog" aria-hidden="true">
     <div class="dialog-card" role="dialog" aria-modal="true" aria-label="Edit Barcode">
       <div class="field-list">
@@ -799,6 +814,6 @@
   <canvas id="captureCanvas" class="visually-hidden" width="720" height="720"></canvas>
   <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
   <script src="https://unpkg.com/@zxing/browser@0.1.5"></script>
-  <script src="app.js?v=43" defer></script>
+  <script src="app.js?v=44" defer></script>
 </body>
 </html>
