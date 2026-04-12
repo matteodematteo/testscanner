@@ -160,7 +160,7 @@
       confirmDialogText: document.getElementById("confirmDialogText"),
       captureCanvas: document.getElementById("captureCanvas"),
       closeSettingsBtn: document.getElementById("closeSettingsBtn"),
-      displayModeSelect: document.getElementById("displayModeSelect"),
+      compactToggleBtn: document.getElementById("compactToggleBtn") || document.getElementById("displayModeSelect"),
       historyEmpty: document.getElementById("historyEmpty"),
       historyEditBackBtn: document.getElementById("historyEditBackBtn"),
       historyEditBarcodeInput: document.getElementById("historyEditBarcodeInput"),
@@ -394,9 +394,7 @@
       const parsed = raw ? JSON.parse(raw) : null;
       const savedDisplayMode = String(parsed?.displayMode || "").trim();
       const legacyCompactMode = Boolean(parsed?.compactMode);
-      const displayMode = savedDisplayMode === "full" || savedDisplayMode === "normal" || savedDisplayMode === "compact"
-        ? savedDisplayMode
-        : (legacyCompactMode ? "compact" : "full");
+      const displayMode = savedDisplayMode === "compact" || legacyCompactMode ? "compact" : "full";
       return {
         shopKey: parsed?.shopKey || "",
         login: parsed?.login || "",
@@ -409,9 +407,7 @@
   }
 
   function saveSettings(values, options) {
-    const displayMode = values?.displayMode === "normal" || values?.displayMode === "compact"
-      ? values.displayMode
-      : "full";
+    const displayMode = values?.displayMode === "compact" ? "compact" : "full";
     const normalizedValues = {
       shopKey: values?.shopKey || "",
       login: values?.login || "",
@@ -433,31 +429,41 @@
     state.els.passwordInput.value = values.password || "";
   }
 
-  function updateDisplayModeControl() {
-    if (!state.els.displayModeSelect) {
+  function ensureCompactToggleButton() {
+    const existingControl = state.els?.compactToggleBtn;
+    if (!existingControl) {
       return;
     }
-    state.els.displayModeSelect.value = state.displayMode;
+
+    if (existingControl.tagName === "BUTTON") {
+      return;
+    }
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.id = "compactToggleBtn";
+    button.className = existingControl.className || "btn";
+    button.disabled = existingControl.disabled;
+    if (existingControl.getAttribute("style")) {
+      button.setAttribute("style", existingControl.getAttribute("style"));
+    }
+
+    existingControl.replaceWith(button);
+    state.els.compactToggleBtn = button;
   }
 
-  function setDisplayModeOptionLabels(expanded) {
-    if (!state.els.displayModeSelect) {
+  function updateCompactToggleButton() {
+    if (!state.els.compactToggleBtn) {
       return;
     }
 
-    const optionLabels = {
-      full: expanded ? "Full" : "F",
-      normal: expanded ? "Normal" : "N",
-      compact: expanded ? "Compact" : "C"
-    };
-
-    for (let index = 0; index < state.els.displayModeSelect.options.length; index += 1) {
-      const option = state.els.displayModeSelect.options[index];
-      const nextLabel = optionLabels[option.value];
-      if (nextLabel) {
-        option.textContent = nextLabel;
-      }
-    }
+    const isCompactMode = state.displayMode === "compact";
+    state.els.compactToggleBtn.textContent = isCompactMode ? "+" : "-";
+    state.els.compactToggleBtn.setAttribute(
+      "aria-label",
+      isCompactMode ? "Expand app sections" : "Compact app sections"
+    );
+    state.els.compactToggleBtn.title = isCompactMode ? "Show full layout" : "Show compact layout";
   }
 
   function syncDisplayModeDiscountLayout() {
@@ -466,13 +472,106 @@
     document.body.classList.toggle("has-discount-fields", hasDiscountFields);
   }
 
+  function getResultCard(key) {
+    return document.getElementById(`field_${key}_card`);
+  }
+
+  function clearResultCardLayout(card) {
+    if (!card) {
+      return;
+    }
+
+    card.style.display = "";
+    card.style.order = "";
+    card.style.flex = "";
+    card.style.width = "";
+    card.style.maxWidth = "";
+  }
+
+  function applyCompactResultLayout() {
+    const primaryCard = getResultCard("italian_name") ||
+      getResultCard("supplier_name") ||
+      getResultCard("create_time") ||
+      getResultCard("s_price") ||
+      getResultCard("real_inventory");
+    const container = primaryCard?.parentElement || null;
+    const layoutCards = {
+      italian_name: getResultCard("italian_name"),
+      supplier_name: getResultCard("supplier_name"),
+      create_time: getResultCard("create_time"),
+      s_price: getResultCard("s_price"),
+      real_inventory: getResultCard("real_inventory"),
+      discount_percent: getResultCard("discount_percent"),
+      discount_price: getResultCard("discount_price")
+    };
+    CONFIG.resultFields.forEach(function (key) {
+      clearResultCardLayout(getResultCard(key));
+    });
+
+    if (!container) {
+      return;
+    }
+
+    if (state.displayMode !== "compact") {
+      container.style.display = "";
+      container.style.flexWrap = "";
+      container.style.alignItems = "";
+      container.style.gap = "";
+      return;
+    }
+
+    container.style.display = "flex";
+    container.style.flexWrap = "wrap";
+    container.style.alignItems = "stretch";
+    container.style.gap = "8px";
+
+    const compactLayout = [
+      { key: "italian_name", basis: "70%", order: 1 },
+      { key: "supplier_name", basis: "30%", order: 2 },
+      { key: "create_time", basis: "45%", order: 3 },
+      { key: "s_price", basis: "25%", order: 4 },
+      { key: "real_inventory", basis: "30%", order: 5 },
+      { key: "discount_percent", basis: "45%", order: 6 },
+      { key: "discount_price", basis: "55%", order: 7 }
+    ];
+    const visibleKeys = new Set(compactLayout.map(function (item) {
+      return item.key;
+    }));
+
+    CONFIG.resultFields.forEach(function (key) {
+      const card = getResultCard(key);
+      if (!card) {
+        return;
+      }
+
+      if (!visibleKeys.has(key)) {
+        card.style.display = "none";
+      }
+    });
+
+    compactLayout.forEach(function (item) {
+      const card = layoutCards[item.key];
+      if (!card) {
+        return;
+      }
+
+      card.style.display = card.hidden ? "none" : "";
+      card.style.order = String(item.order);
+      card.style.flex = `0 0 calc(${item.basis} - 8px)`;
+      card.style.width = `calc(${item.basis} - 8px)`;
+      card.style.maxWidth = `calc(${item.basis} - 8px)`;
+    });
+  }
+
   function applyDisplayMode(mode) {
-    const nextMode = mode === "normal" || mode === "compact" ? mode : "full";
+    const nextMode = mode === "compact" ? "compact" : "full";
     state.displayMode = nextMode;
     document.body.classList.remove("display-mode-full", "display-mode-normal", "display-mode-compact");
     document.body.classList.add(`display-mode-${nextMode}`);
-    updateDisplayModeControl();
+    document.body.classList.toggle("is-compact", nextMode === "compact");
+    updateCompactToggleButton();
     syncDisplayModeDiscountLayout();
+    applyCompactResultLayout();
   }
 
   function openSettingsDialog() {
@@ -1691,6 +1790,7 @@
       percentCard.hidden = !visible;
     }
     syncDisplayModeDiscountLayout();
+    applyCompactResultLayout();
   }
 
   function normalizeProductData(rawData) {
@@ -3350,22 +3450,13 @@
 
     state.els.settingsBtn.addEventListener("click", openSettingsDialog);
     state.els.closeSettingsBtn.addEventListener("click", closeSettingsDialog);
-    state.els.displayModeSelect.addEventListener("change", function () {
-      const nextDisplayMode = state.els.displayModeSelect.value;
+    state.els.compactToggleBtn.addEventListener("click", function () {
+      const nextDisplayMode = state.displayMode === "compact" ? "full" : "compact";
       applyDisplayMode(nextDisplayMode);
       saveSettings({
         ...readSavedSettings(),
         displayMode: nextDisplayMode
       }, { silent: true });
-      setDisplayModeOptionLabels(false);
-    });
-
-    state.els.displayModeSelect.addEventListener("focus", function () {
-      setDisplayModeOptionLabels(true);
-    });
-
-    state.els.displayModeSelect.addEventListener("blur", function () {
-      setDisplayModeOptionLabels(false);
     });
 
     state.els.loginSettingsBtn.addEventListener("click", async function () {
@@ -3503,6 +3594,7 @@
 
     state.els = queryElements();
     requireElements(state.els);
+    ensureCompactToggleButton();
     state.isIOS = isIOSDevice();
     state.isMobileUi = detectMobileUi();
     state.captureContext = state.els.captureCanvas?.getContext("2d", { alpha: false }) || null;
@@ -3513,7 +3605,6 @@
     loadHistoryState();
     fillSettingsForm(savedSettings);
     applyDisplayMode(savedSettings.displayMode);
-    setDisplayModeOptionLabels(false);
     clearResultFields();
     renderHistory();
     bindEvents();
