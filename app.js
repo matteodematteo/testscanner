@@ -1893,7 +1893,8 @@
       }
 
       const normalizedProduct = normalizeProductData(parsedProduct?.product || parsedProduct);
-      if (!hasProductInDatabase(normalizedProduct, code)) {
+      const requiresExactDatabaseMatch = lookupOptions.allowClosestSearch;
+      if (requiresExactDatabaseMatch && !hasProductInDatabase(normalizedProduct, code)) {
         throw createNoExactMatchError();
       }
 
