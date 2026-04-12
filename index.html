@@ -219,7 +219,7 @@
 
     .top-tools { grid-template-columns: 1fr; }
     .button-row { grid-template-columns: 1fr; }
-    .lookup-row { grid-template-columns: minmax(0, 1fr) 88px; }
+    .lookup-row { grid-template-columns: minmax(0, 1fr) 88px 88px; }
 
     .field-grid {
       grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -621,7 +621,7 @@
       }
       .top-tools { grid-template-columns: 1fr; }
       .button-row { grid-template-columns: 1fr; }
-      .lookup-row { grid-template-columns: minmax(0, 1fr) 74px; }
+      .lookup-row { grid-template-columns: minmax(0, 1fr) 74px 74px; }
       .field-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
       .helper-row { grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.75fr) minmax(0, 2.5fr); }
       .card { border-radius: 22px; }
@@ -699,11 +699,11 @@
       </div>
 
       <div class="controls">
-      <div class="lookup-row">
-        <input class="input" id="barcodeInput" type="text" inputmode="numeric" autocomplete="off" placeholder="Barcode value" />
-        <button class="btn btn-muted" id="clearBarcodeBtn" type="button">Clear</button>
-      </div>
-      <button class="visually-hidden" id="searchBarcodeBtn" type="button" aria-hidden="true" tabindex="-1">Search</button>
+        <div class="lookup-row">
+          <input class="input" id="barcodeInput" type="text" inputmode="numeric" autocomplete="off" placeholder="Barcode value" />
+          <button class="btn btn-muted" id="searchBarcodeBtn" type="button">Search</button>
+          <button class="btn btn-muted" id="clearBarcodeBtn" type="button">Clear</button>
+        </div>
       </div>
 
       <div class="helper-row">
