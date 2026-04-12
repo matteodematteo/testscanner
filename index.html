@@ -87,7 +87,7 @@
     .preview-frame {
       position: relative;
       margin: 10px auto 0;
-      width: min(100%, 38vh);
+      width: min(100%, 34vh);
       aspect-ratio: 1 / 1;
       overflow: hidden;
       border-radius: var(--radius-lg);
@@ -246,12 +246,32 @@
       top: max(16px, env(safe-area-inset-top));
       right: max(16px, env(safe-area-inset-right));
       z-index: 18;
-      min-width: 54px;
-      width: auto;
-      padding: 0 12px;
+      width: 42px;
+      min-width: 42px;
+      height: 42px;
+      padding: 0;
       border-radius: 999px;
-      box-shadow: 0 14px 28px rgba(17, 24, 31, 0.22);
+      display: grid;
+      place-items: center;
+      color: #9aa3ad;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(20, 28, 36, 0.1);
+      box-shadow: 0 14px 28px rgba(17, 24, 31, 0.18);
       backdrop-filter: blur(10px);
+    }
+
+    .floating-torch-btn.is-on {
+      color: #121820;
+      background: rgba(255, 255, 255, 0.92);
+    }
+
+    .floating-torch-btn:disabled {
+      opacity: 0.88;
+    }
+
+    .floating-torch-btn svg {
+      width: 18px;
+      height: 18px;
     }
 
     .dialog-actions {
@@ -603,7 +623,7 @@
       .field-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
       .helper-row { grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.75fr) minmax(0, 2.5fr); }
       .card { border-radius: 22px; }
-      .preview-frame { width: min(100%, 34vh); }
+      .preview-frame { width: min(100%, 30vh); }
       .preview-meta { top: 8px; left: 8px; right: 8px; }
       .preview-placeholder { font-size: 0.74rem; }
     }
@@ -722,7 +742,20 @@
 
   <div class="toast" id="toast" aria-live="polite"></div>
 
-  <button class="btn btn-muted floating-torch-btn" id="torchBtn" type="button" disabled>Torch Off</button>
+  <button class="btn btn-muted floating-torch-btn" id="torchBtn" type="button" disabled>
+    <span class="visually-hidden">Torch</span>
+    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2.5v2.5"></path>
+      <path d="M12 19v2.5"></path>
+      <path d="M4.9 4.9l1.8 1.8"></path>
+      <path d="M17.3 17.3l1.8 1.8"></path>
+      <path d="M2.5 12H5"></path>
+      <path d="M19 12h2.5"></path>
+      <path d="M4.9 19.1l1.8-1.8"></path>
+      <path d="M17.3 6.7l1.8-1.8"></path>
+    </svg>
+  </button>
 
   <button class="fab" id="settingsBtn" type="button" aria-label="Open settings">
     <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -841,6 +874,6 @@
   <canvas id="captureCanvas" class="visually-hidden" width="720" height="720"></canvas>
   <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
   <script src="https://unpkg.com/@zxing/browser@0.1.5"></script>
-  <script src="app.js?v=45" defer></script>
+  <script src="app.js?v=46" defer></script>
 </body>
 </html>
