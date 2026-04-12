@@ -87,7 +87,7 @@
     .preview-frame {
       position: relative;
       margin: 10px auto 0;
-      width: min(100%, 34vh);
+      width: min(100%, 31vh);
       aspect-ratio: 1 / 1;
       overflow: hidden;
       border-radius: var(--radius-lg);
@@ -249,10 +249,12 @@
       width: 42px;
       min-width: 42px;
       height: 42px;
+      max-width: 42px;
       padding: 0;
       border-radius: 999px;
       display: grid;
       place-items: center;
+      flex: 0 0 42px;
       color: #9aa3ad;
       background: rgba(255, 255, 255, 0.82);
       border: 1px solid rgba(20, 28, 36, 0.1);
@@ -367,7 +369,7 @@
     .field-card label {
       display: block;
       color: var(--muted);
-      font-size: 0.68rem;
+      font-size: 0.62rem;
       margin-bottom: 5px;
       text-transform: uppercase;
       letter-spacing: 0.06em;
@@ -623,7 +625,7 @@
       .field-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
       .helper-row { grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.75fr) minmax(0, 2.5fr); }
       .card { border-radius: 22px; }
-      .preview-frame { width: min(100%, 30vh); }
+      .preview-frame { width: min(100%, 26vh); }
       .preview-meta { top: 8px; left: 8px; right: 8px; }
       .preview-placeholder { font-size: 0.74rem; }
     }
@@ -647,6 +649,11 @@
       .floating-torch-btn {
         top: max(12px, env(safe-area-inset-top));
         right: max(12px, env(safe-area-inset-right));
+        width: 38px;
+        min-width: 38px;
+        max-width: 38px;
+        height: 38px;
+        flex-basis: 38px;
       }
       .history-detail-btn { min-height: 30px; width: auto; padding: 0 8px; margin-right: 32px; font-size: 0.68rem; }
       .toast { width: calc(100% - 28px); text-align: center; }
