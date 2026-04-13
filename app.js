@@ -2205,7 +2205,7 @@
       comparisonQty === currentComparisonQty;
 
     if (hasNoChanges) {
-      showToast("No changes to save");
+      closeHistoryEditDialog();
       return;
     }
 
@@ -2214,10 +2214,11 @@
         comparison_qty: comparisonQty
       });
       setStatus(`Saved quantity for ${currentItem.barcode}`);
-      showToast("Saved successfully");
-      state.historyEditCloseTimer = window.setTimeout(closeHistoryEditDialog, 1800);
+      closeHistoryEditDialog();
       return;
     }
+
+    closeHistoryEditDialog();
 
     const cookie = await getCookieForRequests();
     state.els.historyEditSaveNote.textContent = originalItalianName !== payload.italian_name
@@ -2360,7 +2361,6 @@
 
     setStatus(`Saved ${updatedItem.barcode}`);
     showToast("Saved successfully");
-    state.historyEditCloseTimer = window.setTimeout(closeHistoryEditDialog, 1800);
   }
 
   function supportsConfiguredScannerEngine() {
@@ -3597,9 +3597,7 @@
       try {
         await saveHistoryEditorChanges();
       } catch (error) {
-        clearHistoryEditFeedbackTimers();
-        state.els.historyEditSaveNote.classList.remove("show-success");
-        state.els.historyEditSaveNote.textContent = error.message || "Save failed.";
+        setStatus(error.message || "Save failed.");
         if (!error?.toastShown) {
           showToast("Save failed");
         }
