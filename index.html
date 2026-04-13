@@ -255,20 +255,11 @@
       display: grid;
       place-items: center;
       flex: 0 0 42px;
-      color: #c8ced5;
       background: #101720;
       border: 1px solid #101720;
       box-shadow: 0 14px 28px rgba(17, 24, 31, 0.18);
       backdrop-filter: blur(10px);
-      transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
-    }
-
-    .floating-torch-btn.is-on,
-    .floating-torch-btn.torch-on {
-      color: #101720;
-      background: #f3efe7;
-      border-color: #101720;
-      box-shadow: 0 16px 30px rgba(17, 24, 31, 0.24);
+      transition: box-shadow 150ms ease;
     }
 
     .floating-torch-btn:disabled {
@@ -278,6 +269,13 @@
     .floating-torch-btn svg {
       width: 18px;
       height: 18px;
+      color: #c8ced5;
+      transition: color 150ms ease;
+    }
+
+    .floating-torch-btn.is-on svg,
+    .floating-torch-btn.torch-on svg {
+      color: #000;
     }
 
     .dialog-actions {
@@ -638,7 +636,7 @@
 
     .closest-search-item {
       display: grid;
-      grid-template-columns: minmax(0, 4fr) minmax(76px, 1fr);
+      grid-template-columns: minmax(0, 85fr) minmax(76px, 15fr);
       gap: 12px;
       align-items: center;
       padding: 12px 4px;
@@ -688,7 +686,7 @@
     .closest-search-select-btn {
       min-height: 34px;
       margin: 0;
-      justify-self: end;
+      justify-self: center;
       align-self: center;
       padding: 0 12px;
       border-radius: 999px;
@@ -738,6 +736,16 @@
       min-height: 1.3em;
       color: var(--success);
       font-size: 0.92rem;
+      transition: opacity 160ms ease, color 160ms ease;
+    }
+
+    .save-note:empty {
+      opacity: 0;
+    }
+
+    .save-note.show-success {
+      color: var(--success);
+      opacity: 1;
     }
 
     .visually-hidden {
@@ -801,7 +809,7 @@
         top: max(10px, env(safe-area-inset-top));
       }
       .closest-search-item {
-        grid-template-columns: minmax(0, 1fr) 72px;
+        grid-template-columns: minmax(0, 85fr) minmax(72px, 15fr);
         gap: 10px;
         padding: 10px 2px;
       }
@@ -905,7 +913,7 @@
 
   <button class="btn btn-muted floating-torch-btn" id="torchBtn" type="button" disabled>
     <span class="visually-hidden">Torch</span>
-    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <svg id="torchIcon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="4"></circle>
       <path d="M12 2.5v2.5"></path>
       <path d="M12 19v2.5"></path>
