@@ -255,16 +255,20 @@
       display: grid;
       place-items: center;
       flex: 0 0 42px;
-      color: #9aa3ad;
-      background: rgba(255, 255, 255, 0.82);
-      border: 1px solid rgba(20, 28, 36, 0.1);
+      color: #c8ced5;
+      background: #101720;
+      border: 1px solid #101720;
       box-shadow: 0 14px 28px rgba(17, 24, 31, 0.18);
       backdrop-filter: blur(10px);
+      transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
     }
 
-    .floating-torch-btn.is-on {
-      color: #121820;
-      background: rgba(255, 255, 255, 0.92);
+    .floating-torch-btn.is-on,
+    .floating-torch-btn.torch-on {
+      color: #101720;
+      background: #f3efe7;
+      border-color: #101720;
+      box-shadow: 0 16px 30px rgba(17, 24, 31, 0.24);
     }
 
     .floating-torch-btn:disabled {
@@ -593,6 +597,142 @@
       line-height: 1.45;
     }
 
+    #closestSearchDialog,
+    #historyEditDialog {
+      align-items: flex-start;
+      justify-content: center;
+      padding: max(12px, env(safe-area-inset-top)) 16px 16px;
+    }
+
+    #closestSearchDialog .dialog-card,
+    #historyEditDialog .dialog-card {
+      position: fixed;
+      top: max(12px, env(safe-area-inset-top));
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(calc(100% - 32px), 400px);
+      height: 45vh;
+      max-height: 45vh;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-gutter: stable;
+    }
+
+    .closest-search-dialog-card,
+    .detail-popup-card {
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .closest-search-status:empty {
+      display: none;
+    }
+
+    .closest-search-results {
+      gap: 0;
+      padding: 2px 2px 0;
+      overflow-y: auto;
+      align-content: start;
+    }
+
+    .closest-search-item {
+      display: grid;
+      grid-template-columns: minmax(0, 4fr) minmax(76px, 1fr);
+      gap: 12px;
+      align-items: center;
+      padding: 12px 4px;
+      border-bottom: 1px solid rgba(20, 28, 36, 0.1);
+    }
+
+    .closest-search-item:last-child {
+      border-bottom: 0;
+    }
+
+    .closest-search-info {
+      min-width: 0;
+      display: grid;
+      gap: 6px;
+    }
+
+    .closest-search-name {
+      min-width: 0;
+      font-size: 0.84rem;
+      font-weight: 800;
+      line-height: 1.25;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .closest-search-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.71rem;
+      line-height: 1.25;
+    }
+
+    .closest-search-meta span:not(:last-child)::after {
+      content: "|";
+      margin-left: 8px;
+      color: rgba(20, 28, 36, 0.3);
+    }
+
+    .closest-search-barcode {
+      color: var(--text);
+      font-weight: 800;
+    }
+
+    .closest-search-select-btn {
+      min-height: 34px;
+      margin: 0;
+      justify-self: end;
+      align-self: center;
+      padding: 0 12px;
+      border-radius: 999px;
+    }
+
+    .detail-popup-grid {
+      display: grid;
+      gap: 10px;
+      align-content: start;
+    }
+
+    .detail-popup-row {
+      display: grid;
+      gap: 10px;
+    }
+
+    .detail-popup-row--60-40 {
+      grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    }
+
+    .detail-popup-row--half {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .detail-popup-field {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .detail-popup-field span {
+      color: var(--muted);
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .detail-popup-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 2px;
+    }
+
     .save-note {
       margin-top: 12px;
       min-height: 1.3em;
@@ -654,6 +794,20 @@
         max-width: 38px;
         height: 38px;
         flex-basis: 38px;
+      }
+      #closestSearchDialog .dialog-card,
+      #historyEditDialog .dialog-card {
+        width: min(calc(100% - 20px), 400px);
+        top: max(10px, env(safe-area-inset-top));
+      }
+      .closest-search-item {
+        grid-template-columns: minmax(0, 1fr) 72px;
+        gap: 10px;
+        padding: 10px 2px;
+      }
+      .detail-popup-row--60-40,
+      .detail-popup-row--half {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
       .history-detail-btn { min-height: 30px; width: auto; padding: 0 8px; margin-right: 32px; font-size: 0.68rem; }
       .toast { width: calc(100% - 28px); text-align: center; }
@@ -822,10 +976,10 @@
   </div>
 
   <div class="dialog-backdrop" id="closestSearchDialog" aria-hidden="true">
-    <div class="dialog-card" role="dialog" aria-modal="true" aria-labelledby="closestSearchTitle">
+    <div class="dialog-card closest-search-dialog-card" role="dialog" aria-modal="true" aria-labelledby="closestSearchTitle">
       <h2 id="closestSearchTitle">Closest Matches</h2>
-      <p id="closestSearchStatus"></p>
-      <div class="history-list" id="closestSearchList" aria-live="polite">
+      <p class="closest-search-status" id="closestSearchStatus"></p>
+      <div class="history-list closest-search-results" id="closestSearchList" aria-live="polite">
         <p class="history-empty">No similar products found.</p>
       </div>
       <div class="dialog-actions">
@@ -835,46 +989,52 @@
   </div>
 
   <div class="dialog-backdrop" id="historyEditDialog" aria-hidden="true">
-    <div class="dialog-card" role="dialog" aria-modal="true" aria-label="Edit Barcode">
-      <div class="field-list">
-        <label>
-          <span>ID</span>
-          <input class="input" id="historyEditIdInput" type="text" readonly />
-        </label>
-        <label>
-          <span>Barcode</span>
-          <input class="input" id="historyEditBarcodeInput" type="text" readonly />
-        </label>
-        <label>
+    <div class="dialog-card detail-popup-card" role="dialog" aria-modal="true" aria-label="Edit Barcode">
+      <label class="visually-hidden">
+        <span>ID</span>
+        <input class="input" id="historyEditIdInput" type="text" readonly />
+      </label>
+      <div class="detail-popup-grid">
+        <div class="detail-popup-row detail-popup-row--60-40">
+          <label class="detail-popup-field">
+            <span>Barcode</span>
+            <input class="input" id="historyEditBarcodeInput" type="text" readonly />
+          </label>
+          <label class="detail-popup-field">
+            <span>Quantity</span>
+            <input class="input" id="historyEditQtyInput" type="number" min="1" step="1" />
+          </label>
+        </div>
+        <label class="detail-popup-field">
           <span>Italian Name</span>
           <input class="input" id="historyEditItalianNameInput" type="text" />
         </label>
-        <label>
-          <span>Cost</span>
-          <input class="input" id="historyEditPPriceInput" type="text" inputmode="decimal" />
-        </label>
-        <label>
-          <span>Price</span>
-          <input class="input" id="historyEditSPriceInput" type="text" inputmode="decimal" />
-        </label>
-        <label>
-          <span>Discount%</span>
-          <input class="input" id="historyEditSDiscountInput" type="text" inputmode="decimal" />
-        </label>
-        <label>
-          <span>Disc. Price</span>
-          <input class="input" id="historyEditDiscountPriceInput" type="text" inputmode="decimal" readonly />
-        </label>
-        <label>
-          <span>Comparison Qty</span>
-          <input class="input" id="historyEditQtyInput" type="number" min="1" step="1" />
-        </label>
+        <div class="detail-popup-row detail-popup-row--half">
+          <label class="detail-popup-field">
+            <span>Cost</span>
+            <input class="input" id="historyEditPPriceInput" type="text" inputmode="decimal" />
+          </label>
+          <label class="detail-popup-field">
+            <span>Price</span>
+            <input class="input" id="historyEditSPriceInput" type="text" inputmode="decimal" />
+          </label>
+        </div>
+        <div class="detail-popup-row detail-popup-row--half">
+          <label class="detail-popup-field">
+            <span>Discount%</span>
+            <input class="input" id="historyEditSDiscountInput" type="text" inputmode="decimal" />
+          </label>
+          <label class="detail-popup-field">
+            <span>Disc. Price</span>
+            <input class="input" id="historyEditDiscountPriceInput" type="text" inputmode="decimal" readonly />
+          </label>
+        </div>
+        <div class="detail-popup-actions">
+          <button class="btn btn-primary" id="historyEditSaveBtn" type="button">Save</button>
+          <button class="btn btn-muted" id="historyEditBackBtn" type="button">Back</button>
+        </div>
       </div>
       <div class="save-note" id="historyEditSaveNote" aria-live="polite"></div>
-      <div class="dialog-actions">
-        <button class="btn btn-primary" id="historyEditSaveBtn" type="button">Save</button>
-        <button class="btn btn-muted" id="historyEditBackBtn" type="button">Back</button>
-      </div>
     </div>
   </div>
 
