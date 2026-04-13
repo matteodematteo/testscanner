@@ -1362,7 +1362,6 @@
   }
 
   function hasProductInDatabase(normalizedProduct, barcode) {
-    const normalizedBarcode = String(barcode || "").trim();
     if (!normalizedProduct || typeof normalizedProduct !== "object") {
       return false;
     }
@@ -1375,7 +1374,7 @@
     const supplierName = String(normalizedProduct.supplier_name || "").trim();
     const id = String(normalizedProduct.id || "").trim();
 
-    if (!goodsCode || !normalizedBarcode || goodsCode !== normalizedBarcode) {
+    if (!goodsCode) {
       return false;
     }
 
@@ -2067,6 +2066,8 @@
 
           if (createdHistoryId) {
             updateHistoryItem(createdHistoryId, updatedRecord);
+          } else {
+            syncHistoryRowsWithRecord(updatedRecord, code);
           }
 
           if (lookupSequence === state.lookupSequence && String(state.els.barcodeInput.value || "").trim() === code) {
