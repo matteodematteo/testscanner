@@ -2477,6 +2477,9 @@
       return;
     }
 
+    // Stream is already healthy after foreground resume; ensure placeholder is hidden.
+    setPreviewActive(true);
+
     const previousTime = Number(video.currentTime || 0);
     await new Promise(function (resolve) {
       window.setTimeout(resolve, 320);
@@ -2490,6 +2493,8 @@
     const currentTime = Number(currentVideo?.currentTime || 0);
     if (!currentVideo || Math.abs(currentTime - previousTime) < 0.01) {
       await recoverPreviewFromFreeze();
+    } else {
+      setPreviewActive(true);
     }
   }
 
