@@ -2154,13 +2154,14 @@
     const rawPPrice = normalizeDecimalInput(state.els.historyEditPPriceInput.value);
     const normalizedSPrice = normalizeDecimalInput(state.els.historyEditSPriceInput.value);
     const normalizedSDiscount = normalizeDecimalInput(state.els.historyEditSDiscountInput.value);
+    const effectiveSDiscount = normalizedSDiscount === "" ? "0" : normalizedSDiscount;
     const payload = {
       id: state.els.historyEditIdInput.value.trim(),
       barcode: state.els.historyEditBarcodeInput.value.trim(),
       italian_name: sanitizeItalianName(state.els.historyEditItalianNameInput.value),
       p_price: rawPPrice || "0",
       s_price: normalizedSPrice,
-      s_discount: normalizedSDiscount
+      s_discount: effectiveSDiscount
     };
     const comparisonQty = Math.max(1, Number(state.els.historyEditQtyInput.value || 1) || 1);
     const originalItalianName = state.els.historyEditItalianNameInput.value.trim();
@@ -2187,7 +2188,7 @@
       ? currentPPrice === "" || currentPPrice === "0"
       : payload.p_price === currentPPrice;
     const hasSameSalePrice = payload.s_price === currentSPrice;
-    const hasSameSaleDiscount = payload.s_discount === currentSDiscount;
+    const hasSameSaleDiscount = payload.s_discount === (currentSDiscount === "" ? "0" : currentSDiscount);
     const hasOnlyQuantityChanged =
       hasSameId &&
       hasSameBarcode &&
@@ -2218,8 +2219,6 @@
       closeHistoryEditDialog();
       return;
     }
-
-    closeHistoryEditDialog();
 
     const cookie = await getCookieForRequests();
     state.els.historyEditSaveNote.textContent = originalItalianName !== payload.italian_name
@@ -2274,7 +2273,6 @@
           has_discount: Boolean(numberFromValue(addedProduct.s_discount || payload.s_discount)),
           comparison_qty: comparisonQty
         });
-        showToast("Product added successfully");
       } catch (error) {
         showToast("Add product failed");
         error.toastShown = true;
@@ -2362,18 +2360,28 @@
 
     setStatus(`Saved ${updatedItem.barcode}`);
     showToast("Saved successfully");
+    closeHistoryEditDialog();
   }
 
   function supportsConfiguredScannerEngine() {
     return Boolean(getPonyfillDetectorClass() || window.__ponyfillReadyPromise);
   }
 
-  function getCameraSupportIssue() {
+  /** Camera preview only: HTTPS + getUserMedia. Does not require BarcodeDetector (Safari needs a polyfill). */
+  function getCameraHardwareIssue() {
     if (!window.isSecureContext) {
       return 'Camera access needs a secure page, like "https://" or "http://localhost".';
     }
     if (!navigator.mediaDevices?.getUserMedia) {
       return "This browser does not support camera access.";
+    }
+    return "";
+  }
+
+  function getCameraSupportIssue() {
+    const hardwareIssue = getCameraHardwareIssue();
+    if (hardwareIssue) {
+      return hardwareIssue;
     }
     if (!supportsConfiguredScannerEngine()) {
       return isIOSDevice()
@@ -3278,8 +3286,8 @@
     }
 
     const startPromise = (async function () {
-      const supportIssue = getCameraSupportIssue();
-      if (supportIssue) throw new Error(supportIssue);
+      const hardwareIssue = getCameraHardwareIssue();
+      if (hardwareIssue) throw new Error(hardwareIssue);
 
       cleanupScanTimer();
       await stopTracks();
@@ -3334,6 +3342,13 @@
     }
 
     if (state.isScanning) return;
+
+    await waitForPonyfillReady(isIOSDevice() ? 6000 : 3500);
+    if (!(await createDetector())) {
+      setStatus("Barcode scanner library did not load. Check connection and refresh the page.");
+      showToast("Scanner not ready");
+      return;
+    }
 
     scheduleFocusRefresh(state.track);
     state.isScanning = true;
@@ -3740,7 +3755,7 @@
   }
 
   async function init() {
-    await waitForPonyfillReady(2200);
+    await waitForPonyfillReady(isIOSDevice() ? 9000 : 2800);
 
     state.els = queryElements();
     requireElements(state.els);
@@ -3759,9 +3774,9 @@
     renderHistory();
     bindEvents();
 
-    const supportIssue = getCameraSupportIssue();
-    if (supportIssue) {
-      setStatus(supportIssue);
+    const hardwareIssue = getCameraHardwareIssue();
+    if (hardwareIssue) {
+      setStatus(hardwareIssue);
       state.els.scanBtn.disabled = true;
       state.els.cameraSelect.disabled = true;
       state.els.torchBtn.disabled = true;
