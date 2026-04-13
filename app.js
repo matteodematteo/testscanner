@@ -1240,13 +1240,13 @@
       const article = document.createElement("article");
       article.className = "closest-search-item";
 
+      const info = document.createElement("div");
+      info.className = "closest-search-info";
+
       const nameLine = document.createElement("div");
       nameLine.className = "closest-search-name";
       nameLine.textContent = item.italian_name || item.barcode || "Unnamed product";
       nameLine.title = item.italian_name || item.barcode || "";
-
-      const footer = document.createElement("div");
-      footer.className = "closest-search-footer";
 
       const metaLine = document.createElement("div");
       metaLine.className = "closest-search-meta";
@@ -1263,10 +1263,10 @@
       selectButton.dataset.index = String(index);
       selectButton.disabled = state.isClosestSearchLoading;
 
-      footer.appendChild(metaLine);
-      footer.appendChild(selectButton);
-      article.appendChild(nameLine);
-      article.appendChild(footer);
+      info.appendChild(nameLine);
+      info.appendChild(metaLine);
+      article.appendChild(info);
+      article.appendChild(selectButton);
       fragment.appendChild(article);
     }
 
@@ -1280,9 +1280,7 @@
     state.isClosestSearchLoading = false;
     state.els.closestSearchBackBtn.disabled = false;
     state.els.closestSearchTitle.textContent = `Closest Matches`;
-    state.els.closestSearchStatus.textContent = state.closestSearchCode
-      ? `No exact match found for ${state.closestSearchCode}. Select one product below.`
-      : "Select one product below.";
+    state.els.closestSearchStatus.textContent = "";
     renderClosestSearchResults();
     lockPageScroll();
     state.els.closestSearchDialog.classList.add("is-open");
@@ -3093,6 +3091,7 @@
     const isEnabled = Boolean(enabled);
     state.els.torchBtn.disabled = !state.isCameraRunning;
     state.els.torchBtn.classList.toggle("is-on", isEnabled);
+    state.els.torchBtn.classList.toggle("torch-on", isEnabled);
     state.els.torchBtn.setAttribute(
       "aria-label",
       state.isCameraRunning ? (isEnabled ? "Torch on" : "Torch off") : "Torch unavailable"
