@@ -136,7 +136,9 @@
     closestSearchResults: [],
     closestSearchCode: "",
     closestSearchPendingHistoryId: "",
-    isClosestSearchLoading: false
+    isClosestSearchLoading: false,
+    historyEditSuccessTimer: 0,
+    historyEditCloseTimer: 0
   };
 
   function queryElements() {
@@ -1384,6 +1386,10 @@
     return Boolean(pPrice || sPrice || inventory || supplierName || id);
   }
 
+  function shouldFallbackToClosestSearch(normalizedProduct, barcode, allowClosestSearch) {
+    return Boolean(allowClosestSearch) && !hasProductInDatabase(normalizedProduct, barcode);
+  }
+
   function selectHistoryItem(index) {
     if (index < 0 || index >= state.history.length) return;
     state.selectedHistoryIndex = index;
@@ -1448,7 +1454,8 @@
 
   function openHistoryEditDialog(item) {
     fillHistoryEditForm(item);
-    state.els.historyEditSaveNote.textContent = "";
+    clearHistoryEditFeedbackTimers();
+    clearHistoryEditSaveNote();
     lockPageScroll();
     state.els.historyEditDialog.classList.add("is-open");
     state.els.historyEditDialog.setAttribute("aria-hidden", "false");
@@ -1459,8 +1466,9 @@
     if (activeElement instanceof HTMLElement && state.els.historyEditDialog.contains(activeElement)) {
       activeElement.blur();
     }
+    clearHistoryEditFeedbackTimers();
     state.editingHistoryId = "";
-    state.els.historyEditSaveNote.textContent = "";
+    clearHistoryEditSaveNote();
     state.els.historyEditDialog.classList.remove("is-open");
     state.els.historyEditDialog.setAttribute("aria-hidden", "true");
     window.setTimeout(function () {
@@ -1903,6 +1911,39 @@
     state.els.historyEditDiscountPriceInput.value = discountPrice;
   }
 
+  function clearHistoryEditFeedbackTimers() {
+    if (state.historyEditSuccessTimer) {
+      window.clearTimeout(state.historyEditSuccessTimer);
+      state.historyEditSuccessTimer = 0;
+    }
+    if (state.historyEditCloseTimer) {
+      window.clearTimeout(state.historyEditCloseTimer);
+      state.historyEditCloseTimer = 0;
+    }
+  }
+
+  function clearHistoryEditSaveNote() {
+    if (!state.els?.historyEditSaveNote) {
+      return;
+    }
+
+    state.els.historyEditSaveNote.classList.remove("show-success");
+    state.els.historyEditSaveNote.textContent = "";
+  }
+
+  function showHistoryEditSuccessMessage(message) {
+    if (!state.els?.historyEditSaveNote) {
+      return;
+    }
+
+    clearHistoryEditFeedbackTimers();
+    state.els.historyEditSaveNote.textContent = message;
+    state.els.historyEditSaveNote.classList.add("show-success");
+    state.historyEditSuccessTimer = window.setTimeout(function () {
+      clearHistoryEditSaveNote();
+    }, 1800);
+  }
+
   function getDiscountFields(rawData, productData) {
     const saleData = normalizeSaleData(rawData);
 
@@ -1991,8 +2032,7 @@
       }
 
       const normalizedProduct = normalizeProductData(parsedProduct?.product || parsedProduct);
-      const requiresExactDatabaseMatch = lookupOptions.allowClosestSearch;
-      if (requiresExactDatabaseMatch && !hasProductInDatabase(normalizedProduct, code)) {
+      if (shouldFallbackToClosestSearch(normalizedProduct, code, lookupOptions.allowClosestSearch)) {
         throw createNoExactMatchError();
       }
 
@@ -2149,7 +2189,8 @@
         comparison_qty: comparisonQty
       });
       setStatus(`Saved quantity for ${currentItem.barcode}`);
-      closeHistoryEditDialog();
+      showHistoryEditSuccessMessage("Saved successfully");
+      state.historyEditCloseTimer = window.setTimeout(closeHistoryEditDialog, 1800);
       return;
     }
 
@@ -2293,7 +2334,8 @@
     }
 
     setStatus(`Saved ${updatedItem.barcode}`);
-    closeHistoryEditDialog();
+    showHistoryEditSuccessMessage("Saved successfully");
+    state.historyEditCloseTimer = window.setTimeout(closeHistoryEditDialog, 1800);
   }
 
   function supportsConfiguredScannerEngine() {
@@ -3530,6 +3572,8 @@
       try {
         await saveHistoryEditorChanges();
       } catch (error) {
+        clearHistoryEditFeedbackTimers();
+        state.els.historyEditSaveNote.classList.remove("show-success");
         state.els.historyEditSaveNote.textContent = error.message || "Save failed.";
         if (!error?.toastShown) {
           showToast("Save failed");
