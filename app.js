@@ -2385,6 +2385,7 @@
 
   function setPreviewActive(active) {
     state.els.previewPlaceholder.hidden = active;
+    state.els.previewPlaceholder.style.display = active ? "none" : "grid";
     state.els.cameraBadge.textContent = active ? "Live preview" : "Preview off";
   }
 
@@ -3693,6 +3694,16 @@
         closeHistoryEditDialog();
       }
     });
+
+    const markPreviewAsLive = function () {
+      if (!document.hidden) {
+        setPreviewActive(true);
+      }
+    };
+    state.els.cameraPreview.addEventListener("loadeddata", markPreviewAsLive);
+    state.els.cameraPreview.addEventListener("canplay", markPreviewAsLive);
+    state.els.cameraPreview.addEventListener("playing", markPreviewAsLive);
+    state.els.cameraPreview.addEventListener("timeupdate", markPreviewAsLive);
 
     window.addEventListener("beforeunload", function () {
       clearResumePreviewTimer();
