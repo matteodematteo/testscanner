@@ -133,6 +133,7 @@
     lastDetectedBarcode: "",
     lastDetectedAt: 0,
     scanAnimationFrame: 0,
+    resumePreviewTimer: 0,
     closestSearchResults: [],
     closestSearchCode: "",
     closestSearchPendingHistoryId: "",
@@ -2439,6 +2440,59 @@
     state.lastPreviewTime = 0;
   }
 
+  function clearResumePreviewTimer() {
+    if (state.resumePreviewTimer) {
+      window.clearTimeout(state.resumePreviewTimer);
+      state.resumePreviewTimer = 0;
+    }
+  }
+
+  function scheduleQuickPreviewResumeCheck() {
+    clearResumePreviewTimer();
+    if (document.hidden) {
+      return;
+    }
+
+    state.resumePreviewTimer = window.setTimeout(function () {
+      state.resumePreviewTimer = 0;
+      ensurePreviewReadyAfterForeground().catch(() => {
+        // Ignore foreground-recovery noise.
+      });
+    }, 280);
+  }
+
+  async function ensurePreviewReadyAfterForeground() {
+    if (document.hidden || state.isRecoveringPreview) {
+      return;
+    }
+
+    if (!state.isCameraRunning) {
+      await startCamera(state.activeDeviceId);
+      return;
+    }
+
+    const video = getPreviewVideoElement();
+    if (!video || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || video.paused || video.ended) {
+      await recoverPreviewFromFreeze();
+      return;
+    }
+
+    const previousTime = Number(video.currentTime || 0);
+    await new Promise(function (resolve) {
+      window.setTimeout(resolve, 320);
+    });
+
+    if (document.hidden || state.isRecoveringPreview) {
+      return;
+    }
+
+    const currentVideo = getPreviewVideoElement();
+    const currentTime = Number(currentVideo?.currentTime || 0);
+    if (!currentVideo || Math.abs(currentTime - previousTime) < 0.01) {
+      await recoverPreviewFromFreeze();
+    }
+  }
+
   async function recoverPreviewFromFreeze() {
     if (state.isRecoveringPreview || !state.isCameraRunning) {
       return;
@@ -3636,15 +3690,28 @@
     });
 
     window.addEventListener("beforeunload", function () {
+      clearResumePreviewTimer();
       stopScanning(true);
       stopTracks();
     });
 
     document.addEventListener("visibilitychange", function () {
-      if (!document.hidden) {
+      if (document.hidden) {
+        clearResumePreviewTimer();
+        setPreviewActive(false);
+      } else {
         state.lastPreviewTime = Number(getPreviewVideoElement()?.currentTime || 0);
         state.stalledPreviewChecks = 0;
+        scheduleQuickPreviewResumeCheck();
       }
+    });
+
+    window.addEventListener("pageshow", function () {
+      scheduleQuickPreviewResumeCheck();
+    });
+
+    window.addEventListener("focus", function () {
+      scheduleQuickPreviewResumeCheck();
     });
 
     if (navigator.mediaDevices?.addEventListener) {
