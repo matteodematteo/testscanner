@@ -2171,26 +2171,50 @@
       showToast("Unsupported symbols removed from name");
     }
 
+    const currentId = String(currentItem.goods_id || "").trim();
+    const currentBarcode = String(currentItem.barcode || "").trim();
+    const currentItalianName = String(currentItem.italian_name || "").trim();
     const currentPPrice = String(currentItem.p_price || "").trim();
+    const currentSPrice = String(currentItem.s_price || "").trim();
+    const currentSDiscount = String(currentItem.s_discount || "").trim();
+    const currentComparisonQty = Number(currentItem.comparison_qty || 1);
+
+    const hasSameId = String(payload.id || currentId).trim() === currentId;
+    const hasSameBarcode = payload.barcode === currentBarcode;
+    const hasSameItalianName = payload.italian_name === currentItalianName;
     const hasSameCostValue = rawPPrice === ""
       ? currentPPrice === "" || currentPPrice === "0"
       : payload.p_price === currentPPrice;
-
-    const onlyComparisonQtyChanged =
-      payload.id === String(currentItem.goods_id || "").trim() &&
-      payload.barcode === String(currentItem.barcode || "").trim() &&
-      payload.italian_name === String(currentItem.italian_name || "").trim() &&
+    const hasSameSalePrice = payload.s_price === currentSPrice;
+    const hasSameSaleDiscount = payload.s_discount === currentSDiscount;
+    const hasOnlyQuantityChanged =
+      hasSameId &&
+      hasSameBarcode &&
+      hasSameItalianName &&
       hasSameCostValue &&
-      payload.s_price === String(currentItem.s_price || "").trim() &&
-      payload.s_discount === String(currentItem.s_discount || "").trim() &&
-      comparisonQty !== Number(currentItem.comparison_qty || 1);
+      hasSameSalePrice &&
+      hasSameSaleDiscount &&
+      comparisonQty !== currentComparisonQty;
+    const hasNoChanges =
+      hasSameId &&
+      hasSameBarcode &&
+      hasSameItalianName &&
+      hasSameCostValue &&
+      hasSameSalePrice &&
+      hasSameSaleDiscount &&
+      comparisonQty === currentComparisonQty;
 
-    if (onlyComparisonQtyChanged) {
+    if (hasNoChanges) {
+      showToast("No changes to save");
+      return;
+    }
+
+    if (hasOnlyQuantityChanged) {
       updateHistoryItem(currentItem.id, {
         comparison_qty: comparisonQty
       });
       setStatus(`Saved quantity for ${currentItem.barcode}`);
-      showHistoryEditSuccessMessage("Saved successfully");
+      showToast("Saved successfully");
       state.historyEditCloseTimer = window.setTimeout(closeHistoryEditDialog, 1800);
       return;
     }
@@ -2335,7 +2359,7 @@
     }
 
     setStatus(`Saved ${updatedItem.barcode}`);
-    showHistoryEditSuccessMessage("Saved successfully");
+    showToast("Saved successfully");
     state.historyEditCloseTimer = window.setTimeout(closeHistoryEditDialog, 1800);
   }
 
