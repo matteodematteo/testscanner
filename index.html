@@ -337,6 +337,10 @@
       border-color: rgba(20, 28, 36, 0.08);
     }
 
+    #cameraSelect {
+      font-size: 0.72rem;
+    }
+
     .input,
     .textarea {
       padding: 9px 10px;
@@ -1054,8 +1058,17 @@
   </div>
 
   <canvas id="captureCanvas" class="visually-hidden" width="720" height="720"></canvas>
+  <!-- Barcode Detection API polyfill (Safari/iOS has no native BarcodeDetector; Quagga/ZXing do not expose it). -->
+  <script>
+    window.__ponyfillReadyPromise = import("https://cdn.jsdelivr.net/npm/barcode-detector@2.2.0/+esm").then(function (mod) {
+      var BD = mod.BarcodeDetector || mod.default;
+      if (BD) {
+        window.BarcodeDetector = BD;
+      }
+    });
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
   <script src="https://unpkg.com/@zxing/browser@0.1.5"></script>
-  <script src="app.js?v=46" defer></script>
+  <script src="app.js?v=47" defer></script>
 </body>
 </html>
