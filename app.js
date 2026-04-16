@@ -1427,12 +1427,18 @@
         state.currentProductRecord.comparison_qty = pendingComparisonQty;
         if (state.closestSearchPendingHistoryId) {
           updateHistoryItem(state.closestSearchPendingHistoryId, state.currentProductRecord);
-        } else {
+        } else if (!state.isQuantityEntryUnlocked) {
           addHistoryRecord(state.currentProductRecord, barcode, pendingComparisonQty);
+        } else {
+          state.els.quantityInput.value = String(sanitizeQuantity(state.els.quantityInput.value));
         }
       }
       closeClosestSearchDialog();
       setStatus(`Selected ${barcode}`);
+      if (state.isQuantityEntryUnlocked) {
+        moveFocusToInput(state.els.quantityInput, { openKeyboard: true });
+        selectEntireInputValue({ target: state.els.quantityInput });
+      }
     } catch (error) {
       state.els.closestSearchStatus.textContent = error.message || "Could not load selected product.";
       state.isClosestSearchLoading = false;
@@ -3560,7 +3566,8 @@
       try {
         const lookupResult = await handleBarcodeLookup({
           allowClosestSearch: true,
-          addToHistoryBeforeLookup: false
+          addToHistoryBeforeLookup: false,
+          persistToHistory: !state.isQuantityEntryUnlocked
         });
         if (state.isQuantityEntryUnlocked && lookupResult === "exact") {
           moveFocusToInput(state.els.quantityInput, { openKeyboard: true });
