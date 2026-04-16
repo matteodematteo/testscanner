@@ -124,6 +124,7 @@
     isRecoveringPreview: false,
     lookupSequence: 0,
     displayMode: "full",
+    isQuantityEntryUnlocked: false,
     lockedScrollY: 0,
     cameraStartPromise: null,
     focusRefreshTimers: [],
@@ -145,6 +146,7 @@
   function queryElements() {
     return {
       barcodeInput: document.getElementById("barcodeInput"),
+      addBarcodeBtn: document.getElementById("addBarcodeBtn"),
       cameraBadge: document.getElementById("cameraBadge"),
       cameraPreview: document.getElementById("cameraPreview"),
       cameraPreviewQuagga: document.getElementById("cameraPreviewQuagga"),
@@ -164,6 +166,8 @@
       captureCanvas: document.getElementById("captureCanvas"),
       closeSettingsBtn: document.getElementById("closeSettingsBtn"),
       compactToggleBtn: document.getElementById("compactToggleBtn") || document.getElementById("displayModeSelect"),
+      entryModeBtn: document.getElementById("entryModeBtn"),
+      entryModeIcon: document.getElementById("entryModeIcon"),
       historyEmpty: document.getElementById("historyEmpty"),
       historyEditBackBtn: document.getElementById("historyEditBackBtn"),
       historyEditBarcodeInput: document.getElementById("historyEditBarcodeInput"),
@@ -189,6 +193,7 @@
       printStickerBtn: document.getElementById("printStickerBtn"),
       previewFrame: document.getElementById("previewFrame"),
       previewPlaceholder: document.getElementById("previewPlaceholder"),
+      quantityInput: document.getElementById("quantityInput"),
       refreshCookieBtn: document.getElementById("refreshCookieBtn"),
       resolutionBadge: document.getElementById("resolutionBadge"),
       scanBtn: document.getElementById("scanBtn"),
@@ -398,25 +403,29 @@
       const savedDisplayMode = String(parsed?.displayMode || "").trim();
       const legacyCompactMode = Boolean(parsed?.compactMode);
       const displayMode = savedDisplayMode === "compact" || legacyCompactMode ? "compact" : "full";
+      const quantityEntryMode = String(parsed?.quantityEntryMode || "").trim().toLowerCase();
       return {
         shopKey: parsed?.shopKey || "",
         login: parsed?.login || "",
         password: parsed?.password || "",
-        displayMode: displayMode
+        displayMode: displayMode,
+        quantityEntryUnlocked: quantityEntryMode === "unlocked"
       };
     } catch {
-      return { shopKey: "", login: "", password: "", displayMode: "full" };
+      return { shopKey: "", login: "", password: "", displayMode: "full", quantityEntryUnlocked: false };
     }
   }
 
   function saveSettings(values, options) {
     const displayMode = values?.displayMode === "compact" ? "compact" : "full";
+    const quantityEntryUnlocked = Boolean(values?.quantityEntryUnlocked);
     const normalizedValues = {
       shopKey: values?.shopKey || "",
       login: values?.login || "",
       password: values?.password || "",
       displayMode: displayMode,
-      compactMode: displayMode === "compact"
+      compactMode: displayMode === "compact",
+      quantityEntryMode: quantityEntryUnlocked ? "unlocked" : "locked"
     };
     localStorage.setItem(CONFIG.settingsStorageKey, JSON.stringify(normalizedValues));
     if (options?.silent) {
@@ -467,6 +476,68 @@
       isCompactMode ? "Expand app sections" : "Compact app sections"
     );
     state.els.compactToggleBtn.title = isCompactMode ? "Show full layout" : "Show compact layout";
+  }
+
+  function sanitizeQuantity(value) {
+    const parsed = Number.parseInt(String(value ?? "").trim(), 10);
+    return Math.max(1, Number.isFinite(parsed) ? parsed : 1);
+  }
+
+  function updateEntryModeControls() {
+    if (!state.els?.entryModeBtn || !state.els?.quantityInput || !state.els?.addBarcodeBtn || !state.els?.entryModeIcon) {
+      return;
+    }
+
+    const unlocked = Boolean(state.isQuantityEntryUnlocked);
+    state.els.entryModeBtn.setAttribute("aria-label", unlocked ? "Unlocked barcode entry" : "Locked barcode entry");
+    state.els.entryModeBtn.title = unlocked ? "Unlocked barcode entry" : "Locked barcode entry";
+    state.els.entryModeBtn.classList.toggle("btn-primary", unlocked);
+    state.els.entryModeBtn.classList.toggle("btn-muted", !unlocked);
+    state.els.quantityInput.disabled = !unlocked;
+    state.els.addBarcodeBtn.disabled = !unlocked;
+    state.els.quantityInput.value = String(sanitizeQuantity(state.els.quantityInput.value));
+    state.els.entryModeIcon.innerHTML = unlocked
+      ? '<path d="M16 11V8a4 4 0 0 0-7.74-1.5"></path><rect x="5" y="11" width="14" height="10" rx="2"></rect>'
+      : '<rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 1 1 8 0v3"></path>';
+  }
+
+  function setQuantityEntryMode(unlocked, options) {
+    state.isQuantityEntryUnlocked = Boolean(unlocked);
+    updateEntryModeControls();
+    saveSettings({
+      ...readSavedSettings(),
+      displayMode: state.displayMode,
+      quantityEntryUnlocked: state.isQuantityEntryUnlocked
+    }, { silent: true });
+
+    if (options?.focusBarcode) {
+      moveFocusToInput(state.els.barcodeInput);
+    }
+  }
+
+  async function addCurrentBarcodeWithQuantity() {
+    const code = String(state.els.barcodeInput.value || "").trim();
+    if (!code) {
+      setStatus("Type or scan a barcode first");
+      moveFocusToInput(state.els.barcodeInput);
+      return;
+    }
+
+    const comparisonQty = sanitizeQuantity(state.els.quantityInput.value);
+    state.els.quantityInput.value = String(comparisonQty);
+    state.els.addBarcodeBtn.disabled = true;
+    try {
+      await fetchProductInfo(code, {
+        allowClosestSearch: true,
+        addToHistoryBeforeLookup: true,
+        comparisonQty: comparisonQty
+      });
+      state.els.quantityInput.value = "1";
+      moveFocusToInput(state.els.barcodeInput);
+    } finally {
+      state.els.addBarcodeBtn.disabled = false;
+      updateEntryModeControls();
+    }
   }
 
   function syncDisplayModeDiscountLayout() {
@@ -746,15 +817,16 @@
     };
   }
 
-  function createHistoryEntry(barcode) {
+  function createHistoryEntry(barcode, comparisonQty) {
     return normalizeHistoryItem({
       id: `history_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,
-      barcode: barcode
+      barcode: barcode,
+      comparison_qty: comparisonQty
     });
   }
 
-  function addHistoryItem(barcode) {
-    const entry = createHistoryEntry(barcode);
+  function addHistoryItem(barcode, comparisonQty) {
+    const entry = createHistoryEntry(barcode, comparisonQty);
     if (!entry.barcode) return null;
     state.history.unshift(entry);
     state.selectedHistoryIndex = 0;
@@ -763,10 +835,11 @@
     return entry.id;
   }
 
-  function addHistoryRecord(record, fallbackBarcode) {
+  function addHistoryRecord(record, fallbackBarcode, comparisonQty) {
     const entry = normalizeHistoryItem({
       ...record,
-      barcode: String(record?.barcode || fallbackBarcode || "").trim()
+      barcode: String(record?.barcode || fallbackBarcode || "").trim(),
+      comparison_qty: comparisonQty ?? record?.comparison_qty
     });
     if (!entry.barcode) {
       return "";
@@ -1335,6 +1408,9 @@
     state.els.closestSearchBackBtn.disabled = true;
     state.els.closestSearchStatus.textContent = `Loading ${barcode}...`;
     renderClosestSearchResults();
+    const pendingComparisonQty = state.closestSearchPendingHistoryId
+      ? state.history.find((item) => item.id === state.closestSearchPendingHistoryId)?.comparison_qty || 1
+      : 1;
 
     try {
       const selectedData = await loadProductAndDiscountResponse(barcode);
@@ -1345,10 +1421,11 @@
         sale: selectedData.sale
       });
       if (state.currentProductRecord) {
+        state.currentProductRecord.comparison_qty = pendingComparisonQty;
         if (state.closestSearchPendingHistoryId) {
           updateHistoryItem(state.closestSearchPendingHistoryId, state.currentProductRecord);
         } else {
-          addHistoryRecord(state.currentProductRecord, barcode);
+          addHistoryRecord(state.currentProductRecord, barcode, pendingComparisonQty);
         }
       }
       closeClosestSearchDialog();
@@ -2003,6 +2080,7 @@
     const lookupOptions = {
       allowClosestSearch: false,
       addToHistoryBeforeLookup: true,
+      comparisonQty: 1,
       ...options
     };
     if (!code) {
@@ -2012,9 +2090,10 @@
 
     state.els.barcodeInput.value = code;
     clearResultFields();
+    const comparisonQty = sanitizeQuantity(lookupOptions.comparisonQty);
     const lookupSequence = state.lookupSequence + 1;
     state.lookupSequence = lookupSequence;
-    const createdHistoryId = lookupOptions.addToHistoryBeforeLookup ? addHistoryItem(code) : "";
+    const createdHistoryId = lookupOptions.addToHistoryBeforeLookup ? addHistoryItem(code, comparisonQty) : "";
 
     setStatus("Requesting product info...");
     try {
@@ -2041,10 +2120,11 @@
         sale: null
       });
       if (state.currentProductRecord) {
+        state.currentProductRecord.comparison_qty = comparisonQty;
         if (createdHistoryId) {
           updateHistoryItem(createdHistoryId, state.currentProductRecord);
         } else {
-          addHistoryRecord(state.currentProductRecord, code);
+          addHistoryRecord(state.currentProductRecord, code, comparisonQty);
         }
       }
       setStatus("Product info loaded");
@@ -2062,7 +2142,7 @@
             parsedProduct?.product || parsedProduct,
             parsedDiscount,
             code,
-            state.currentProductRecord?.comparison_qty || 1
+            comparisonQty
           );
 
           if (createdHistoryId) {
@@ -2789,6 +2869,11 @@
     stopScanning(true);
 
     try {
+      if (state.isQuantityEntryUnlocked) {
+        state.els.quantityInput.value = String(sanitizeQuantity(state.els.quantityInput.value));
+        moveFocusToInput(state.els.quantityInput);
+        return;
+      }
       await fetchProductInfo(code);
     } catch (error) {
       state.lastDetectedBarcode = "";
@@ -3564,6 +3649,16 @@
       if (event.key !== "Enter") return;
       event.preventDefault();
       event.stopPropagation();
+      if (state.isQuantityEntryUnlocked) {
+        state.els.barcodeInput.value = String(state.els.barcodeInput.value || "").trim();
+        if (!state.els.barcodeInput.value) {
+          setStatus("Type or scan a barcode first");
+          return;
+        }
+        moveFocusToInput(state.els.quantityInput);
+        selectEntireInputValue({ target: state.els.quantityInput });
+        return;
+      }
       await handleBarcodeLookup();
       window.setTimeout(function () {
         state.els.barcodeInput.blur();
@@ -3574,9 +3669,34 @@
       if (event.key !== "Enter") return;
       event.preventDefault();
       event.stopPropagation();
+      if (state.isQuantityEntryUnlocked) {
+        return;
+      }
       window.setTimeout(function () {
         state.els.barcodeInput.blur();
       }, 0);
+    });
+
+    state.els.entryModeBtn.addEventListener("click", function () {
+      setQuantityEntryMode(!state.isQuantityEntryUnlocked, { focusBarcode: true });
+    });
+
+    state.els.quantityInput.addEventListener("focus", selectEntireInputValue);
+    state.els.quantityInput.addEventListener("click", selectEntireInputValue);
+    state.els.quantityInput.addEventListener("pointerup", function (event) {
+      event.preventDefault();
+      selectEntireInputValue(event);
+    });
+    state.els.quantityInput.addEventListener("input", function () {
+      state.els.quantityInput.value = String(sanitizeQuantity(state.els.quantityInput.value));
+    });
+    state.els.quantityInput.addEventListener("keydown", async function (event) {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      await addCurrentBarcodeWithQuantity();
+    });
+    state.els.addBarcodeBtn.addEventListener("click", async function () {
+      await addCurrentBarcodeWithQuantity();
     });
 
     state.els.cameraSelect.addEventListener("change", async function () {
@@ -3606,7 +3726,8 @@
         shopKey: state.els.shopKeyInput.value.trim(),
         login: state.els.loginInput.value.trim(),
         password: state.els.passwordInput.value,
-        displayMode: state.displayMode
+        displayMode: state.displayMode,
+        quantityEntryUnlocked: state.isQuantityEntryUnlocked
       };
 
       saveSettings(values);
@@ -3770,6 +3891,7 @@
     loadHistoryState();
     fillSettingsForm(savedSettings);
     applyDisplayMode(savedSettings.displayMode);
+    setQuantityEntryMode(savedSettings.quantityEntryUnlocked, { focusBarcode: false });
     clearResultFields();
     renderHistory();
     bindEvents();
