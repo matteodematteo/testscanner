@@ -503,6 +503,9 @@
 
   function setQuantityEntryMode(unlocked, options) {
     state.isQuantityEntryUnlocked = Boolean(unlocked);
+    if (!state.isQuantityEntryUnlocked && state.els?.quantityInput) {
+      state.els.quantityInput.value = "1";
+    }
     updateEntryModeControls();
     saveSettings({
       ...readSavedSettings(),
@@ -3505,6 +3508,7 @@
 
     state.els.clearBarcodeBtn.addEventListener("click", function () {
       state.els.barcodeInput.value = "";
+      state.els.quantityInput.value = "1";
       setStatus("Barcode field cleared");
     });
 
