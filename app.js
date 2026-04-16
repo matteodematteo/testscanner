@@ -2880,7 +2880,15 @@
           persistToHistory: false
         });
         state.els.quantityInput.value = String(sanitizeQuantity(state.els.quantityInput.value));
-        moveFocusToInput(state.els.quantityInput);
+
+        if (state.isIOS) {
+          window.setTimeout(function () {
+            moveFocusToInput(state.els.quantityInput);
+            selectEntireInputValue({ target: state.els.quantityInput });
+          }, 80);
+        } else {
+          moveFocusToInput(state.els.quantityInput);
+        }
         return;
       }
       await fetchProductInfo(code);
@@ -3701,13 +3709,15 @@
     state.els.entryModeBtn.addEventListener("click", function () {
       setQuantityEntryMode(!state.isQuantityEntryUnlocked, { focusBarcode: true });
     });
-
-    state.els.quantityInput.addEventListener("focus", selectEntireInputValue);
-    state.els.quantityInput.addEventListener("click", selectEntireInputValue);
-    state.els.quantityInput.addEventListener("pointerup", function (event) {
-      event.preventDefault();
-      selectEntireInputValue(event);
-    });
+  
+    if (!state.isIOS) {
+      state.els.quantityInput.addEventListener("focus", selectEntireInputValue);
+      state.els.quantityInput.addEventListener("click", selectEntireInputValue);
+      state.els.quantityInput.addEventListener("pointerup", function (event) {
+        event.preventDefault();
+        selectEntireInputValue(event);
+      });
+    }
     state.els.quantityInput.addEventListener("input", function () {
       state.els.quantityInput.value = String(sanitizeQuantity(state.els.quantityInput.value));
     });
@@ -3827,12 +3837,14 @@
 
     state.els.historyEditSPriceInput.addEventListener("input", refreshHistoryEditDiscountPrice);
     state.els.historyEditSDiscountInput.addEventListener("input", refreshHistoryEditDiscountPrice);
-    state.els.historyEditQtyInput.addEventListener("focus", selectEntireInputValue);
-    state.els.historyEditQtyInput.addEventListener("click", selectEntireInputValue);
-    state.els.historyEditQtyInput.addEventListener("pointerup", function (event) {
-      event.preventDefault();
-      selectEntireInputValue(event);
-    });
+    if (!state.isIOS) {
+      state.els.historyEditQtyInput.addEventListener("focus", selectEntireInputValue);
+      state.els.historyEditQtyInput.addEventListener("click", selectEntireInputValue);
+      state.els.historyEditQtyInput.addEventListener("pointerup", function (event) {
+        event.preventDefault();
+        selectEntireInputValue(event);
+      });
+    }
 
     state.els.historyEditItalianNameInput.addEventListener("keydown", function (event) {
       if (event.key !== "Enter") return;
