@@ -194,8 +194,6 @@
       previewFrame: document.getElementById("previewFrame"),
       previewPlaceholder: document.getElementById("previewPlaceholder"),
       quantityInput: document.getElementById("quantityInput"),
-      quantityPad: document.getElementById("quantityPad"),
-      quantityPadCard: document.getElementById("quantityPadCard"),
       refreshCookieBtn: document.getElementById("refreshCookieBtn"),
       resolutionBadge: document.getElementById("resolutionBadge"),
       scanBtn: document.getElementById("scanBtn"),
@@ -498,46 +496,9 @@
     state.els.quantityInput.disabled = !unlocked;
     state.els.addBarcodeBtn.disabled = !unlocked;
     state.els.quantityInput.value = String(sanitizeQuantity(state.els.quantityInput.value));
-    if (state.els.quantityPad && state.els.quantityPadCard) {
-      const padButtons = state.els.quantityPad.querySelectorAll("button");
-      for (let index = 0; index < padButtons.length; index += 1) {
-        padButtons[index].disabled = !unlocked;
-      }
-      state.els.quantityPadCard.classList.toggle("is-disabled", !unlocked);
-    }
     state.els.entryModeIcon.innerHTML = unlocked
       ? '<path d="M16 11V8a4 4 0 0 0-7.74-1.5"></path><rect x="5" y="11" width="14" height="10" rx="2"></rect>'
       : '<rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 1 1 8 0v3"></path>';
-  }
-
-  async function handleQuantityPadInput(key) {
-    if (!state.isQuantityEntryUnlocked || !state.els?.quantityInput) {
-      return;
-    }
-
-    const currentValue = String(state.els.quantityInput.value || "").replace(/[^\d]/g, "");
-    if (key === "enter") {
-      await addCurrentBarcodeWithQuantity();
-      return;
-    }
-
-    if (key === "clear") {
-      state.els.quantityInput.value = "1";
-      return;
-    }
-
-    if (key === "backspace") {
-      const trimmed = currentValue.slice(0, -1);
-      state.els.quantityInput.value = String(sanitizeQuantity(trimmed || "1"));
-      return;
-    }
-
-    if (!/^\d$/.test(key)) {
-      return;
-    }
-
-    const appended = `${currentValue}${key}`;
-    state.els.quantityInput.value = String(sanitizeQuantity(appended));
   }
 
   function setQuantityEntryMode(unlocked, options) {
@@ -1466,18 +1427,12 @@
         state.currentProductRecord.comparison_qty = pendingComparisonQty;
         if (state.closestSearchPendingHistoryId) {
           updateHistoryItem(state.closestSearchPendingHistoryId, state.currentProductRecord);
-        } else if (!state.isQuantityEntryUnlocked) {
-          addHistoryRecord(state.currentProductRecord, barcode, pendingComparisonQty);
         } else {
-          state.els.quantityInput.value = String(sanitizeQuantity(state.els.quantityInput.value));
+          addHistoryRecord(state.currentProductRecord, barcode, pendingComparisonQty);
         }
       }
       closeClosestSearchDialog();
       setStatus(`Selected ${barcode}`);
-      if (state.isQuantityEntryUnlocked) {
-        moveFocusToInput(state.els.quantityInput, { openKeyboard: true });
-        selectEntireInputValue({ target: state.els.quantityInput });
-      }
     } catch (error) {
       state.els.closestSearchStatus.textContent = error.message || "Could not load selected product.";
       state.isClosestSearchLoading = false;
@@ -1621,27 +1576,8 @@
     }, 0);
   }
 
-  function moveFocusToInput(input, options) {
+  function moveFocusToInput(input) {
     if (!(input instanceof HTMLInputElement) && !(input instanceof HTMLTextAreaElement)) {
-      return;
-    }
-
-    const shouldOpenKeyboard = Boolean(options?.openKeyboard);
-    const isIOSFocus = Boolean(state.isIOS);
-
-    if (isIOSFocus) {
-      try {
-        input.focus();
-      } catch {
-        // Ignore focus errors.
-      }
-      if (shouldOpenKeyboard) {
-        try {
-          input.click();
-        } catch {
-          // Ignore click errors.
-        }
-      }
       return;
     }
 
@@ -2153,7 +2089,7 @@
     };
     if (!code) {
       setStatus("Type or scan a barcode first");
-      return "empty";
+      return;
     }
 
     state.els.barcodeInput.value = code;
@@ -2229,7 +2165,6 @@
         .catch(function () {
           // Temporary discount lookups are background-only for scan speed.
         });
-      return "exact";
     } catch (error) {
       if (error?.code === "NO_EXACT_MATCH") {
         if (lookupOptions.allowClosestSearch) {
@@ -2238,21 +2173,16 @@
             const closestMatches = await fetchClosestSearchResults(code);
             openClosestSearchDialog(code, closestMatches, createdHistoryId);
             setStatus("Exact barcode not found. Select one of the closest matches.");
-            return "closest";
+            return;
           } catch (closestError) {
             const message = closestError.message || "No similar products found.";
-            state.isClosestSearchLoading = false;
-            state.els.closestSearchBackBtn.disabled = false;
-            state.closestSearchResults = [];
-            state.els.closestSearchStatus.textContent = message;
-            renderClosestSearchResults();
             setStatus(`No exact product match found. ${message}`);
-            return "no-match";
+            return;
           }
         }
 
         setStatus("No exact product match found. Barcode added to list.");
-        return "no-match";
+        return;
       }
 
       const message = error?.message || "Could not load product info";
@@ -2953,7 +2883,7 @@
 
         if (state.isIOS) {
           window.setTimeout(function () {
-            moveFocusToInput(state.els.quantityInput, { openKeyboard: true });
+            moveFocusToInput(state.els.quantityInput);
             selectEntireInputValue({ target: state.els.quantityInput });
           }, 80);
         } else {
@@ -3574,11 +3504,13 @@
     const nextOptions = {
       ...options
     };
+    if (state.isQuantityEntryUnlocked) {
+      nextOptions.allowClosestSearch = false;
+    }
     try {
-      return await fetchProductInfo(state.els.barcodeInput.value, nextOptions);
+      await fetchProductInfo(state.els.barcodeInput.value, nextOptions);
     } catch (error) {
       setStatus(error.message || "Could not load product info");
-      return "error";
     }
   }
 
@@ -3603,15 +3535,10 @@
     state.els.searchBarcodeBtn.addEventListener("click", async function () {
       state.els.searchBarcodeBtn.disabled = true;
       try {
-        const lookupResult = await handleBarcodeLookup({
+        await handleBarcodeLookup({
           allowClosestSearch: true,
-          addToHistoryBeforeLookup: false,
-          persistToHistory: !state.isQuantityEntryUnlocked
+          addToHistoryBeforeLookup: false
         });
-        if (state.isQuantityEntryUnlocked && lookupResult === "exact") {
-          moveFocusToInput(state.els.quantityInput, { openKeyboard: true });
-          selectEntireInputValue({ target: state.els.quantityInput });
-        }
       } finally {
         state.els.searchBarcodeBtn.disabled = false;
       }
@@ -3757,7 +3684,7 @@
           addToHistoryBeforeLookup: false,
           persistToHistory: false
         });
-        moveFocusToInput(state.els.quantityInput, { openKeyboard: true });
+        moveFocusToInput(state.els.quantityInput);
         selectEntireInputValue({ target: state.els.quantityInput });
         return;
       }
@@ -3801,17 +3728,6 @@
     });
     state.els.addBarcodeBtn.addEventListener("click", async function () {
       await addCurrentBarcodeWithQuantity();
-    });
-    state.els.quantityPad.addEventListener("click", async function (event) {
-      const keyButton = event.target.closest("[data-key]");
-      if (!keyButton) {
-        return;
-      }
-      const key = String(keyButton.dataset.key || "").trim();
-      if (!key) {
-        return;
-      }
-      await handleQuantityPadInput(key);
     });
 
     state.els.cameraSelect.addEventListener("change", async function () {
