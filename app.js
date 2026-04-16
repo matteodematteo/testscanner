@@ -531,7 +531,7 @@
     state.els.addBarcodeBtn.disabled = true;
     try {
       await fetchProductInfo(code, {
-        allowClosestSearch: true,
+        allowClosestSearch: false,
         addToHistoryBeforeLookup: true,
         comparisonQty: comparisonQty
       });
@@ -2873,6 +2873,10 @@
 
     try {
       if (state.isQuantityEntryUnlocked) {
+        await fetchProductInfo(code, {
+          allowClosestSearch: false,
+          addToHistoryBeforeLookup: false
+        });
         state.els.quantityInput.value = String(sanitizeQuantity(state.els.quantityInput.value));
         moveFocusToInput(state.els.quantityInput);
         return;
@@ -3487,8 +3491,14 @@
   }
 
   async function handleBarcodeLookup(options) {
+    const nextOptions = {
+      ...options
+    };
+    if (state.isQuantityEntryUnlocked) {
+      nextOptions.allowClosestSearch = false;
+    }
     try {
-      await fetchProductInfo(state.els.barcodeInput.value, options);
+      await fetchProductInfo(state.els.barcodeInput.value, nextOptions);
     } catch (error) {
       setStatus(error.message || "Could not load product info");
     }
@@ -3659,6 +3669,10 @@
           setStatus("Type or scan a barcode first");
           return;
         }
+        await handleBarcodeLookup({
+          allowClosestSearch: false,
+          addToHistoryBeforeLookup: false
+        });
         moveFocusToInput(state.els.quantityInput);
         selectEntireInputValue({ target: state.els.quantityInput });
         return;
