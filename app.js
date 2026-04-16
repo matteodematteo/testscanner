@@ -1576,8 +1576,27 @@
     }, 0);
   }
 
-  function moveFocusToInput(input) {
+  function moveFocusToInput(input, options) {
     if (!(input instanceof HTMLInputElement) && !(input instanceof HTMLTextAreaElement)) {
+      return;
+    }
+
+    const shouldOpenKeyboard = Boolean(options?.openKeyboard);
+    const isIOSFocus = Boolean(state.isIOS);
+
+    if (isIOSFocus) {
+      try {
+        input.focus();
+      } catch {
+        // Ignore focus errors.
+      }
+      if (shouldOpenKeyboard) {
+        try {
+          input.click();
+        } catch {
+          // Ignore click errors.
+        }
+      }
       return;
     }
 
@@ -2089,7 +2108,7 @@
     };
     if (!code) {
       setStatus("Type or scan a barcode first");
-      return;
+      return "empty";
     }
 
     state.els.barcodeInput.value = code;
@@ -2165,6 +2184,7 @@
         .catch(function () {
           // Temporary discount lookups are background-only for scan speed.
         });
+      return "exact";
     } catch (error) {
       if (error?.code === "NO_EXACT_MATCH") {
         if (lookupOptions.allowClosestSearch) {
@@ -2173,16 +2193,21 @@
             const closestMatches = await fetchClosestSearchResults(code);
             openClosestSearchDialog(code, closestMatches, createdHistoryId);
             setStatus("Exact barcode not found. Select one of the closest matches.");
-            return;
+            return "closest";
           } catch (closestError) {
             const message = closestError.message || "No similar products found.";
+            state.isClosestSearchLoading = false;
+            state.els.closestSearchBackBtn.disabled = false;
+            state.closestSearchResults = [];
+            state.els.closestSearchStatus.textContent = message;
+            renderClosestSearchResults();
             setStatus(`No exact product match found. ${message}`);
-            return;
+            return "no-match";
           }
         }
 
         setStatus("No exact product match found. Barcode added to list.");
-        return;
+        return "no-match";
       }
 
       const message = error?.message || "Could not load product info";
@@ -2883,7 +2908,7 @@
 
         if (state.isIOS) {
           window.setTimeout(function () {
-            moveFocusToInput(state.els.quantityInput);
+            moveFocusToInput(state.els.quantityInput, { openKeyboard: true });
             selectEntireInputValue({ target: state.els.quantityInput });
           }, 80);
         } else {
@@ -3504,13 +3529,11 @@
     const nextOptions = {
       ...options
     };
-    if (state.isQuantityEntryUnlocked) {
-      nextOptions.allowClosestSearch = false;
-    }
     try {
-      await fetchProductInfo(state.els.barcodeInput.value, nextOptions);
+      return await fetchProductInfo(state.els.barcodeInput.value, nextOptions);
     } catch (error) {
       setStatus(error.message || "Could not load product info");
+      return "error";
     }
   }
 
@@ -3535,10 +3558,14 @@
     state.els.searchBarcodeBtn.addEventListener("click", async function () {
       state.els.searchBarcodeBtn.disabled = true;
       try {
-        await handleBarcodeLookup({
+        const lookupResult = await handleBarcodeLookup({
           allowClosestSearch: true,
           addToHistoryBeforeLookup: false
         });
+        if (state.isQuantityEntryUnlocked && lookupResult === "exact") {
+          moveFocusToInput(state.els.quantityInput, { openKeyboard: true });
+          selectEntireInputValue({ target: state.els.quantityInput });
+        }
       } finally {
         state.els.searchBarcodeBtn.disabled = false;
       }
@@ -3684,7 +3711,7 @@
           addToHistoryBeforeLookup: false,
           persistToHistory: false
         });
-        moveFocusToInput(state.els.quantityInput);
+        moveFocusToInput(state.els.quantityInput, { openKeyboard: true });
         selectEntireInputValue({ target: state.els.quantityInput });
         return;
       }
