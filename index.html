@@ -473,6 +473,53 @@
       margin-bottom: 8px;
     }
 
+    .qty-pad-card {
+      margin-top: 10px;
+      padding: 10px;
+    }
+
+    .qty-pad-title {
+      margin: 0 0 8px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .qty-pad-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .qty-pad-key {
+      min-height: 40px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(20, 28, 36, 0.08);
+      background: rgba(255, 255, 255, 0.96);
+      color: var(--text);
+      font-weight: 800;
+      font-size: 0.88rem;
+      cursor: pointer;
+    }
+
+    .qty-pad-key[data-key="enter"] {
+      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+      color: #fff7f2;
+      border-color: transparent;
+    }
+
+    .qty-pad-key[data-key="backspace"],
+    .qty-pad-key[data-key="clear"] {
+      background: rgba(20, 28, 36, 0.06);
+    }
+
+    .qty-pad-card.is-disabled .qty-pad-key {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
     .history-actions {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1005,6 +1052,25 @@
         <div class="field-card span-half" id="field_discount_price_card" hidden><label for="field_discount_price">Disc. Price</label><div class="field-value is-discount" id="field_discount_price"></div></div>
         <div class="field-card span-half" id="field_spec_card"><label for="field_spec">Spec</label><div class="field-value" id="field_spec"></div></div>
         <div class="field-card span-half" id="field_id_card"><label for="field_id">ID</label><div class="field-value" id="field_id"></div></div>
+      </div>
+    </section>
+
+    <section class="card section-card qty-pad-card" id="quantityPadCard" aria-label="Quantity keypad">
+      <p class="qty-pad-title">Quantity keypad</p>
+      <div class="qty-pad-grid" id="quantityPad">
+        <button class="qty-pad-key" type="button" data-key="1">1</button>
+        <button class="qty-pad-key" type="button" data-key="2">2</button>
+        <button class="qty-pad-key" type="button" data-key="3">3</button>
+        <button class="qty-pad-key" type="button" data-key="backspace">Del</button>
+        <button class="qty-pad-key" type="button" data-key="4">4</button>
+        <button class="qty-pad-key" type="button" data-key="5">5</button>
+        <button class="qty-pad-key" type="button" data-key="6">6</button>
+        <button class="qty-pad-key" type="button" data-key="clear">C</button>
+        <button class="qty-pad-key" type="button" data-key="7">7</button>
+        <button class="qty-pad-key" type="button" data-key="8">8</button>
+        <button class="qty-pad-key" type="button" data-key="9">9</button>
+        <button class="qty-pad-key" type="button" data-key="0">0</button>
+        <button class="qty-pad-key" type="button" data-key="enter" style="grid-column: 1 / -1;">Enter / Add</button>
       </div>
     </section>
 
