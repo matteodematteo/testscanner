@@ -852,7 +852,10 @@
     @media (max-width: 430px) {
       .top-tools,
       .button-row { gap: 8px; }
-      .helper-row { grid-template-columns: 1fr; }
+      .helper-row {
+        grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+        gap: 8px;
+      }
       .btn,
       .input,
       .select { min-height: 38px; }
@@ -880,6 +883,13 @@
       }
       .manual-entry-group {
         grid-template-columns: 38px minmax(0, 1fr) 64px;
+      }
+      .scan-actions {
+        grid-template-columns: minmax(0, 1fr) 38px;
+        gap: 8px;
+      }
+      .compact-toggle-btn {
+        min-width: 38px;
       }
       #closestSearchDialog .dialog-card,
       #historyEditDialog .dialog-card {
