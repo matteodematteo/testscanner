@@ -2084,6 +2084,7 @@
       allowClosestSearch: false,
       addToHistoryBeforeLookup: true,
       comparisonQty: 1,
+      persistToHistory: true,
       ...options
     };
     if (!code) {
@@ -2122,7 +2123,7 @@
         product: parsedProduct?.product || parsedProduct,
         sale: null
       });
-      if (state.currentProductRecord) {
+      if (state.currentProductRecord && lookupOptions.persistToHistory) {
         state.currentProductRecord.comparison_qty = comparisonQty;
         if (createdHistoryId) {
           updateHistoryItem(createdHistoryId, state.currentProductRecord);
@@ -2875,7 +2876,8 @@
       if (state.isQuantityEntryUnlocked) {
         await fetchProductInfo(code, {
           allowClosestSearch: false,
-          addToHistoryBeforeLookup: false
+          addToHistoryBeforeLookup: false,
+          persistToHistory: false
         });
         state.els.quantityInput.value = String(sanitizeQuantity(state.els.quantityInput.value));
         moveFocusToInput(state.els.quantityInput);
@@ -3671,7 +3673,8 @@
         }
         await handleBarcodeLookup({
           allowClosestSearch: false,
-          addToHistoryBeforeLookup: false
+          addToHistoryBeforeLookup: false,
+          persistToHistory: false
         });
         moveFocusToInput(state.els.quantityInput);
         selectEntireInputValue({ target: state.els.quantityInput });
