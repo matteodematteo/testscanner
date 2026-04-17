@@ -602,7 +602,6 @@
         comparisonQty: comparisonQty
       });
       state.els.quantityInput.value = state.isQuantityEntryUnlocked ? "" : "1";
-      moveFocusToInput(state.els.barcodeInput);
     } finally {
       state.els.addBarcodeBtn.disabled = false;
       updateEntryModeControls();
