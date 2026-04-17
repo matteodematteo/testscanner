@@ -601,11 +601,11 @@
         addToHistoryBeforeLookup: true,
         comparisonQty: comparisonQty
       });
-      state.els.barcodeInput.value = "";
-      state.els.quantityInput.value = "";
     } finally {
       state.els.addBarcodeBtn.disabled = false;
       updateEntryModeControls();
+      state.els.barcodeInput.value = "";
+      state.els.quantityInput.value = "";
     }
   }
 
