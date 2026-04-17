@@ -566,7 +566,7 @@
     state.els.quantityInput.value = sanitizeEditableQuantity(appended);
   }
 
-  function setQuantityEntryMode(unlocked, options) {
+  function setQuantityEntryMode(unlocked) {
     state.isQuantityEntryUnlocked = Boolean(unlocked);
     if (state.els?.quantityInput) {
       if (state.isQuantityEntryUnlocked) {
@@ -582,9 +582,6 @@
       quantityEntryUnlocked: state.isQuantityEntryUnlocked
     }, { silent: true });
 
-    if (options?.focusBarcode) {
-      moveFocusToInput(state.els.barcodeInput);
-    }
   }
 
   async function addCurrentBarcodeWithQuantity() {
@@ -3819,7 +3816,7 @@
     });
 
     state.els.entryModeBtn.addEventListener("click", function () {
-      setQuantityEntryMode(!state.isQuantityEntryUnlocked, { focusBarcode: true });
+      setQuantityEntryMode(!state.isQuantityEntryUnlocked);
     });
   
     if (!state.isIOS) {
@@ -4047,7 +4044,7 @@
     loadHistoryState();
     fillSettingsForm(savedSettings);
     applyDisplayMode(savedSettings.displayMode);
-    setQuantityEntryMode(savedSettings.quantityEntryUnlocked, { focusBarcode: false });
+    setQuantityEntryMode(savedSettings.quantityEntryUnlocked);
     clearResultFields();
     renderHistory();
     bindEvents();
