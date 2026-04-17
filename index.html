@@ -232,7 +232,7 @@
     .span-third { grid-column: span 2; }
 
     .helper-row {
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      grid-template-columns: minmax(0, 1.18fr) minmax(0, 0.82fr);
       align-items: stretch;
       margin-top: 8px;
     }
@@ -1010,7 +1010,7 @@
 
       <div class="controls">
         <div class="lookup-row">
-          <input class="input" id="barcodeInput" type="text" inputmode="numeric" autocomplete="off" placeholder="Barcode value" />
+          <input class="input" id="barcodeInput" type="text" inputmode="numeric" autocomplete="off" placeholder="Barcode value" value="" />
           <button class="btn btn-muted" id="searchBarcodeBtn" type="button">Search</button>
           <button class="btn btn-muted" id="clearBarcodeBtn" type="button">Clear</button>
         </div>
@@ -1024,7 +1024,7 @@
               <path d="M8 11V8a4 4 0 1 1 8 0v3"></path>
             </svg>
           </button>
-          <input class="input manual-entry-qty" id="quantityInput" type="number" inputmode="none" min="1" step="1" value="1" placeholder="Qty" aria-label="Quantity" readonly disabled />
+          <input class="input manual-entry-qty" id="quantityInput" type="number" inputmode="none" min="1" step="1" value="" placeholder="Qty" aria-label="Quantity" readonly disabled />
           <button class="btn btn-primary manual-entry-add" id="addBarcodeBtn" type="button" hidden tabindex="-1" aria-hidden="true" disabled>Add</button>
         </div>
         <div class="scan-actions">
