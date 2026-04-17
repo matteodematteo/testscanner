@@ -505,7 +505,11 @@
     state.els.entryModeBtn.title = unlocked ? "Unlocked barcode entry" : "Locked barcode entry";
     state.els.entryModeBtn.classList.toggle("btn-primary", unlocked);
     state.els.entryModeBtn.classList.toggle("btn-muted", !unlocked);
-    state.els.quantityInput.disabled = !unlocked;
+    state.els.quantityInput.disabled = false;
+    state.els.quantityInput.readOnly = true;
+    state.els.quantityInput.tabIndex = unlocked ? 0 : -1;
+    state.els.quantityInput.setAttribute("aria-disabled", unlocked ? "false" : "true");
+    state.els.quantityInput.classList.toggle("is-locked", !unlocked);
     state.els.addBarcodeBtn.disabled = !unlocked;
     if (unlocked) {
       if (String(state.els.quantityInput.value || "") === "1") {
