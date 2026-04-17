@@ -191,9 +191,12 @@
       printBtn: document.getElementById("printBtn"),
       printDialog: document.getElementById("printDialog"),
       printStickerBtn: document.getElementById("printStickerBtn"),
+      productInfoSection: document.getElementById("productInfoSection"),
       previewFrame: document.getElementById("previewFrame"),
       previewPlaceholder: document.getElementById("previewPlaceholder"),
       quantityInput: document.getElementById("quantityInput"),
+      quantityPad: document.getElementById("quantityPad"),
+      quantityPadCard: document.getElementById("quantityPadCard"),
       refreshCookieBtn: document.getElementById("refreshCookieBtn"),
       resolutionBadge: document.getElementById("resolutionBadge"),
       scanBtn: document.getElementById("scanBtn"),
@@ -483,6 +486,15 @@
     return Math.max(1, Number.isFinite(parsed) ? parsed : 1);
   }
 
+  function sanitizeEditableQuantity(value) {
+    const digitsOnly = String(value ?? "").replace(/[^\d]/g, "");
+    if (!digitsOnly) {
+      return "";
+    }
+    const normalized = digitsOnly.replace(/^0+/, "");
+    return normalized || "0";
+  }
+
   function updateEntryModeControls() {
     if (!state.els?.entryModeBtn || !state.els?.quantityInput || !state.els?.addBarcodeBtn || !state.els?.entryModeIcon) {
       return;
@@ -495,16 +507,69 @@
     state.els.entryModeBtn.classList.toggle("btn-muted", !unlocked);
     state.els.quantityInput.disabled = !unlocked;
     state.els.addBarcodeBtn.disabled = !unlocked;
-    state.els.quantityInput.value = String(sanitizeQuantity(state.els.quantityInput.value));
+    if (unlocked) {
+      if (String(state.els.quantityInput.value || "") === "1") {
+        state.els.quantityInput.value = "";
+      } else {
+        state.els.quantityInput.value = sanitizeEditableQuantity(state.els.quantityInput.value);
+      }
+    } else {
+      state.els.quantityInput.value = "1";
+    }
+    if (state.els.quantityPad && state.els.quantityPadCard) {
+      const padButtons = state.els.quantityPad.querySelectorAll("button");
+      for (let index = 0; index < padButtons.length; index += 1) {
+        padButtons[index].disabled = !unlocked;
+      }
+      state.els.quantityPadCard.classList.toggle("is-disabled", !unlocked);
+      state.els.quantityPadCard.hidden = !unlocked;
+    }
+    if (state.els.productInfoSection) {
+      state.els.productInfoSection.hidden = unlocked;
+    }
     state.els.entryModeIcon.innerHTML = unlocked
       ? '<path d="M16 11V8a4 4 0 0 0-7.74-1.5"></path><rect x="5" y="11" width="14" height="10" rx="2"></rect>'
       : '<rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 1 1 8 0v3"></path>';
   }
 
+  async function handleQuantityPadInput(key) {
+    if (!state.isQuantityEntryUnlocked || !state.els?.quantityInput) {
+      return;
+    }
+
+    const currentValue = String(state.els.quantityInput.value || "").replace(/[^\d]/g, "");
+    if (key === "enter") {
+      await addCurrentBarcodeWithQuantity();
+      return;
+    }
+
+    if (key === "clear") {
+      state.els.quantityInput.value = "";
+      return;
+    }
+
+    if (key === "backspace") {
+      const trimmed = currentValue.slice(0, -1);
+      state.els.quantityInput.value = trimmed;
+      return;
+    }
+
+    if (!/^\d$/.test(key)) {
+      return;
+    }
+
+    const appended = `${currentValue}${key}`;
+    state.els.quantityInput.value = sanitizeEditableQuantity(appended);
+  }
+
   function setQuantityEntryMode(unlocked, options) {
     state.isQuantityEntryUnlocked = Boolean(unlocked);
-    if (!state.isQuantityEntryUnlocked && state.els?.quantityInput) {
-      state.els.quantityInput.value = "1";
+    if (state.els?.quantityInput) {
+      if (state.isQuantityEntryUnlocked) {
+        state.els.quantityInput.value = "";
+      } else {
+        state.els.quantityInput.value = "1";
+      }
     }
     updateEntryModeControls();
     saveSettings({
@@ -535,7 +600,7 @@
         addToHistoryBeforeLookup: true,
         comparisonQty: comparisonQty
       });
-      state.els.quantityInput.value = "1";
+      state.els.quantityInput.value = state.isQuantityEntryUnlocked ? "" : "1";
       moveFocusToInput(state.els.barcodeInput);
     } finally {
       state.els.addBarcodeBtn.disabled = false;
@@ -1427,12 +1492,18 @@
         state.currentProductRecord.comparison_qty = pendingComparisonQty;
         if (state.closestSearchPendingHistoryId) {
           updateHistoryItem(state.closestSearchPendingHistoryId, state.currentProductRecord);
-        } else {
+        } else if (!state.isQuantityEntryUnlocked) {
           addHistoryRecord(state.currentProductRecord, barcode, pendingComparisonQty);
+        } else {
+          state.els.quantityInput.value = sanitizeEditableQuantity(state.els.quantityInput.value);
         }
       }
       closeClosestSearchDialog();
       setStatus(`Selected ${barcode}`);
+      if (state.isQuantityEntryUnlocked) {
+        moveFocusToInput(state.els.quantityInput);
+        selectEntireInputValue({ target: state.els.quantityInput });
+      }
     } catch (error) {
       state.els.closestSearchStatus.textContent = error.message || "Could not load selected product.";
       state.isClosestSearchLoading = false;
@@ -2904,11 +2975,11 @@
           addToHistoryBeforeLookup: false,
           persistToHistory: false
         });
-        state.els.quantityInput.value = String(sanitizeQuantity(state.els.quantityInput.value));
+        state.els.quantityInput.value = sanitizeEditableQuantity(state.els.quantityInput.value);
 
         if (state.isIOS) {
           window.setTimeout(function () {
-            moveFocusToInput(state.els.quantityInput, { openKeyboard: true });
+            moveFocusToInput(state.els.quantityInput);
             selectEntireInputValue({ target: state.els.quantityInput });
           }, 80);
         } else {
@@ -3551,7 +3622,7 @@
 
     state.els.clearBarcodeBtn.addEventListener("click", function () {
       state.els.barcodeInput.value = "";
-      state.els.quantityInput.value = "1";
+      state.els.quantityInput.value = "";
       setStatus("Barcode field cleared");
     });
 
@@ -3560,10 +3631,11 @@
       try {
         const lookupResult = await handleBarcodeLookup({
           allowClosestSearch: true,
-          addToHistoryBeforeLookup: false
+          addToHistoryBeforeLookup: false,
+          persistToHistory: !state.isQuantityEntryUnlocked
         });
         if (state.isQuantityEntryUnlocked && lookupResult === "exact") {
-          moveFocusToInput(state.els.quantityInput, { openKeyboard: true });
+          moveFocusToInput(state.els.quantityInput);
           selectEntireInputValue({ target: state.els.quantityInput });
         }
       } finally {
@@ -3711,7 +3783,7 @@
           addToHistoryBeforeLookup: false,
           persistToHistory: false
         });
-        moveFocusToInput(state.els.quantityInput, { openKeyboard: true });
+        moveFocusToInput(state.els.quantityInput);
         selectEntireInputValue({ target: state.els.quantityInput });
         return;
       }
@@ -3746,7 +3818,7 @@
       });
     }
     state.els.quantityInput.addEventListener("input", function () {
-      state.els.quantityInput.value = String(sanitizeQuantity(state.els.quantityInput.value));
+      state.els.quantityInput.value = sanitizeEditableQuantity(state.els.quantityInput.value);
     });
     state.els.quantityInput.addEventListener("keydown", async function (event) {
       if (event.key !== "Enter") return;
@@ -3755,6 +3827,17 @@
     });
     state.els.addBarcodeBtn.addEventListener("click", async function () {
       await addCurrentBarcodeWithQuantity();
+    });
+    state.els.quantityPad.addEventListener("click", async function (event) {
+      const keyButton = event.target.closest("[data-key]");
+      if (!keyButton) {
+        return;
+      }
+      const key = String(keyButton.dataset.key || "").trim();
+      if (!key) {
+        return;
+      }
+      await handleQuantityPadInput(key);
     });
 
     state.els.cameraSelect.addEventListener("change", async function () {
