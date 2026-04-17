@@ -30,6 +30,7 @@
       --radius-md: 12px;
       --radius-sm: 10px;
       --font: "Aptos", "Segoe UI", sans-serif;
+      --control-square-size: 42px;
     }
 
     * { box-sizing: border-box; }
@@ -232,32 +233,29 @@
     .span-third { grid-column: span 2; }
 
     .helper-row {
-      grid-template-columns: minmax(0, 1.00fr) minmax(0, 1.00fr);
+      grid-template-columns: var(--control-square-size) minmax(0, 1fr) minmax(0, 1fr) var(--control-square-size);
       align-items: stretch;
       margin-top: 8px;
+      column-gap: 8px;
+      row-gap: 0;
     }
 
     .compact-toggle-btn {
-      min-width: 44px;
+      width: var(--control-square-size);
+      min-width: var(--control-square-size);
+      max-width: var(--control-square-size);
+      min-height: var(--control-square-size);
+      height: var(--control-square-size);
       padding: 0;
       font-size: 1rem;
     }
 
     .scan-actions {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 44px;
-      gap: 8px;
-      align-items: stretch;
-      width: 100%;
+      display: contents;
     }
 
     .manual-entry-group {
-      display: grid;
-      grid-template-columns: 42px minmax(0, 0.78fr);
-      gap: 0;
-      align-items: stretch;
-      min-height: 42px;
-      width: 100%;
+      display: contents;
     }
 
     .manual-entry-group > * {
@@ -277,6 +275,11 @@
       padding: 0;
       display: grid;
       place-items: center;
+      width: var(--control-square-size);
+      min-width: var(--control-square-size);
+      max-width: var(--control-square-size);
+      min-height: var(--control-square-size);
+      height: var(--control-square-size);
     }
 
     .manual-entry-lock svg {
@@ -285,11 +288,14 @@
     }
 
     .manual-entry-qty {
-      border-radius: 0;
+      border-top-right-radius: var(--radius-md);
+      border-bottom-right-radius: var(--radius-md);
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 0;
       border-left: 0;
-      border-right: 0;
       text-align: center;
       font-weight: 700;
+      min-height: var(--control-square-size);
     }
 
     .manual-entry-qty.is-locked {
@@ -366,7 +372,7 @@
     .btn,
     .input,
     .select {
-      min-height: 42px;
+      min-height: var(--control-square-size);
       border-radius: var(--radius-md);
       border: 1px solid transparent;
       width: 100%;
@@ -886,7 +892,7 @@
       .button-row { grid-template-columns: 1fr; }
       .lookup-row { grid-template-columns: minmax(0, 1fr) 74px 74px; }
       .field-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-      .helper-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+      .helper-row { grid-template-columns: var(--control-square-size) minmax(0, 1fr) minmax(0, 1fr) var(--control-square-size); }
       .card { border-radius: 22px; }
       .preview-frame { width: min(100%, 26vh); }
       .preview-meta { top: 8px; left: 8px; right: 8px; }
@@ -894,15 +900,18 @@
     }
 
     @media (max-width: 430px) {
+      :root {
+        --control-square-size: 38px;
+      }
       .top-tools,
       .button-row { gap: 8px; }
       .helper-row {
-        grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+        grid-template-columns: var(--control-square-size) minmax(0, 1fr) minmax(0, 1fr) var(--control-square-size);
         gap: 8px;
       }
       .btn,
       .input,
-      .select { min-height: 38px; }
+      .select { min-height: var(--control-square-size); }
       .btn { font-size: 0.74rem; padding: 0 8px; }
       .field-grid { gap: 8px; }
       .field-card { padding: 8px; }
@@ -924,16 +933,6 @@
       }
       .floating-refresh-btn {
         top: calc(max(12px, env(safe-area-inset-top)) + 46px);
-      }
-      .manual-entry-group {
-        grid-template-columns: 38px minmax(0, 1fr);
-      }
-      .scan-actions {
-        grid-template-columns: minmax(0, 1fr) 38px;
-        gap: 8px;
-      }
-      .compact-toggle-btn {
-        min-width: 38px;
       }
       #closestSearchDialog .dialog-card,
       #historyEditDialog .dialog-card {
