@@ -253,7 +253,7 @@
 
     .manual-entry-group {
       display: grid;
-      grid-template-columns: 42px minmax(0, 1fr) 72px;
+      grid-template-columns: 42px minmax(0, 1fr);
       gap: 0;
       align-items: stretch;
       min-height: 42px;
@@ -269,6 +269,7 @@
     .manual-entry-add {
       position: relative;
       z-index: 0;
+      display: none;
     }
 
     .manual-entry-lock {
@@ -290,11 +291,6 @@
       border-right: 0;
       text-align: center;
       font-weight: 700;
-    }
-
-    .manual-entry-add {
-      border-top-left-radius: 0;
-      border-bottom-left-radius: 0;
     }
 
     .floating-action-btn {
@@ -471,6 +467,44 @@
       justify-content: space-between;
       gap: 12px;
       margin-bottom: 8px;
+    }
+
+    .qty-pad-card {
+      margin-top: 10px;
+      padding: 10px;
+    }
+
+    .qty-pad-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .qty-pad-key {
+      min-height: 44px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(20, 28, 36, 0.08);
+      background: rgba(255, 255, 255, 0.96);
+      color: var(--text);
+      font-weight: 800;
+      font-size: 0.96rem;
+      cursor: pointer;
+    }
+
+    .qty-pad-key[data-key="enter"] {
+      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+      color: #fff7f2;
+      border-color: transparent;
+    }
+
+    .qty-pad-key[data-key="backspace"],
+    .qty-pad-key[data-key="clear"] {
+      background: rgba(20, 28, 36, 0.06);
+    }
+
+    .qty-pad-card.is-disabled .qty-pad-key {
+      opacity: 0.55;
+      cursor: not-allowed;
     }
 
     .history-actions {
@@ -882,7 +916,7 @@
         top: calc(max(12px, env(safe-area-inset-top)) + 46px);
       }
       .manual-entry-group {
-        grid-template-columns: 38px minmax(0, 1fr) 64px;
+        grid-template-columns: 38px minmax(0, 1fr);
       }
       .scan-actions {
         grid-template-columns: minmax(0, 1fr) 38px;
@@ -980,8 +1014,8 @@
               <path d="M8 11V8a4 4 0 1 1 8 0v3"></path>
             </svg>
           </button>
-          <input class="input manual-entry-qty" id="quantityInput" type="number" inputmode="numeric" min="1" step="1" value="1" placeholder="Qty" aria-label="Quantity" disabled />
-          <button class="btn btn-primary manual-entry-add" id="addBarcodeBtn" type="button" disabled>Add</button>
+          <input class="input manual-entry-qty" id="quantityInput" type="number" inputmode="none" min="1" step="1" value="1" placeholder="Qty" aria-label="Quantity" readonly disabled />
+          <button class="btn btn-primary manual-entry-add" id="addBarcodeBtn" type="button" hidden tabindex="-1" aria-hidden="true" disabled>Add</button>
         </div>
         <div class="scan-actions">
           <button class="btn btn-primary" id="scanBtn" type="button" data-mode="start">Start Scanning</button>
@@ -990,7 +1024,7 @@
       </div>
     </section>
 
-    <section class="card section-card">
+    <section class="card section-card" id="productInfoSection">
       <h2 id="productInfoTitle">Product Info</h2>
       <div class="field-grid">
         <div class="field-card span-half" id="field_goods_code_card"><label for="field_goods_code">Goods Code</label><div class="field-value" id="field_goods_code"></div></div>
@@ -1005,6 +1039,24 @@
         <div class="field-card span-half" id="field_discount_price_card" hidden><label for="field_discount_price">Disc. Price</label><div class="field-value is-discount" id="field_discount_price"></div></div>
         <div class="field-card span-half" id="field_spec_card"><label for="field_spec">Spec</label><div class="field-value" id="field_spec"></div></div>
         <div class="field-card span-half" id="field_id_card"><label for="field_id">ID</label><div class="field-value" id="field_id"></div></div>
+      </div>
+    </section>
+
+    <section class="card section-card qty-pad-card" id="quantityPadCard" aria-label="Quantity keypad" hidden>
+      <div class="qty-pad-grid" id="quantityPad">
+        <button class="qty-pad-key" type="button" data-key="1">1</button>
+        <button class="qty-pad-key" type="button" data-key="2">2</button>
+        <button class="qty-pad-key" type="button" data-key="3">3</button>
+        <button class="qty-pad-key" type="button" data-key="backspace">Del</button>
+        <button class="qty-pad-key" type="button" data-key="4">4</button>
+        <button class="qty-pad-key" type="button" data-key="5">5</button>
+        <button class="qty-pad-key" type="button" data-key="6">6</button>
+        <button class="qty-pad-key" type="button" data-key="clear">C</button>
+        <button class="qty-pad-key" type="button" data-key="7">7</button>
+        <button class="qty-pad-key" type="button" data-key="8">8</button>
+        <button class="qty-pad-key" type="button" data-key="9">9</button>
+        <button class="qty-pad-key" type="button" data-key="0">0</button>
+        <button class="qty-pad-key" type="button" data-key="enter" style="grid-column: 1 / -1;">Enter / Add</button>
       </div>
     </section>
 
