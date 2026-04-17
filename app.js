@@ -1476,6 +1476,15 @@
       return;
     }
 
+    if (state.isQuantityEntryUnlocked) {
+      state.els.barcodeInput.value = barcode;
+      closeClosestSearchDialog();
+      setStatus(`Selected ${barcode}. Tap Enter / Add to send request.`);
+      moveFocusToInput(state.els.quantityInput);
+      selectEntireInputValue({ target: state.els.quantityInput });
+      return;
+    }
+
     state.isClosestSearchLoading = true;
     state.els.closestSearchBackBtn.disabled = true;
     state.els.closestSearchStatus.textContent = `Loading ${barcode}...`;
