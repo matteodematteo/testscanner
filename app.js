@@ -45,6 +45,8 @@
       "real_inventory",
       "discount_price",
       "discount_percent",
+      "disc_price_percent",
+      "disc_cost",
       "disc_iva",
       "supplier_name",
       "spec"
@@ -1004,13 +1006,11 @@
 
   function buildHistoryItemFromLookupData(productPayload, discountPayload, fallbackBarcode, comparisonQty) {
     const normalizedProduct = normalizeProductData(productPayload?.product || productPayload);
-    const discountFields = getDiscountFields({
+    const discountFields = getLegacyDiscountFields({
       product: productPayload?.product || productPayload,
       sale: discountPayload
     }, normalizedProduct);
-    const sPrice = numberFromValue(normalizedProduct.s_price);
-    const discountPrice = numberFromValue(discountFields.discountPrice);
-    const hasVisibleDiscount = Boolean(discountPrice) && Boolean(sPrice) && discountPrice < sPrice;
+    const hasVisibleDiscount = discountFields.hasDiscount;
 
     return normalizeHistoryItem({
       goods_id: String(normalizedProduct.id || ""),
@@ -1183,13 +1183,11 @@
     }
 
     const normalizedProduct = normalizeProductData(parsedProduct?.product || parsedProduct);
-    const discountFields = getDiscountFields({
+    const discountFields = getLegacyDiscountFields({
       product: parsedProduct?.product || parsedProduct,
       sale: parsedDiscount
     }, normalizedProduct);
-    const sPrice = numberFromValue(normalizedProduct.s_price);
-    const discountPrice = numberFromValue(discountFields.discountPrice);
-    const hasVisibleDiscount = Boolean(discountPrice) && Boolean(sPrice) && discountPrice < sPrice;
+    const hasVisibleDiscount = discountFields.hasDiscount;
 
     return {
       cookie: cookie,
@@ -1937,7 +1935,8 @@
       compactSavedField.textContent = "";
     }
     state.currentProductRecord = null;
-    setDiscountVisibility(false);
+    setDiscountVisibility();
+    setLegacyDiscountVisibility(false);
   }
 
   function setResultField(key, value) {
@@ -1968,18 +1967,31 @@
     }
   }
 
-  function setDiscountVisibility(visible) {
-    const priceCard = document.getElementById("field_discount_price_card");
+  function setDiscountVisibility() {
+    const costCard = document.getElementById("field_disc_cost_card");
     const percentCard = document.getElementById("field_discount_percent_card");
     const discIvaCard = document.getElementById("field_disc_iva_card");
+    if (costCard) {
+      costCard.hidden = false;
+    }
+    if (percentCard) {
+      percentCard.hidden = false;
+    }
+    if (discIvaCard) {
+      discIvaCard.hidden = false;
+    }
+    syncDisplayModeDiscountLayout();
+    applyCompactResultLayout();
+  }
+
+  function setLegacyDiscountVisibility(visible) {
+    const priceCard = document.getElementById("field_discount_price_card");
+    const pricePercentCard = document.getElementById("field_disc_price_percent_card");
     if (priceCard) {
       priceCard.hidden = !visible;
     }
-    if (percentCard) {
-      percentCard.hidden = !visible;
-    }
-    if (discIvaCard) {
-      discIvaCard.hidden = !visible;
+    if (pricePercentCard) {
+      pricePercentCard.hidden = !visible;
     }
     syncDisplayModeDiscountLayout();
     applyCompactResultLayout();
@@ -2148,7 +2160,7 @@
   }
 
   function formatDiscountPercentSummary(percents) {
-    if (!percents.length) return "";
+    if (!percents.length) return "0%";
     return percents
       .map(function (value) {
         return trimTrailingZeros(value);
@@ -2161,20 +2173,46 @@
     const discountPercent = formatDiscountPercentSummary(percents);
 
     const sPrice = numberFromValue(productData.s_price);
-    const discountPrice = percents.length > 0 && sPrice
+    const discCost = percents.length > 0 && sPrice
       ? formatPrice(percents.reduce(function (price, percent) {
         return price * (1 - percent / 100);
       }, sPrice))
-      : "";
+      : formatPrice(sPrice);
 
-    const discIva = discountPrice
-      ? formatPrice(numberFromValue(discountPrice) * 1.22)
+    const discIva = discCost
+      ? formatPrice(numberFromValue(discCost) * 1.22)
       : "";
 
     return {
       discountPercent: discountPercent,
-      discountPrice: discountPrice,
+      discCost: discCost,
       discIva: discIva
+    };
+  }
+
+  function getLegacyDiscountFields(rawData, productData) {
+    const saleData = normalizeSaleData(rawData);
+    const hasSaleData = Boolean(saleData) && saleData !== "" && (!Array.isArray(saleData) || saleData.length > 0);
+    const saleDiscountValue = hasSaleData ? numberFromValue(saleData.sdiscount) : 0;
+    const productDiscountValue = numberFromValue(productData.s_discount);
+
+    const usingSaleDiscount = saleDiscountValue > 0;
+    const activeDiscountValue = usingSaleDiscount ? saleDiscountValue : productDiscountValue;
+    const hasDiscount = activeDiscountValue > 0;
+
+    const sPrice = numberFromValue(productData.s_price);
+
+    let discountPrice = "";
+    if (usingSaleDiscount && saleData.discountPrice !== undefined) {
+      discountPrice = formatPrice(saleData.discountPrice);
+    } else if (hasDiscount && sPrice) {
+      discountPrice = formatPrice(sPrice * (1 - activeDiscountValue / 100));
+    }
+
+    return {
+      discountPrice: discountPrice,
+      discountPercent: hasDiscount ? formatPercent(activeDiscountValue) : "",
+      hasDiscount: hasDiscount
     };
   }
 
@@ -2186,14 +2224,15 @@
     }
 
     const discountFields = getDiscountFields(data, normalized);
-    const sPrice = numberFromValue(normalized.s_price);
-    const discountPrice = numberFromValue(discountFields.discountPrice);
-    const hasVisibleDiscount = Boolean(discountPrice) && Boolean(sPrice) && discountPrice < sPrice;
+    const legacyFields = getLegacyDiscountFields(data, normalized);
 
-    setDiscountVisibility(hasVisibleDiscount);
-    setResultField("discount_price", hasVisibleDiscount ? discountFields.discountPrice : "");
-    setResultField("discount_percent", hasVisibleDiscount ? discountFields.discountPercent : "");
-    setResultField("disc_iva", hasVisibleDiscount ? discountFields.discIva : "");
+    setDiscountVisibility();
+    setLegacyDiscountVisibility(legacyFields.hasDiscount);
+    setResultField("discount_price", legacyFields.discountPrice);
+    setResultField("disc_price_percent", legacyFields.discountPercent);
+    setResultField("discount_percent", discountFields.discountPercent);
+    setResultField("disc_cost", discountFields.discCost);
+    setResultField("disc_iva", discountFields.discIva);
 
     state.currentProductRecord = {
       goods_id: String(normalized.id || ""),
@@ -2202,8 +2241,8 @@
       p_price: String(normalized.p_price || ""),
       s_price: String(normalized.s_price || ""),
       s_discount: String(normalized.s_discount || ""),
-      discount_price: hasVisibleDiscount ? String(discountFields.discountPrice || "") : "",
-      has_discount: hasVisibleDiscount,
+      discount_price: legacyFields.hasDiscount ? String(legacyFields.discountPrice || "") : "",
+      has_discount: legacyFields.hasDiscount,
       comparison_qty: 1
     };
   }
@@ -2574,8 +2613,8 @@
       setResultField("p_price", updatedItem.p_price);
       setResultField("s_price", updatedItem.s_price);
       setResultField("discount_price", updatedItem.discount_price);
-      setResultField("discount_percent", updatedItem.s_discount ? formatPercent(updatedItem.s_discount) : "");
-      setDiscountVisibility(Boolean(numberFromValue(updatedItem.discount_price)) && numberFromValue(updatedItem.discount_price) < numberFromValue(updatedItem.s_price));
+      setResultField("disc_price_percent", updatedItem.s_discount ? formatPercent(updatedItem.s_discount) : "");
+      setLegacyDiscountVisibility(Boolean(numberFromValue(updatedItem.discount_price)) && numberFromValue(updatedItem.discount_price) < numberFromValue(updatedItem.s_price));
     }
 
     setStatus(`Saved ${updatedItem.barcode}`);
