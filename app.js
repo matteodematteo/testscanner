@@ -45,6 +45,7 @@
       "real_inventory",
       "discount_price",
       "discount_percent",
+      "disc_iva",
       "supplier_name",
       "spec"
     ],
@@ -1069,7 +1070,7 @@
       method: "POST",
       body: JSON.stringify({
         id: payload.id,
-        goods_code: payload.barcode,
+        goods_code: payload.goods_code,
         italian_name: payload.italian_name,
         p_price: payload.p_price,
         s_price: payload.s_price,
@@ -1970,11 +1971,15 @@
   function setDiscountVisibility(visible) {
     const priceCard = document.getElementById("field_discount_price_card");
     const percentCard = document.getElementById("field_discount_percent_card");
+    const discIvaCard = document.getElementById("field_disc_iva_card");
     if (priceCard) {
       priceCard.hidden = !visible;
     }
     if (percentCard) {
       percentCard.hidden = !visible;
+    }
+    if (discIvaCard) {
+      discIvaCard.hidden = !visible;
     }
     syncDisplayModeDiscountLayout();
     applyCompactResultLayout();
@@ -2125,28 +2130,51 @@
     }, 1800);
   }
 
-  function getDiscountFields(rawData, productData) {
-    const saleData = normalizeSaleData(rawData);
+  function trimTrailingZeros(value) {
+    return numberFromValue(value).toFixed(2).replace(/\.00$/, "").replace(/(\.\d)0$/, "$1");
+  }
 
-    if (
-      saleData &&
-      saleData !== "" &&
-      (!Array.isArray(saleData) || saleData.length > 0) &&
-      (saleData.discountPrice !== undefined || saleData.sdiscount !== undefined)
-    ) {
-      return {
-        discountPrice: formatPrice(saleData.discountPrice),
-        discountPercent: formatPercent(saleData.sdiscount)
-      };
-    }
+  function getDiscountPercentList(productData) {
+    return [
+      productData.p_discount,
+      productData.p_discount2,
+      productData.p_discount3,
+      productData.p_discount4
+    ]
+      .map(numberFromValue)
+      .filter(function (value) {
+        return value > 0;
+      });
+  }
+
+  function formatDiscountPercentSummary(percents) {
+    if (!percents.length) return "";
+    return percents
+      .map(function (value) {
+        return trimTrailingZeros(value);
+      })
+      .join("%, ") + "%";
+  }
+
+  function getDiscountFields(rawData, productData) {
+    const percents = getDiscountPercentList(productData);
+    const discountPercent = formatDiscountPercentSummary(percents);
 
     const sPrice = numberFromValue(productData.s_price);
-    const sDiscount = numberFromValue(productData.s_discount);
-    const normalizedDiscount = sDiscount / 100;
+    const discountPrice = percents.length > 0 && sPrice
+      ? formatPrice(percents.reduce(function (price, percent) {
+        return price * (1 - percent / 100);
+      }, sPrice))
+      : "";
+
+    const discIva = discountPrice
+      ? formatPrice(numberFromValue(discountPrice) * 1.22)
+      : "";
 
     return {
-      discountPrice: formatPrice(sPrice * (1 - normalizedDiscount)),
-      discountPercent: formatPercent(normalizedDiscount)
+      discountPercent: discountPercent,
+      discountPrice: discountPrice,
+      discIva: discIva
     };
   }
 
@@ -2165,6 +2193,7 @@
     setDiscountVisibility(hasVisibleDiscount);
     setResultField("discount_price", hasVisibleDiscount ? discountFields.discountPrice : "");
     setResultField("discount_percent", hasVisibleDiscount ? discountFields.discountPercent : "");
+    setResultField("disc_iva", hasVisibleDiscount ? discountFields.discIva : "");
 
     state.currentProductRecord = {
       goods_id: String(normalized.id || ""),
