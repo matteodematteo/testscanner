@@ -1069,7 +1069,7 @@
       method: "POST",
       body: JSON.stringify({
         id: payload.id,
-        goods_code: payload.goods_code,
+        goods_code: payload.barcode,
         italian_name: payload.italian_name,
         p_price: payload.p_price,
         s_price: payload.s_price,
