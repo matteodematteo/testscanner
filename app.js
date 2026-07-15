@@ -2172,12 +2172,12 @@
     const percents = getDiscountPercentList(productData);
     const discountPercent = formatDiscountPercentSummary(percents);
 
-    const sPrice = numberFromValue(productData.s_price);
-    const discCost = percents.length > 0 && sPrice
-      ? formatPrice(percents.reduce(function (price, percent) {
-        return price * (1 - percent / 100);
-      }, sPrice))
-      : formatPrice(sPrice);
+const pPrice = numberFromValue(productData.p_price);
+const discCost = percents.length > 0 && pPrice
+  ? formatPrice(percents.reduce(function (price, percent) {
+    return price * (1 - percent / 100);
+  }, pPrice))
+  : formatPrice(pPrice);
 
     const discIva = discCost
       ? formatPrice(numberFromValue(discCost) * 1.22)
