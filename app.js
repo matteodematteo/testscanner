@@ -145,7 +145,7 @@
     isClosestSearchLoading: false,
     historyEditSuccessTimer: 0,
     historyEditCloseTimer: 0,
-    roi: { left: 0.1, top: 0.1, width: 0.8, height: 0.8 },
+    roi: { width: 0.8, height: 0.8 },
     roiDrag: null,
     pendingConfirmCode: "",
     pendingConfirmCount: 0
@@ -3126,12 +3126,23 @@
     return { offsetX: offsetX, offsetY: offsetY, visibleWidth: visibleWidth, visibleHeight: visibleHeight };
   }
 
+  function getRoiRect() {
+    const width = state.roi.width;
+    const height = state.roi.height;
+    return {
+      left: (1 - width) / 2,
+      top: (1 - height) / 2,
+      width: width,
+      height: height
+    };
+  }
+
   function getRoiCropRect(videoWidth, videoHeight) {
     const container = state.els.previewFrame;
     const containerWidth = (container && container.clientWidth) || videoWidth;
     const containerHeight = (container && container.clientHeight) || videoHeight;
     const cover = getCoverSourceRect(videoWidth, videoHeight, containerWidth, containerHeight);
-    const roi = state.roi;
+    const roi = getRoiRect();
 
     const sx = cover.offsetX + roi.left * cover.visibleWidth;
     const sy = cover.offsetY + roi.top * cover.visibleHeight;
@@ -3199,13 +3210,14 @@
   }
 
   const ROI_MIN_RATIO = 0.12;
+  const ROI_MAX_RATIO = 1;
 
   function applyRoiBoxStyle() {
     const roiBox = state.els.roiBox;
     if (!roiBox) {
       return;
     }
-    const roi = state.roi;
+    const roi = getRoiRect();
     roiBox.style.left = `${roi.left * 100}%`;
     roiBox.style.top = `${roi.top * 100}%`;
     roiBox.style.width = `${roi.width * 100}%`;
@@ -3229,11 +3241,7 @@
       }
 
       state.roiDrag = {
-        pointerId: event.pointerId,
-        containerWidth: rect.width,
-        containerHeight: rect.height,
-        startLeft: state.roi.left,
-        startTop: state.roi.top
+        pointerId: event.pointerId
       };
 
       try {
@@ -3250,17 +3258,20 @@
       }
 
       const rect = container.getBoundingClientRect();
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
       const pointerX = event.clientX - rect.left;
       const pointerY = event.clientY - rect.top;
 
-      const maxWidthRatio = Math.max(ROI_MIN_RATIO, 1 - drag.startLeft);
-      const maxHeightRatio = Math.max(ROI_MIN_RATIO, 1 - drag.startTop);
+      // The handle sits at the box's bottom-right corner. Since the box is
+      // always centered, distance from the container center to the pointer
+      // is the box's half-width/half-height — resizing grows/shrinks the
+      // box symmetrically in all directions, keeping it centered live.
+      let widthRatio = ((pointerX - centerX) / rect.width) * 2;
+      let heightRatio = ((pointerY - centerY) / rect.height) * 2;
 
-      let widthRatio = (pointerX / drag.containerWidth) - drag.startLeft;
-      let heightRatio = (pointerY / drag.containerHeight) - drag.startTop;
-
-      widthRatio = Math.min(maxWidthRatio, Math.max(ROI_MIN_RATIO, widthRatio));
-      heightRatio = Math.min(maxHeightRatio, Math.max(ROI_MIN_RATIO, heightRatio));
+      widthRatio = Math.min(ROI_MAX_RATIO, Math.max(ROI_MIN_RATIO, widthRatio));
+      heightRatio = Math.min(ROI_MAX_RATIO, Math.max(ROI_MIN_RATIO, heightRatio));
 
       state.roi.width = widthRatio;
       state.roi.height = heightRatio;
