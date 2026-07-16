@@ -15,6 +15,7 @@
     cookieStatusStorageKey: "web_barcode_scanner_cookie_status",
     historyStorageKey: "web_barcode_scanner_history",
     cameraStorageKey: "web_barcode_scanner_camera",
+    roiStorageKey: "web_barcode_scanner_roi",
     scanIntervalMs: 240,
     mobileScanIntervalMs: 170,
     iosScanIntervalMs: 130,
@@ -34,7 +35,7 @@
       "codabar",
       "itf"
     ],
-    detectionCropModes: ["roi", "wide", "square", "full"],
+    detectionCropModes: ["roi"],
     resultFields: [
       "id",
       "goods_code",
@@ -3099,10 +3100,7 @@
   }
 
   function getDetectionCropModes() {
-    if (state.isIOS) {
-      return ["roi", "full", "square", "wide"];
-    }
-    return CONFIG.detectionCropModes;
+    return ["roi"];
   }
 
   function getScanLoopIntervalMs() {
@@ -3222,6 +3220,37 @@
   const ROI_MIN_RATIO = 0.12;
   const ROI_MAX_RATIO = 1;
 
+  function loadRoiState() {
+    try {
+      const raw = localStorage.getItem(CONFIG.roiStorageKey);
+      if (!raw) {
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      const width = Number(parsed?.width);
+      const height = Number(parsed?.height);
+      if (Number.isFinite(width) && width >= ROI_MIN_RATIO && width <= ROI_MAX_RATIO) {
+        state.roi.width = width;
+      }
+      if (Number.isFinite(height) && height >= ROI_MIN_RATIO && height <= ROI_MAX_RATIO) {
+        state.roi.height = height;
+      }
+    } catch {
+      // Ignore corrupt/missing saved ROI size and keep the default.
+    }
+  }
+
+  function saveRoiState() {
+    try {
+      localStorage.setItem(CONFIG.roiStorageKey, JSON.stringify({
+        width: state.roi.width,
+        height: state.roi.height
+      }));
+    } catch {
+      // Ignore storage failures (e.g. private browsing quota).
+    }
+  }
+
   function applyRoiBoxStyle() {
     const roiBox = state.els.roiBox;
     if (!roiBox) {
@@ -3302,6 +3331,7 @@
         Math.abs(state.roi.height - drag.startHeight) > 0.005;
 
       if (sizeChanged) {
+        saveRoiState();
         restartCameraForRoiResize();
       }
     }
@@ -4347,6 +4377,7 @@
     clearResultFields();
     renderHistory();
     bindEvents();
+    loadRoiState();
     applyRoiBoxStyle();
     initRoiResize();
 
