@@ -3203,7 +3203,7 @@
       }
     }
 
-    const maxOutputSize = state.isMobileUi ? 720 : 960;
+    const maxOutputSize = 1080;
     const scale = Math.min(1, maxOutputSize / Math.max(sw, sh));
     const outputWidth = Math.max(1, Math.round(sw * scale));
     const outputHeight = Math.max(1, Math.round(sh * scale));
