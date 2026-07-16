@@ -4350,6 +4350,11 @@
     applyRoiBoxStyle();
     initRoiResize();
 
+    loginAndRefreshCookie(savedSettings).catch(function (error) {
+      const message = error.message || "Cookie refresh failed.";
+      saveCookieState("", `Cookie refresh failed: ${message}`);
+    });
+
     const hardwareIssue = getCameraHardwareIssue();
     if (hardwareIssue) {
       setStatus(hardwareIssue);
