@@ -162,6 +162,10 @@
       cameraPreview: document.getElementById("cameraPreview"),
       cameraPreviewQuagga: document.getElementById("cameraPreviewQuagga"),
       cameraSelect: document.getElementById("cameraSelect"),
+      productInfoSlider: document.getElementById("productInfoSlider"),
+      productInfoTrack: document.getElementById("productInfoTrack"),
+      productInfoDots: document.getElementById("productInfoDots"),
+      compactFieldRow: document.getElementById("compactFieldRow"),
       clearAllBtn: document.getElementById("clearAllBtn"),
       clearBarcodeBtn: document.getElementById("clearBarcodeBtn"),
       closestSearchBackBtn: document.getElementById("closestSearchBackBtn"),
@@ -655,13 +659,42 @@
     card.style.maxWidth = "";
   }
 
+  function captureFieldHomes() {
+    if (state.fieldHomesCaptured) {
+      return;
+    }
+    const keys = ["italian_name", "supplier_name", "create_time", "s_price", "real_inventory", "discount_percent", "discount_price", "disc_price_percent"];
+    state.fieldHomes = {};
+    keys.forEach(function (key) {
+      const card = getResultCard(key);
+      if (card && card.parentElement) {
+        state.fieldHomes[key] = {
+          parent: card.parentElement,
+          nextSibling: card.nextSibling
+        };
+      }
+    });
+    state.fieldHomesCaptured = true;
+  }
+
+  function restoreFieldHomes() {
+    Object.keys(state.fieldHomes || {}).forEach(function (key) {
+      const home = state.fieldHomes[key];
+      const card = getResultCard(key);
+      if (!card || !home || !home.parent) {
+        return;
+      }
+      if (home.nextSibling && home.nextSibling.parentElement === home.parent) {
+        home.parent.insertBefore(card, home.nextSibling);
+      } else {
+        home.parent.appendChild(card);
+      }
+    });
+  }
+
   function applyCompactResultLayout() {
-    const primaryCard = getResultCard("italian_name") ||
-      getResultCard("supplier_name") ||
-      getResultCard("create_time") ||
-      getResultCard("s_price") ||
-      getResultCard("real_inventory");
-    const container = primaryCard?.parentElement || null;
+    captureFieldHomes();
+
     const layoutCards = {
       italian_name: getResultCard("italian_name"),
       supplier_name: getResultCard("supplier_name"),
@@ -675,18 +708,22 @@
       clearResultCardLayout(getResultCard(key));
     });
 
+    const container = state.els.compactFieldRow;
     if (!container) {
       return;
     }
 
     if (state.displayMode !== "compact") {
+      container.hidden = true;
       container.style.display = "";
       container.style.flexWrap = "";
       container.style.alignItems = "";
       container.style.gap = "";
+      restoreFieldHomes();
       return;
     }
 
+    container.hidden = false;
     container.style.display = "flex";
     container.style.flexWrap = "wrap";
     container.style.alignItems = "stretch";
@@ -701,20 +738,6 @@
       { key: "discount_percent", basis: "45%", order: 6 },
       { key: "discount_price", basis: "55%", order: 7 }
     ];
-    const visibleKeys = new Set(compactLayout.map(function (item) {
-      return item.key;
-    }));
-
-    CONFIG.resultFields.forEach(function (key) {
-      const card = getResultCard(key);
-      if (!card) {
-        return;
-      }
-
-      if (!visibleKeys.has(key)) {
-        card.style.display = "none";
-      }
-    });
 
     compactLayout.forEach(function (item) {
       const card = layoutCards[item.key];
@@ -722,12 +745,58 @@
         return;
       }
 
+      container.appendChild(card);
       card.style.display = card.hidden ? "none" : "";
       card.style.order = String(item.order);
       card.style.flex = `0 0 calc(${item.basis} - 8px)`;
       card.style.width = `calc(${item.basis} - 8px)`;
       card.style.maxWidth = `calc(${item.basis} - 8px)`;
     });
+  }
+
+  function initProductInfoSlider() {
+    const slider = state.els.productInfoSlider;
+    const dots = state.els.productInfoDots;
+    if (!slider || !dots) {
+      return;
+    }
+
+    const dotButtons = Array.prototype.slice.call(dots.querySelectorAll(".pi-dot"));
+
+    function setActiveDot(index) {
+      dotButtons.forEach(function (dot, dotIndex) {
+        const isActive = dotIndex === index;
+        dot.classList.toggle("is-active", isActive);
+        dot.setAttribute("aria-selected", isActive ? "true" : "false");
+      });
+    }
+
+    function goToSlide(index) {
+      const width = slider.clientWidth;
+      slider.scrollTo({ left: width * index, behavior: "smooth" });
+    }
+
+    dotButtons.forEach(function (dot) {
+      dot.addEventListener("click", function () {
+        const index = Number(dot.dataset.gotoSlide || 0);
+        goToSlide(index);
+        setActiveDot(index);
+      });
+    });
+
+    let scrollTimer = null;
+    slider.addEventListener("scroll", function () {
+      if (scrollTimer) {
+        window.clearTimeout(scrollTimer);
+      }
+      scrollTimer = window.setTimeout(function () {
+        const width = slider.clientWidth || 1;
+        const index = Math.round(slider.scrollLeft / width);
+        setActiveDot(Math.min(dotButtons.length - 1, Math.max(0, index)));
+      }, 80);
+    }, { passive: true });
+
+    setActiveDot(0);
   }
 
   function applyDisplayMode(mode) {
@@ -4414,6 +4483,7 @@
     loadRoiState();
     applyRoiBoxStyle();
     initRoiResize();
+    initProductInfoSlider();
 
     loginAndRefreshCookie(savedSettings).catch(function (error) {
       const message = error.message || "Cookie refresh failed.";
