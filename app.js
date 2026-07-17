@@ -131,6 +131,7 @@
     displayMode: "full",
     isQuantityEntryUnlocked: false,
     lockedScrollY: 0,
+    pendingApiRequests: 0,
     manualScrollLocked: false,
     manualScrollLockY: 0,
     cameraStartPromise: null,
@@ -166,6 +167,7 @@
       productInfoTrack: document.getElementById("productInfoTrack"),
       productInfoDots: document.getElementById("productInfoDots"),
       compactFieldRow: document.getElementById("compactFieldRow"),
+      apiLoader: document.getElementById("apiLoader"),
       clearAllBtn: document.getElementById("clearAllBtn"),
       clearBarcodeBtn: document.getElementById("clearBarcodeBtn"),
       closestSearchBackBtn: document.getElementById("closestSearchBackBtn"),
@@ -1142,8 +1144,36 @@
     });
   }
 
+  function showApiLoader() {
+    state.pendingApiRequests += 1;
+    const loader = state.els?.apiLoader;
+    if (loader) {
+      loader.classList.add("is-visible");
+    }
+  }
+
+  function hideApiLoader() {
+    state.pendingApiRequests = Math.max(0, state.pendingApiRequests - 1);
+    if (state.pendingApiRequests > 0) {
+      return;
+    }
+    const loader = state.els?.apiLoader;
+    if (loader) {
+      loader.classList.remove("is-visible");
+    }
+  }
+
+  async function apiFetch(url, options) {
+    showApiLoader();
+    try {
+      return await fetch(url, options);
+    } finally {
+      hideApiLoader();
+    }
+  }
+
   async function fetchProductInfoThroughProxy(code, cookie) {
-    const response = await fetch(CONFIG.infoProxyEndpoint, {
+    const response = await apiFetch(CONFIG.infoProxyEndpoint, {
       method: "POST",
       body: JSON.stringify({
         barcode: code,
@@ -1163,7 +1193,7 @@
   }
 
   async function fetchDiscountInfoThroughProxy(code, cookie) {
-    const response = await fetch(CONFIG.discountProxyEndpoint, {
+    const response = await apiFetch(CONFIG.discountProxyEndpoint, {
       method: "POST",
       body: JSON.stringify({
         barcode: code,
@@ -1183,7 +1213,7 @@
   }
 
   async function fetchUpdateItemThroughProxy(payload, cookie) {
-    const response = await fetch(CONFIG.updateProxyEndpoint, {
+    const response = await apiFetch(CONFIG.updateProxyEndpoint, {
       method: "POST",
       body: JSON.stringify({
         id: payload.id,
@@ -1208,7 +1238,7 @@
   }
 
   async function fetchAddProductThroughProxy(payload, cookie) {
-    const response = await fetch(CONFIG.addProductProxyEndpoint, {
+    const response = await apiFetch(CONFIG.addProductProxyEndpoint, {
       method: "POST",
       body: JSON.stringify({
         barcode: payload.barcode,
@@ -1322,7 +1352,7 @@
     }
 
     const cookie = await getCookieForRequests();
-    const response = await fetch(CONFIG.closestSearchProxyEndpoint, {
+    const response = await apiFetch(CONFIG.closestSearchProxyEndpoint, {
       method: "POST",
       body: JSON.stringify({
         supplierId: -1,
@@ -1853,7 +1883,7 @@
     };
 
     setStatus("Sending TXT...");
-    const response = await fetch(CONFIG.sendTxtEndpoint, {
+    const response = await apiFetch(CONFIG.sendTxtEndpoint, {
       method: "POST",
       headers: {
         "Content-Type": "text/plain"
@@ -1892,7 +1922,7 @@
     };
 
     setStatus(`Sending print ${normalizedType}...`);
-    const response = await fetch(CONFIG.sendTxtEndpoint, {
+    const response = await apiFetch(CONFIG.sendTxtEndpoint, {
       method: "POST",
       headers: {
         "Content-Type": "text/plain"
@@ -1999,7 +2029,7 @@
     saveCookieState(state.authCookie, `Refreshing cookie for ${login} on ${targetSite}...`);
     setStatus("Requesting new cookie...");
 
-    const response = await fetch(CONFIG.cookieProxyEndpoint, {
+    const response = await apiFetch(CONFIG.cookieProxyEndpoint, {
       method: "POST",
       body: params.toString(),
       headers: {
