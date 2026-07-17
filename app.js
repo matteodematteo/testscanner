@@ -166,7 +166,6 @@
       productInfoSlider: document.getElementById("productInfoSlider"),
       productInfoTrack: document.getElementById("productInfoTrack"),
       productInfoDots: document.getElementById("productInfoDots"),
-      compactFieldRow: document.getElementById("compactFieldRow"),
       apiLoader: document.getElementById("apiLoader"),
       clearAllBtn: document.getElementById("clearAllBtn"),
       clearBarcodeBtn: document.getElementById("clearBarcodeBtn"),
@@ -182,7 +181,6 @@
       confirmDialogText: document.getElementById("confirmDialogText"),
       captureCanvas: document.getElementById("captureCanvas"),
       closeSettingsBtn: document.getElementById("closeSettingsBtn"),
-      compactToggleBtn: document.getElementById("compactToggleBtn") || document.getElementById("displayModeSelect"),
       entryModeBtn: document.getElementById("entryModeBtn"),
       entryModeIcon: document.getElementById("entryModeIcon"),
       historyEmpty: document.getElementById("historyEmpty"),
@@ -433,15 +431,12 @@
     try {
       const raw = localStorage.getItem(CONFIG.settingsStorageKey);
       const parsed = raw ? JSON.parse(raw) : null;
-      const savedDisplayMode = String(parsed?.displayMode || "").trim();
-      const legacyCompactMode = Boolean(parsed?.compactMode);
-      const displayMode = savedDisplayMode === "compact" || legacyCompactMode ? "compact" : "full";
       const quantityEntryMode = String(parsed?.quantityEntryMode || "").trim().toLowerCase();
       return {
         shopKey: parsed?.shopKey || "",
         login: parsed?.login || "",
         password: parsed?.password || "",
-        displayMode: displayMode,
+        displayMode: "full",
         quantityEntryUnlocked: quantityEntryMode === "unlocked"
       };
     } catch {
@@ -450,14 +445,12 @@
   }
 
   function saveSettings(values, options) {
-    const displayMode = values?.displayMode === "compact" ? "compact" : "full";
     const quantityEntryUnlocked = Boolean(values?.quantityEntryUnlocked);
     const normalizedValues = {
       shopKey: values?.shopKey || "",
       login: values?.login || "",
       password: values?.password || "",
-      displayMode: displayMode,
-      compactMode: displayMode === "compact",
+      displayMode: "full",
       quantityEntryMode: quantityEntryUnlocked ? "unlocked" : "locked"
     };
     localStorage.setItem(CONFIG.settingsStorageKey, JSON.stringify(normalizedValues));
@@ -472,43 +465,6 @@
     state.els.shopKeyInput.value = values.shopKey || "";
     state.els.loginInput.value = values.login || "";
     state.els.passwordInput.value = values.password || "";
-  }
-
-  function ensureCompactToggleButton() {
-    const existingControl = state.els?.compactToggleBtn;
-    if (!existingControl) {
-      return;
-    }
-
-    if (existingControl.tagName === "BUTTON") {
-      return;
-    }
-
-    const button = document.createElement("button");
-    button.type = "button";
-    button.id = "compactToggleBtn";
-    button.className = existingControl.className || "btn";
-    button.disabled = existingControl.disabled;
-    if (existingControl.getAttribute("style")) {
-      button.setAttribute("style", existingControl.getAttribute("style"));
-    }
-
-    existingControl.replaceWith(button);
-    state.els.compactToggleBtn = button;
-  }
-
-  function updateCompactToggleButton() {
-    if (!state.els.compactToggleBtn) {
-      return;
-    }
-
-    const isCompactMode = state.displayMode === "compact";
-    state.els.compactToggleBtn.textContent = isCompactMode ? "+" : "-";
-    state.els.compactToggleBtn.setAttribute(
-      "aria-label",
-      isCompactMode ? "Expand app sections" : "Compact app sections"
-    );
-    state.els.compactToggleBtn.title = isCompactMode ? "Show full layout" : "Show compact layout";
   }
 
   function sanitizeQuantity(value) {
@@ -661,101 +617,6 @@
     card.style.maxWidth = "";
   }
 
-  function captureFieldHomes() {
-    if (state.fieldHomesCaptured) {
-      return;
-    }
-    const keys = ["italian_name", "supplier_name", "create_time", "s_price", "real_inventory", "discount_percent", "discount_price", "disc_price_percent"];
-    state.fieldHomes = {};
-    keys.forEach(function (key) {
-      const card = getResultCard(key);
-      if (card && card.parentElement) {
-        state.fieldHomes[key] = {
-          parent: card.parentElement,
-          nextSibling: card.nextSibling
-        };
-      }
-    });
-    state.fieldHomesCaptured = true;
-  }
-
-  function restoreFieldHomes() {
-    Object.keys(state.fieldHomes || {}).forEach(function (key) {
-      const home = state.fieldHomes[key];
-      const card = getResultCard(key);
-      if (!card || !home || !home.parent) {
-        return;
-      }
-      if (home.nextSibling && home.nextSibling.parentElement === home.parent) {
-        home.parent.insertBefore(card, home.nextSibling);
-      } else {
-        home.parent.appendChild(card);
-      }
-    });
-  }
-
-  function applyCompactResultLayout() {
-    captureFieldHomes();
-
-    const layoutCards = {
-      italian_name: getResultCard("italian_name"),
-      supplier_name: getResultCard("supplier_name"),
-      create_time: getResultCard("create_time"),
-      s_price: getResultCard("s_price"),
-      real_inventory: getResultCard("real_inventory"),
-      discount_percent: getResultCard("discount_percent"),
-      discount_price: getResultCard("discount_price")
-    };
-    CONFIG.resultFields.forEach(function (key) {
-      clearResultCardLayout(getResultCard(key));
-    });
-
-    const container = state.els.compactFieldRow;
-    if (!container) {
-      return;
-    }
-
-    if (state.displayMode !== "compact") {
-      container.hidden = true;
-      container.style.display = "";
-      container.style.flexWrap = "";
-      container.style.alignItems = "";
-      container.style.gap = "";
-      restoreFieldHomes();
-      return;
-    }
-
-    container.hidden = false;
-    container.style.display = "flex";
-    container.style.flexWrap = "wrap";
-    container.style.alignItems = "stretch";
-    container.style.gap = "8px";
-
-    const compactLayout = [
-      { key: "italian_name", basis: "70%", order: 1 },
-      { key: "supplier_name", basis: "30%", order: 2 },
-      { key: "create_time", basis: "45%", order: 3 },
-      { key: "s_price", basis: "25%", order: 4 },
-      { key: "real_inventory", basis: "30%", order: 5 },
-      { key: "discount_percent", basis: "45%", order: 6 },
-      { key: "discount_price", basis: "55%", order: 7 }
-    ];
-
-    compactLayout.forEach(function (item) {
-      const card = layoutCards[item.key];
-      if (!card) {
-        return;
-      }
-
-      container.appendChild(card);
-      card.style.display = card.hidden ? "none" : "";
-      card.style.order = String(item.order);
-      card.style.flex = `0 0 calc(${item.basis} - 8px)`;
-      card.style.width = `calc(${item.basis} - 8px)`;
-      card.style.maxWidth = `calc(${item.basis} - 8px)`;
-    });
-  }
-
   function initProductInfoSlider() {
     const slider = state.els.productInfoSlider;
     const dots = state.els.productInfoDots;
@@ -801,15 +662,11 @@
     setActiveDot(0);
   }
 
-  function applyDisplayMode(mode) {
-    const nextMode = mode === "compact" ? "compact" : "full";
-    state.displayMode = nextMode;
-    document.body.classList.remove("display-mode-full", "display-mode-normal", "display-mode-compact");
-    document.body.classList.add(`display-mode-${nextMode}`);
-    document.body.classList.toggle("is-compact", nextMode === "compact");
-    updateCompactToggleButton();
+  function applyDisplayMode() {
+    state.displayMode = "full";
+    document.body.classList.remove("display-mode-full", "display-mode-normal", "display-mode-compact", "is-compact");
+    document.body.classList.add("display-mode-full");
     syncDisplayModeDiscountLayout();
-    applyCompactResultLayout();
   }
 
   function openSettingsDialog() {
@@ -2128,7 +1985,6 @@
       discIvaCard.hidden = false;
     }
     syncDisplayModeDiscountLayout();
-    applyCompactResultLayout();
   }
 
   function setLegacyDiscountVisibility(visible) {
@@ -2141,7 +1997,6 @@
       pricePercentCard.hidden = !visible;
     }
     syncDisplayModeDiscountLayout();
-    applyCompactResultLayout();
   }
 
   function normalizeProductData(rawData) {
@@ -4321,14 +4176,6 @@
 
     state.els.settingsBtn.addEventListener("click", openSettingsDialog);
     state.els.closeSettingsBtn.addEventListener("click", closeSettingsDialog);
-    state.els.compactToggleBtn.addEventListener("click", function () {
-      const nextDisplayMode = state.displayMode === "compact" ? "full" : "compact";
-      applyDisplayMode(nextDisplayMode);
-      saveSettings({
-        ...readSavedSettings(),
-        displayMode: nextDisplayMode
-      }, { silent: true });
-    });
 
     state.els.loginSettingsBtn.addEventListener("click", async function () {
       const values = {
@@ -4495,7 +4342,6 @@
 
     state.els = queryElements();
     requireElements(state.els);
-    ensureCompactToggleButton();
     state.isIOS = isIOSDevice();
     state.isMobileUi = detectMobileUi();
     state.captureContext = state.els.captureCanvas?.getContext("2d", { alpha: false }) || null;
@@ -4505,7 +4351,7 @@
     loadCookieState();
     loadHistoryState();
     fillSettingsForm(savedSettings);
-    applyDisplayMode(savedSettings.displayMode);
+    applyDisplayMode();
     setQuantityEntryMode(savedSettings.quantityEntryUnlocked);
     clearResultFields();
     renderHistory();
