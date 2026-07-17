@@ -131,6 +131,8 @@
     displayMode: "full",
     isQuantityEntryUnlocked: false,
     lockedScrollY: 0,
+    manualScrollLocked: false,
+    manualScrollLockY: 0,
     cameraStartPromise: null,
     focusRefreshTimers: [],
     iosWarmRestartDone: false,
@@ -207,6 +209,7 @@
       quantityPad: document.getElementById("quantityPad"),
       quantityPadCard: document.getElementById("quantityPadCard"),
       refreshCookieBtn: document.getElementById("refreshCookieBtn"),
+      lockScreenScrollBtn: document.getElementById("lockscreenscroll"),
       resolutionBadge: document.getElementById("resolutionBadge"),
       roiBox: document.getElementById("roiBox"),
       roiResizeHandle: document.getElementById("roiResizeHandle"),
@@ -770,6 +773,33 @@
     const restoreY = state.lockedScrollY || 0;
     state.lockedScrollY = 0;
     window.scrollTo(0, restoreY);
+  }
+
+  function updateLockScreenScrollButton() {
+    const btn = state.els?.lockScreenScrollBtn;
+    if (!btn) {
+      return;
+    }
+    btn.classList.toggle("is-on", state.manualScrollLocked);
+    btn.setAttribute("aria-pressed", state.manualScrollLocked ? "true" : "false");
+    btn.title = state.manualScrollLocked ? "Unlock screen scroll" : "Lock screen scroll";
+  }
+
+  function toggleScreenScrollLock() {
+    if (state.manualScrollLocked) {
+      state.manualScrollLocked = false;
+      document.body.classList.remove("is-scroll-locked");
+      document.body.style.top = "";
+      const restoreY = state.manualScrollLockY || 0;
+      state.manualScrollLockY = 0;
+      window.scrollTo(0, restoreY);
+    } else {
+      state.manualScrollLockY = window.scrollY || window.pageYOffset || 0;
+      document.body.style.top = `-${state.manualScrollLockY}px`;
+      document.body.classList.add("is-scroll-locked");
+      state.manualScrollLocked = true;
+    }
+    updateLockScreenScrollButton();
   }
 
   function renderCookieState() {
@@ -4232,6 +4262,10 @@
       } finally {
         state.els.refreshCookieBtn.disabled = false;
       }
+    });
+
+    state.els.lockScreenScrollBtn.addEventListener("click", function () {
+      toggleScreenScrollLock();
     });
 
     state.els.settingsDialog.addEventListener("click", function (event) {
