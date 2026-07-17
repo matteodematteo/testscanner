@@ -83,11 +83,11 @@
       z-index: 6;
       display: inline-flex;
       max-width: calc(100% - 24px);
-      padding: 6px 12px;
+      padding: 5px 10px;
       border-radius: 999px;
       background: transparent;
-      color: #fff;
-      font-size: 0.78rem;
+      color: rgba(255, 255, 255, 0.75);
+      font-size: 0.68rem;
       text-align: center;
       text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
       pointer-events: none;
@@ -97,7 +97,7 @@
       position: relative;
       margin: 6px auto 0;
       width: 100%;
-      aspect-ratio: 20 / 9;
+      aspect-ratio: 25 / 9;
       overflow: hidden;
       border-radius: var(--radius-lg);
       background:
@@ -347,18 +347,6 @@
       transform: scale(1.25);
     }
 
-    .compact-field-row {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: stretch;
-      gap: 8px;
-      margin-top: 10px;
-    }
-
-    .compact-field-row[hidden] {
-      display: none;
-    }
-
     .helper-row {
       grid-template-columns: var(--control-square-size) minmax(0, 1fr) minmax(0, 1fr) var(--control-square-size);
       align-items: stretch;
@@ -367,14 +355,8 @@
       row-gap: 0;
     }
 
-    .compact-toggle-btn {
-      width: var(--control-square-size);
-      min-width: var(--control-square-size);
-      max-width: var(--control-square-size);
-      min-height: var(--control-square-size);
-      height: var(--control-square-size);
-      padding: 0;
-      font-size: 1rem;
+    #scanBtn {
+      grid-column: 3 / -1;
     }
 
     .scan-actions {
@@ -826,19 +808,6 @@
       transform: translateX(-50%) translateY(0);
     }
 
-    body.is-compact .top-tools,
-    body.is-compact #statusText,
-    body.is-compact #productInfoTitle,
-    body.is-compact #productInfoSlider,
-    body.is-compact #productInfoDots,
-    body.is-compact #historyTitle {
-      display: none !important;
-    }
-
-    body.is-compact .field-grid {
-      grid-template-columns: repeat(20, minmax(0, 1fr));
-    }
-
     .dialog-backdrop {
       position: fixed;
       inset: 0;
@@ -1041,7 +1010,7 @@
       .field-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
       .helper-row { grid-template-columns: var(--control-square-size) minmax(0, 1fr) minmax(0, 1fr) var(--control-square-size); }
       .card { border-radius: 22px; }
-      .preview-frame { width: 100%; aspect-ratio: 2.02; }
+      .preview-frame { width: 100%; aspect-ratio: 2.525; }
       .preview-meta { top: 8px; left: 8px; right: 8px; }
       .preview-placeholder { font-size: 0.74rem; }
     }
@@ -1068,7 +1037,6 @@
       .history-qty { font-size: 0.68rem; }
       .history-name { font-size: 0.68rem; }
       .history-meta { gap: 10px; font-size: 0.68rem; }
-      .compact-toggle-btn { font-size: 0.92rem; }
       .floating-action-btn {
         top: max(12px, env(safe-area-inset-top));
         right: max(12px, env(safe-area-inset-right));
@@ -1175,7 +1143,6 @@
         </div>
         <div class="scan-actions">
           <button class="btn btn-primary" id="scanBtn" type="button" data-mode="start">Start Scanning</button>
-          <button class="btn btn-muted compact-toggle-btn" id="compactToggleBtn" type="button" aria-label="Toggle compact mode">-</button>
         </div>
       </div>
     </section>
@@ -1222,7 +1189,6 @@
         <button class="pi-dot" type="button" data-goto-slide="1" role="tab" aria-label="Page 2" aria-selected="false"></button>
         <button class="pi-dot" type="button" data-goto-slide="2" role="tab" aria-label="Page 3" aria-selected="false"></button>
       </div>
-      <div class="field-grid compact-field-row" id="compactFieldRow" hidden></div>
       <div class="visually-hidden" aria-hidden="true">
         <div class="field-card" id="field_supplier_name_compact_card" hidden><label for="field_supplier_name_compact">Supplier</label><div class="field-value" id="field_supplier_name_compact"></div></div>
         <div class="field-card" id="field_id_card" hidden><label for="field_id">ID</label><div class="field-value" id="field_id"></div></div>
