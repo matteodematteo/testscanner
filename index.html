@@ -371,6 +371,22 @@
       top: calc(max(16px, env(safe-area-inset-top)) + 50px);
     }
 
+    .floating-lock-scroll-btn {
+      top: calc(max(16px, env(safe-area-inset-top)) + 100px);
+    }
+
+    .floating-lock-scroll-btn.is-on svg {
+      color: #000;
+    }
+
+    body.is-scroll-locked {
+      position: fixed;
+      left: 0;
+      right: 0;
+      width: 100%;
+      overflow: hidden;
+    }
+
     .dialog-actions {
       grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
       margin-top: 16px;
@@ -961,6 +977,9 @@
       .floating-refresh-btn {
         top: calc(max(12px, env(safe-area-inset-top)) + 46px);
       }
+      .floating-lock-scroll-btn {
+        top: calc(max(12px, env(safe-area-inset-top)) + 92px);
+      }
       #closestSearchDialog .dialog-card,
       #historyEditDialog .dialog-card {
         width: min(calc(100% - 20px), 400px);
@@ -1063,7 +1082,7 @@
     </section>
 
     <section class="card section-card" id="productInfoSection">
-      <h2 id="productInfoTitle">Product Info</h2>
+      <h2 id="productInfoTitle"></h2>
       <div class="field-grid">
         <div class="field-card span-half" id="field_goods_code_card"><label for="field_goods_code">Goods Code</label><div class="field-value" id="field_goods_code"></div></div>
         <div class="field-card span-half" id="field_supplier_name_card"><label for="field_supplier_name">Supplier</label><div class="field-value" id="field_supplier_name"></div></div>
@@ -1103,7 +1122,7 @@
 
     <section class="card section-card">
       <div class="history-head">
-        <h2 id="historyTitle">Barcode List View</h2>
+        <h2 id="historyTitle"></h2>
       </div>
       <div class="history-actions">
         <button class="btn btn-muted" id="clearSelectedBtn" type="button" disabled>Clean Selected</button>
@@ -1139,6 +1158,14 @@
     <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
       <path d="M21 12a9 9 0 1 1-2.64-6.36"></path>
       <path d="M21 3v6h-6"></path>
+    </svg>
+  </button>
+
+  <button class="btn btn-muted floating-action-btn floating-lock-scroll-btn" id="lockscreenscroll" type="button" aria-label="Lock screen scroll" title="Lock screen scroll" aria-pressed="false">
+    <span class="visually-hidden">Lock screen scroll</span>
+    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="5" y="11" width="14" height="10" rx="2"></rect>
+      <path d="M8 11V7a4 4 0 0 1 8 0v4"></path>
     </svg>
   </button>
 
