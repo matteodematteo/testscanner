@@ -247,6 +247,86 @@
     .span-full { grid-column: 1 / -1; }
     .span-third { grid-column: span 2; }
 
+    .pi-slider {
+      margin-top: 10px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .pi-slider::-webkit-scrollbar {
+      display: none;
+    }
+
+    .pi-track {
+      display: flex;
+    }
+
+    .pi-slide {
+      flex: 0 0 100%;
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+      min-width: 100%;
+    }
+
+    .pi-row {
+      display: flex;
+      gap: 12px;
+    }
+
+    .pi-row + .pi-row {
+      margin-top: 12px;
+    }
+
+    .pi-row .field-card {
+      min-width: 0;
+    }
+
+    .pi-w-60 { width: 60%; }
+    .pi-w-40 { width: 40%; }
+    .pi-w-70 { width: 70%; }
+    .pi-w-30 { width: 30%; }
+    .pi-w-50 { width: 50%; }
+    .pi-w-33 { flex: 1 1 0; }
+
+    .pi-dots {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .pi-dot {
+      width: 8px;
+      height: 8px;
+      padding: 0;
+      border: none;
+      border-radius: 50%;
+      background: rgba(20, 28, 36, 0.18);
+      cursor: pointer;
+      transition: background 160ms ease, transform 160ms ease;
+    }
+
+    .pi-dot.is-active {
+      background: var(--accent);
+      transform: scale(1.25);
+    }
+
+    .compact-field-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: stretch;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .compact-field-row[hidden] {
+      display: none;
+    }
+
     .helper-row {
       grid-template-columns: var(--control-square-size) minmax(0, 1fr) minmax(0, 1fr) var(--control-square-size);
       align-items: stretch;
@@ -717,16 +797,8 @@
     body.is-compact .top-tools,
     body.is-compact #statusText,
     body.is-compact #productInfoTitle,
-    body.is-compact #field_goods_code_card,
-    body.is-compact #field_spec_card,
-    body.is-compact #field_id_card,
-    body.is-compact #field_p_price_card,
-    body.is-compact #field_supplier_name_compact_card,
-    body.is-compact #field_discount_price_card,
-    body.is-compact #field_disc_price_percent_card,
-    body.is-compact #field_disc_cost_card,
-    body.is-compact #field_disc_iva_card,
-    body.is-compact #field_discount_percent_card,
+    body.is-compact #productInfoSlider,
+    body.is-compact #productInfoDots,
     body.is-compact #historyTitle {
       display: none !important;
     }
@@ -1028,12 +1100,6 @@
 <body>
   <main class="app-shell">
     <section class="card">
-      <div class="controls top-tools">
-        <label id="cameraSelectWrap">
-          <span class="visually-hidden">Choose camera</span>
-          <select class="select" id="cameraSelect" disabled></select>
-        </label>
-      </div>
       <div class="top-status" id="statusText" aria-live="polite">Opening camera preview...</div>
 
       <div class="preview-frame" id="previewFrame">
@@ -1083,22 +1149,50 @@
 
     <section class="card section-card" id="productInfoSection">
       <h2 id="productInfoTitle"></h2>
-      <div class="field-grid">
-        <div class="field-card span-half" id="field_goods_code_card"><label for="field_goods_code">Goods Code</label><div class="field-value" id="field_goods_code"></div></div>
-        <div class="field-card span-half" id="field_supplier_name_card"><label for="field_supplier_name">Supplier</label><div class="field-value" id="field_supplier_name"></div></div>
-        <div class="field-card span-full" id="field_italian_name_card"><label for="field_italian_name">Italian Name</label><div class="field-value" id="field_italian_name"></div></div>
-        <div class="field-card span-half" id="field_supplier_name_compact_card" hidden><label for="field_supplier_name_compact">Supplier</label><div class="field-value" id="field_supplier_name_compact"></div></div>
-        <div class="field-card span-third" id="field_p_price_card"><label for="field_p_price">Cost</label><div class="field-value" id="field_p_price"></div></div>
-        <div class="field-card span-third" id="field_s_price_card"><label for="field_s_price">Price</label><div class="field-value" id="field_s_price"></div></div>
-        <div class="field-card span-third" id="field_real_inventory_card"><label for="field_real_inventory">Inventory</label><div class="field-value" id="field_real_inventory"></div></div>
-        <div class="field-card span-half" id="field_create_time_card"><label for="field_create_time">Saved</label><div class="field-value" id="field_create_time"></div></div>
-        <div class="field-card span-half" id="field_spec_card"><label for="field_spec">Spec</label><div class="field-value" id="field_spec"></div></div>
-        <div class="field-card span-third" id="field_disc_cost_card"><label for="field_disc_cost">Disc. Cost</label><div class="field-value is-discount" id="field_disc_cost"></div></div>
-        <div class="field-card span-third" id="field_disc_iva_card"><label for="field_disc_iva">Disc + IVA</label><div class="field-value is-discount" id="field_disc_iva"></div></div>
-        <div class="field-card span-third" id="field_discount_percent_card"><label for="field_discount_percent">Discount%</label><div class="field-value is-discount" id="field_discount_percent"></div></div>
-        <div class="field-card span-half" id="field_discount_price_card" hidden><label for="field_discount_price">Disc. Price</label><div class="field-value is-discount" id="field_discount_price"></div></div>
-        <div class="field-card span-half" id="field_disc_price_percent_card" hidden><label for="field_disc_price_percent">D. Price%</label><div class="field-value is-discount" id="field_disc_price_percent"></div></div>
-        <div class="field-card span-half" id="field_id_card" hidden><label for="field_id">ID</label><div class="field-value" id="field_id"></div></div>
+      <div class="pi-slider" id="productInfoSlider">
+        <div class="pi-track" id="productInfoTrack">
+          <div class="pi-slide" data-slide-index="0">
+            <div class="pi-row">
+              <div class="field-card pi-w-60" id="field_goods_code_card"><label for="field_goods_code">Goods Code</label><div class="field-value" id="field_goods_code"></div></div>
+              <div class="field-card pi-w-40" id="field_real_inventory_card"><label for="field_real_inventory">Inventory</label><div class="field-value" id="field_real_inventory"></div></div>
+            </div>
+            <div class="pi-row">
+              <div class="field-card pi-w-33" id="field_s_price_card"><label for="field_s_price">Price</label><div class="field-value" id="field_s_price"></div></div>
+              <div class="field-card pi-w-33" id="field_discount_price_card" hidden><label for="field_discount_price">Disc. Price</label><div class="field-value is-discount" id="field_discount_price"></div></div>
+              <div class="field-card pi-w-33" id="field_disc_price_percent_card" hidden><label for="field_disc_price_percent">D. Price%</label><div class="field-value is-discount" id="field_disc_price_percent"></div></div>
+            </div>
+          </div>
+          <div class="pi-slide" data-slide-index="1">
+            <div class="pi-row">
+              <div class="field-card pi-w-60" id="field_supplier_name_card"><label for="field_supplier_name">Supplier</label><div class="field-value" id="field_supplier_name"></div></div>
+              <div class="field-card pi-w-40" id="field_discount_percent_card"><label for="field_discount_percent">Discount%</label><div class="field-value is-discount" id="field_discount_percent"></div></div>
+            </div>
+            <div class="pi-row">
+              <div class="field-card pi-w-33" id="field_p_price_card"><label for="field_p_price">Cost</label><div class="field-value" id="field_p_price"></div></div>
+              <div class="field-card pi-w-33" id="field_disc_cost_card"><label for="field_disc_cost">Disc. Cost</label><div class="field-value is-discount" id="field_disc_cost"></div></div>
+              <div class="field-card pi-w-33" id="field_disc_iva_card"><label for="field_disc_iva">Disc + IVA</label><div class="field-value is-discount" id="field_disc_iva"></div></div>
+            </div>
+          </div>
+          <div class="pi-slide" data-slide-index="2">
+            <div class="pi-row">
+              <div class="field-card pi-w-70" id="field_italian_name_card"><label for="field_italian_name">Italian Name</label><div class="field-value" id="field_italian_name"></div></div>
+              <div class="field-card pi-w-30" id="field_spec_card"><label for="field_spec">Spec</label><div class="field-value" id="field_spec"></div></div>
+            </div>
+            <div class="pi-row">
+              <div class="field-card pi-w-50" id="field_create_time_card"><label for="field_create_time">Saved</label><div class="field-value" id="field_create_time"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pi-dots" id="productInfoDots" role="tablist" aria-label="Product info pages">
+        <button class="pi-dot" type="button" data-goto-slide="0" role="tab" aria-label="Page 1" aria-selected="true"></button>
+        <button class="pi-dot" type="button" data-goto-slide="1" role="tab" aria-label="Page 2" aria-selected="false"></button>
+        <button class="pi-dot" type="button" data-goto-slide="2" role="tab" aria-label="Page 3" aria-selected="false"></button>
+      </div>
+      <div class="field-grid compact-field-row" id="compactFieldRow" hidden></div>
+      <div class="visually-hidden" aria-hidden="true">
+        <div class="field-card" id="field_supplier_name_compact_card" hidden><label for="field_supplier_name_compact">Supplier</label><div class="field-value" id="field_supplier_name_compact"></div></div>
+        <div class="field-card" id="field_id_card" hidden><label for="field_id">ID</label><div class="field-value" id="field_id"></div></div>
       </div>
     </section>
 
@@ -1181,6 +1275,10 @@
       <h2 id="settingsDialogTitle">Settings</h2>
       <p>Save your credentials on this device. The app can reuse them to refresh the cookie automatically before product requests.</p>
       <div class="field-list">
+        <label id="cameraSelectWrap">
+          <span class="visually-hidden">Choose camera</span>
+          <select class="select" id="cameraSelect" disabled></select>
+        </label>
         <label>
           <span class="visually-hidden">Shop key</span>
           <input class="input" id="shopKeyInput" type="text" autocomplete="off" placeholder="Shop key" />
