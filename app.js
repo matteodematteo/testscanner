@@ -16,6 +16,7 @@
     historyStorageKey: "web_barcode_scanner_history",
     cameraStorageKey: "web_barcode_scanner_camera",
     roiStorageKey: "web_barcode_scanner_roi",
+    productInfoSlideStorageKey: "web_barcode_scanner_pi_slide",
     scanIntervalMs: 240,
     mobileScanIntervalMs: 170,
     iosScanIntervalMs: 130,
@@ -617,6 +618,24 @@
     card.style.maxWidth = "";
   }
 
+  function loadProductInfoSlideIndex() {
+    try {
+      const raw = localStorage.getItem(CONFIG.productInfoSlideStorageKey);
+      const index = Number(raw);
+      return Number.isInteger(index) && index >= 0 ? index : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  function saveProductInfoSlideIndex(index) {
+    try {
+      localStorage.setItem(CONFIG.productInfoSlideStorageKey, String(index));
+    } catch {
+      // Ignore storage failures (e.g. private browsing quota).
+    }
+  }
+
   function initProductInfoSlider() {
     const slider = state.els.productInfoSlider;
     const dots = state.els.productInfoDots;
@@ -634,9 +653,9 @@
       });
     }
 
-    function goToSlide(index) {
+    function goToSlide(index, behavior) {
       const width = slider.clientWidth;
-      slider.scrollTo({ left: width * index, behavior: "smooth" });
+      slider.scrollTo({ left: width * index, behavior: behavior || "smooth" });
     }
 
     dotButtons.forEach(function (dot) {
@@ -644,6 +663,7 @@
         const index = Number(dot.dataset.gotoSlide || 0);
         goToSlide(index);
         setActiveDot(index);
+        saveProductInfoSlideIndex(index);
       });
     });
 
@@ -654,12 +674,19 @@
       }
       scrollTimer = window.setTimeout(function () {
         const width = slider.clientWidth || 1;
-        const index = Math.round(slider.scrollLeft / width);
-        setActiveDot(Math.min(dotButtons.length - 1, Math.max(0, index)));
+        const index = Math.min(dotButtons.length - 1, Math.max(0, Math.round(slider.scrollLeft / width)));
+        setActiveDot(index);
+        saveProductInfoSlideIndex(index);
       }, 80);
     }, { passive: true });
 
-    setActiveDot(0);
+    const savedIndex = Math.min(dotButtons.length - 1, Math.max(0, loadProductInfoSlideIndex()));
+    setActiveDot(savedIndex);
+    if (savedIndex > 0) {
+      window.requestAnimationFrame(function () {
+        goToSlide(savedIndex, "auto");
+      });
+    }
   }
 
   function applyDisplayMode() {
@@ -790,7 +817,8 @@
 
       const meta = document.createElement("div");
       meta.className = "history-meta";
-      meta.innerHTML = `<span>Cost: ${escapeHtml(formatPrice(item.p_price) || "-")}</span><span>Price: ${escapeHtml(getHistoryDisplayPrice(item))}</span>`;
+      const priceClass = isHistoryPriceDiscounted(item) ? "history-price is-discount" : "history-price";
+      meta.innerHTML = `<span>Cost: ${escapeHtml(formatPrice(item.p_price) || "-")}</span><span>Price: <span class="${priceClass}">${escapeHtml(getHistoryDisplayPrice(item))}</span></span>`;
 
       const footer = document.createElement("div");
       footer.className = "history-footer";
@@ -2085,6 +2113,13 @@
     return String(value || "")
       .trim()
       .replace(/,/g, ".");
+  }
+
+  function isHistoryPriceDiscounted(item) {
+    const entry = normalizeHistoryItem(item);
+    const sPrice = numberFromValue(entry.s_price);
+    const discountPrice = numberFromValue(entry.discount_price);
+    return Boolean(entry.has_discount && discountPrice > 0 && (!sPrice || discountPrice < sPrice));
   }
 
   function getHistoryDisplayPrice(item) {
