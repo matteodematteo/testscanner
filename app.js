@@ -2655,7 +2655,8 @@
   function setPreviewActive(active) {
     state.els.previewPlaceholder.hidden = active;
     state.els.previewPlaceholder.style.display = active ? "none" : "grid";
-    state.els.cameraBadge.textContent = active ? "Live preview" : "Preview off";
+    state.els.cameraBadge.textContent = active ? "" : "Preview off";
+    state.els.cameraBadge.hidden = active;
   }
 
   function updateScanButton() {
