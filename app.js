@@ -738,6 +738,11 @@
     btn.classList.toggle("is-on", state.manualScrollLocked);
     btn.setAttribute("aria-pressed", state.manualScrollLocked ? "true" : "false");
     btn.title = state.manualScrollLocked ? "Unlock screen scroll" : "Lock screen scroll";
+
+    const historyList = state.els?.historyList;
+    if (historyList) {
+      historyList.classList.toggle("is-locked-scroll", state.manualScrollLocked);
+    }
   }
 
   function toggleScreenScrollLock() {
