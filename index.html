@@ -63,7 +63,7 @@
       backdrop-filter: blur(14px);
     }
 
-    .card { padding: 8px 12px 12px; }
+    .card { padding: 4px 6px 6px; }
 
     h2 {
       margin: 0;
@@ -97,7 +97,7 @@
       position: relative;
       margin: 6px auto 0;
       width: 100%;
-      aspect-ratio: 25 / 9;
+      aspect-ratio: 16 / 9;
       overflow: hidden;
       border-radius: var(--radius-lg);
       background:
@@ -571,7 +571,7 @@
     }
 
     .field-card {
-      padding: 9px 10px;
+      padding: 4.5px 5px;
       border-radius: var(--radius-md);
       background: rgba(255, 255, 255, 0.68);
       border: 1px solid rgba(20, 28, 36, 0.08);
@@ -620,7 +620,7 @@
 
     .qty-pad-card {
       margin-top: 10px;
-      padding: 10px;
+      padding: 5px;
     }
 
     .qty-pad-grid {
@@ -664,19 +664,15 @@
     }
 
     .history-actions .btn {
-      min-height: calc(var(--control-square-size) / 2);
-      padding: 0 6px;
-      font-size: 0.7rem;
       border-radius: 6px;
     }
 
     .history-actions .mini-pill {
       display: grid;
       place-items: center;
-      min-height: calc(var(--control-square-size) / 2);
-      padding: 0 6px;
+      min-height: 42px;
+      padding: 0 10px;
       font-weight: 700;
-      font-size: 0.7rem;
       white-space: nowrap;
       border-radius: 6px;
     }
@@ -838,7 +834,7 @@
 
     .dialog-card {
       width: min(100%, 400px);
-      padding: 14px;
+      padding: 7px;
     }
 
     .dialog-card p {
@@ -1025,7 +1021,7 @@
       .field-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
       .helper-row { grid-template-columns: var(--control-square-size) minmax(0, 1fr) minmax(0, 1fr) var(--control-square-size); }
       .card { border-radius: 22px; }
-      .preview-frame { width: 100%; aspect-ratio: 2.525; }
+      .preview-frame { width: 100%; aspect-ratio: 1.616; }
       .preview-meta { top: 8px; left: 8px; right: 8px; }
       .preview-placeholder { font-size: 0.74rem; }
     }
@@ -1045,7 +1041,7 @@
       .select { min-height: var(--control-square-size); }
       .btn { font-size: 0.74rem; padding: 0 8px; }
       .field-grid { gap: 8px; }
-      .field-card { padding: 8px; }
+      .field-card { padding: 4px; }
       .field-value { font-size: 0.74rem; }
       .history-actions { gap: 8px; }
       .history-primary { font-size: 0.88rem; }
