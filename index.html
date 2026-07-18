@@ -266,6 +266,14 @@
     .controls { margin-top: 10px; }
     .controls.top-tools { margin-top: 2px; }
 
+    .history-list.is-locked-scroll {
+      max-height: 55vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      padding-right: 4px;
+    }
+
     .top-tools { grid-template-columns: 1fr; }
     .button-row { grid-template-columns: 1fr; }
     .lookup-row { grid-template-columns: minmax(0, 1fr) 88px 88px; }
@@ -571,7 +579,7 @@
     }
 
     .field-card {
-      padding: 4.5px 5px;
+      padding: 4.5px 8px;
       border-radius: var(--radius-md);
       background: rgba(255, 255, 255, 0.68);
       border: 1px solid rgba(20, 28, 36, 0.08);
@@ -1041,7 +1049,7 @@
       .select { min-height: var(--control-square-size); }
       .btn { font-size: 0.74rem; padding: 0 8px; }
       .field-grid { gap: 8px; }
-      .field-card { padding: 4px; }
+      .field-card { padding: 4px 6px; }
       .field-value { font-size: 0.74rem; }
       .history-actions { gap: 8px; }
       .history-primary { font-size: 0.88rem; }
