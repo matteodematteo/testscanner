@@ -97,7 +97,7 @@
       position: relative;
       margin: 6px auto 0;
       width: 100%;
-      aspect-ratio: 16 / 9;
+      aspect-ratio: 20 / 9;
       overflow: hidden;
       border-radius: var(--radius-lg);
       background:
@@ -664,7 +664,7 @@
     }
 
     .history-actions .btn {
-      border-radius: 6px;
+      border-radius: var(--radius-lg);
     }
 
     .history-actions .mini-pill {
@@ -674,7 +674,7 @@
       padding: 0 10px;
       font-weight: 700;
       white-space: nowrap;
-      border-radius: 6px;
+      border-radius: var(--radius-lg);
     }
 
     .history-empty {
@@ -1021,7 +1021,7 @@
       .field-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
       .helper-row { grid-template-columns: var(--control-square-size) minmax(0, 1fr) minmax(0, 1fr) var(--control-square-size); }
       .card { border-radius: 22px; }
-      .preview-frame { width: 100%; aspect-ratio: 1.616; }
+      .preview-frame { width: 100%; aspect-ratio: 2.02; }
       .preview-meta { top: 8px; left: 8px; right: 8px; }
       .preview-placeholder { font-size: 0.74rem; }
     }
@@ -1229,8 +1229,8 @@
         <h2 id="historyTitle"></h2>
       </div>
       <div class="history-actions">
-        <button class="btn btn-muted" id="clearSelectedBtn" type="button" disabled title="Clean Selected">Clr. Sel.</button>
-        <button class="btn btn-muted" id="clearAllBtn" type="button" title="Clean All">Clr. All</button>
+        <button class="btn btn-muted" id="clearSelectedBtn" type="button" disabled>Clean Selected</button>
+        <button class="btn btn-muted" id="clearAllBtn" type="button">Clean All</button>
         <div class="mini-pill" id="historyCountBadge" aria-live="polite">Count: 0</div>
         <button class="btn btn-primary" id="printBtn" type="button">Print</button>
       </div>
