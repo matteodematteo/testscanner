@@ -280,7 +280,6 @@
 
     .input-mode-switch {
       display: flex;
-      margin-top: 8px;
       padding: 3px;
       border-radius: 999px;
       background: rgba(20, 28, 36, 0.06);
@@ -1181,10 +1180,6 @@
           <button class="btn btn-muted" id="searchBarcodeBtn" type="button">Search</button>
           <button class="btn btn-muted" id="clearBarcodeBtn" type="button">Clear</button>
         </div>
-        <div class="input-mode-switch" id="inputModeSwitch" role="group" aria-label="Input mode">
-          <button class="input-mode-option" type="button" data-input-mode="phone" aria-pressed="true">Phone</button>
-          <button class="input-mode-option" type="button" data-input-mode="scanner" aria-pressed="false">Scanner</button>
-        </div>
       </div>
 
       <div class="helper-row">
@@ -1335,6 +1330,10 @@
           <span class="visually-hidden">Choose camera</span>
           <select class="select" id="cameraSelect" disabled></select>
         </label>
+        <div class="input-mode-switch" id="inputModeSwitch" role="group" aria-label="Input mode">
+          <button class="input-mode-option" type="button" data-input-mode="phone" aria-pressed="true">Phone</button>
+          <button class="input-mode-option" type="button" data-input-mode="scanner" aria-pressed="false">Scanner</button>
+        </div>
         <label>
           <span class="visually-hidden">Shop key</span>
           <input class="input" id="shopKeyInput" type="text" autocomplete="off" placeholder="Shop key" />
