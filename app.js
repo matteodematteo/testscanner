@@ -17,6 +17,7 @@
     cameraStorageKey: "web_barcode_scanner_camera",
     roiStorageKey: "web_barcode_scanner_roi",
     productInfoSlideStorageKey: "web_barcode_scanner_pi_slide",
+    inputModeStorageKey: "web_barcode_scanner_input_mode",
     scanIntervalMs: 240,
     mobileScanIntervalMs: 170,
     iosScanIntervalMs: 130,
@@ -133,6 +134,7 @@
     isQuantityEntryUnlocked: false,
     lockedScrollY: 0,
     pendingApiRequests: 0,
+    inputMode: "phone",
     manualScrollLocked: false,
     manualScrollLockY: 0,
     cameraStartPromise: null,
@@ -215,6 +217,7 @@
       quantityPadCard: document.getElementById("quantityPadCard"),
       refreshCookieBtn: document.getElementById("refreshCookieBtn"),
       lockScreenScrollBtn: document.getElementById("lockscreenscroll"),
+      inputModeSwitch: document.getElementById("inputModeSwitch"),
       resolutionBadge: document.getElementById("resolutionBadge"),
       roiBox: document.getElementById("roiBox"),
       roiResizeHandle: document.getElementById("roiResizeHandle"),
@@ -694,6 +697,84 @@
     document.body.classList.remove("display-mode-full", "display-mode-normal", "display-mode-compact", "is-compact");
     document.body.classList.add("display-mode-full");
     syncDisplayModeDiscountLayout();
+  }
+
+  function loadInputMode() {
+    try {
+      const saved = localStorage.getItem(CONFIG.inputModeStorageKey);
+      return saved === "scanner" ? "scanner" : "phone";
+    } catch {
+      return "phone";
+    }
+  }
+
+  function saveInputMode(mode) {
+    try {
+      localStorage.setItem(CONFIG.inputModeStorageKey, mode);
+    } catch {
+      // Ignore storage failures (e.g. private browsing quota).
+    }
+  }
+
+  function updateInputModeSwitchUi() {
+    const switchEl = state.els?.inputModeSwitch;
+    if (!switchEl) {
+      return;
+    }
+    switchEl.querySelectorAll(".input-mode-option").forEach(function (btn) {
+      const isActive = btn.dataset.inputMode === state.inputMode;
+      btn.setAttribute("aria-pressed", isActive ? "true" : "false");
+    });
+  }
+
+  async function setInputMode(mode, options) {
+    const nextMode = mode === "scanner" ? "scanner" : "phone";
+    const changed = nextMode !== state.inputMode;
+    state.inputMode = nextMode;
+    document.body.classList.toggle("mode-scanner", nextMode === "scanner");
+    updateInputModeSwitchUi();
+
+    if (state.els?.barcodeInput) {
+      state.els.barcodeInput.inputMode = nextMode === "scanner" ? "none" : "numeric";
+    }
+
+    if (!(options && options.silent)) {
+      saveInputMode(nextMode);
+    }
+
+    if (!changed) {
+      return;
+    }
+
+    if (nextMode === "scanner") {
+      stopScanning(true);
+      try {
+        await stopTracks();
+      } catch {
+        // Ignore camera teardown errors when switching to scanner mode.
+      }
+      setStatus("Scanner mode: camera off, use an external scanner");
+    } else {
+      setStatus("Phone mode: camera preview back on");
+      try {
+        await startCamera(state.activeDeviceId);
+      } catch (error) {
+        setStatus(error.message || "Could not restart the camera");
+      }
+    }
+
+    moveFocusToInput(state.els.barcodeInput);
+  }
+
+  function isAnyDialogOpen() {
+    const els = state.els;
+    return Boolean(
+      els?.settingsDialog?.classList.contains("is-open") ||
+      els?.confirmDialog?.classList.contains("is-open") ||
+      els?.printDialog?.classList.contains("is-open") ||
+      els?.closestSearchDialog?.classList.contains("is-open") ||
+      els?.historyEditDialog?.classList.contains("is-open")
+    );
   }
 
   function openSettingsDialog() {
@@ -4153,21 +4234,30 @@
         return;
       }
       await handleBarcodeLookup();
-      window.setTimeout(function () {
-        state.els.barcodeInput.blur();
-      }, 0);
+      state.els.barcodeInput.value = "";
+      moveFocusToInput(state.els.barcodeInput);
     });
 
     state.els.barcodeInput.addEventListener("keyup", function (event) {
       if (event.key !== "Enter") return;
       event.preventDefault();
       event.stopPropagation();
-      if (state.isQuantityEntryUnlocked) {
-        return;
-      }
+    });
+
+    state.els.barcodeInput.addEventListener("blur", function () {
       window.setTimeout(function () {
-        state.els.barcodeInput.blur();
-      }, 0);
+        if (isAnyDialogOpen()) {
+          return;
+        }
+        const active = document.activeElement;
+        if (active && active !== document.body && active !== state.els.barcodeInput) {
+          const tag = active.tagName;
+          if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || active.isContentEditable) {
+            return;
+          }
+        }
+        moveFocusToInput(state.els.barcodeInput);
+      }, 30);
     });
 
     state.els.entryModeBtn.addEventListener("click", function () {
@@ -4254,6 +4344,16 @@
 
     state.els.lockScreenScrollBtn.addEventListener("click", function () {
       toggleScreenScrollLock();
+    });
+
+    state.els.inputModeSwitch.addEventListener("click", function (event) {
+      const btn = event.target.closest(".input-mode-option");
+      if (!btn) {
+        return;
+      }
+      setInputMode(btn.dataset.inputMode).catch(function (error) {
+        setStatus(error.message || "Could not switch input mode");
+      });
     });
 
     state.els.settingsDialog.addEventListener("click", function (event) {
@@ -4403,10 +4503,21 @@
     initRoiResize();
     initProductInfoSlider();
 
+    state.inputMode = loadInputMode();
+    document.body.classList.toggle("mode-scanner", state.inputMode === "scanner");
+    state.els.barcodeInput.inputMode = state.inputMode === "scanner" ? "none" : "numeric";
+    updateInputModeSwitchUi();
+
     loginAndRefreshCookie(savedSettings).catch(function (error) {
       const message = error.message || "Cookie refresh failed.";
       saveCookieState("", `Cookie refresh failed: ${message}`);
     });
+
+    if (state.inputMode === "scanner") {
+      setStatus("Scanner mode: use an external scanner");
+      moveFocusToInput(state.els.barcodeInput);
+      return;
+    }
 
     const hardwareIssue = getCameraHardwareIssue();
     if (hardwareIssue) {
