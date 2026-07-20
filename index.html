@@ -278,6 +278,40 @@
     .button-row { grid-template-columns: 1fr; }
     .lookup-row { grid-template-columns: minmax(0, 1fr) 88px 88px; }
 
+    .input-mode-switch {
+      display: flex;
+      margin-top: 8px;
+      padding: 3px;
+      border-radius: 999px;
+      background: rgba(20, 28, 36, 0.06);
+      gap: 3px;
+    }
+
+    .input-mode-option {
+      flex: 1;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 0.76rem;
+      padding: 7px 0;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 150ms ease, color 150ms ease;
+    }
+
+    .input-mode-option[aria-pressed="true"] {
+      background: var(--panel);
+      color: var(--text);
+      box-shadow: 0 1px 4px rgba(18, 24, 31, 0.16);
+    }
+
+    body.mode-scanner .preview-frame,
+    body.mode-scanner .scan-actions,
+    body.mode-scanner #torchBtn {
+      display: none !important;
+    }
+
     .field-grid {
       grid-template-columns: repeat(6, minmax(0, 1fr));
       margin-top: 10px;
@@ -1146,6 +1180,10 @@
           <input class="input" id="barcodeInput" type="text" inputmode="numeric" autocomplete="off" placeholder="Barcode value" value="" />
           <button class="btn btn-muted" id="searchBarcodeBtn" type="button">Search</button>
           <button class="btn btn-muted" id="clearBarcodeBtn" type="button">Clear</button>
+        </div>
+        <div class="input-mode-switch" id="inputModeSwitch" role="group" aria-label="Input mode">
+          <button class="input-mode-option" type="button" data-input-mode="phone" aria-pressed="true">Phone</button>
+          <button class="input-mode-option" type="button" data-input-mode="scanner" aria-pressed="false">Scanner</button>
         </div>
       </div>
 
