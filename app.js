@@ -4233,9 +4233,17 @@
         selectEntireInputValue({ target: state.els.quantityInput });
         return;
       }
-      await handleBarcodeLookup();
+
+      const code = String(state.els.barcodeInput.value || "").trim();
+      if (!code) {
+        setStatus("Type or scan a barcode first");
+        return;
+      }
       state.els.barcodeInput.value = "";
       moveFocusToInput(state.els.barcodeInput);
+      fetchProductInfo(code).catch(function (error) {
+        setStatus(error.message || "Could not load product info");
+      });
     });
 
     state.els.barcodeInput.addEventListener("keyup", function (event) {
