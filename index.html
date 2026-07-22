@@ -1,1459 +1,1002 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#131a22" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Web Scanner" />
-  <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
-  <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
-  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
-  <title>Web Barcode Scanner</title>
-  <style>
-    :root {
-      --bg: #f3efe7;
-      --panel: rgba(255, 252, 247, 0.93);
-      --panel-line: rgba(20, 28, 36, 0.1);
-      --text: #18212a;
-      --muted: #667483;
-      --accent: #bf5a31;
-      --accent-strong: #a34a26;
-      --surface: #0f161e;
-      --success: #136f63;
-      --danger: #9c3041;
-      --shadow: 0 22px 50px rgba(18, 24, 31, 0.14);
-      --radius-xl: 22px;
-      --radius-lg: 18px;
-      --radius-md: 12px;
-      --radius-sm: 10px;
-      --font: "Aptos", "Segoe UI", sans-serif;
-      --control-square-size: 42px;
-    }
-
-    * { box-sizing: border-box; }
-
-    html,
-    body { min-height: 100%; }
-
-    body {
-      margin: 0;
-      color: var(--text);
-      font-family: var(--font);
-      background:
-        radial-gradient(circle at top left, rgba(191, 90, 49, 0.18), transparent 28%),
-        radial-gradient(circle at top right, rgba(19, 111, 99, 0.14), transparent 24%),
-        linear-gradient(180deg, #fbf8f2 0%, var(--bg) 100%);
-    }
-
-    .app-shell {
-      width: min(820px, calc(100% - 24px));
-      margin: 0 auto;
-      padding: max(6px, env(safe-area-inset-top)) 0 max(16px, env(safe-area-inset-bottom));
-    }
-
-    .card,
-    .dialog-card {
-      background: var(--panel);
-      border: 1px solid var(--panel-line);
-      border-radius: var(--radius-xl);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(14px);
-    }
-
-    .card { padding: 4px 6px 6px; }
-
-    h2 {
-      margin: 0;
-      letter-spacing: -0.04em;
-    }
-
-    h2 {
-      font-size: 0.96rem;
-      line-height: 1.1;
-    }
-
-    .top-status {
-      position: absolute;
-      top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 6;
-      display: inline-flex;
-      max-width: calc(100% - 24px);
-      padding: 5px 10px;
-      border-radius: 999px;
-      background: transparent;
-      color: rgba(255, 255, 255, 0.75);
-      font-size: 0.68rem;
-      text-align: center;
-      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
-      pointer-events: none;
-    }
-
-    .preview-frame {
-      position: relative;
-      margin: 6px auto 0;
-      width: 100%;
-      aspect-ratio: 20 / 9;
-      overflow: hidden;
-      border-radius: var(--radius-lg);
-      background:
-        linear-gradient(180deg, rgba(6, 10, 14, 0.12), rgba(6, 10, 14, 0.45)),
-        var(--surface);
-    }
-
-    #cameraPreview,
-    #cameraPreviewQuagga,
-    .preview-placeholder,
-    .preview-grid,
-    .scan-line {
-      position: absolute;
-      inset: 0;
-    }
-
-    #cameraPreview,
-    #cameraPreviewQuagga {
-      width: 100%;
-      height: 100%;
-      display: block;
-      background: #05080b;
-    }
-
-    #cameraPreviewQuagga[hidden] {
-      display: none !important;
-    }
-
-    #cameraPreview,
-    #cameraPreviewQuagga video,
-    #cameraPreviewQuagga canvas {
-      width: 100% !important;
-      height: 100% !important;
-      object-fit: cover;
-      display: block;
-    }
-
-    .preview-grid {
-      pointer-events: none;
-      background:
-        linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
-      background-size: 22% 22%;
-      mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.72), transparent 85%);
-    }
-
-    .scan-window {
-      position: absolute;
-      border: 2px solid rgba(255, 255, 255, 0.92);
-      border-radius: 24px;
-      box-shadow: 0 0 0 999px rgba(6, 10, 14, 0.24);
-      pointer-events: none;
-      touch-action: none;
-    }
-
-    .roi-handle {
-      position: absolute;
-      right: -16px;
-      bottom: -16px;
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.96);
-      border: 3px solid rgba(6, 10, 14, 0.55);
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
-      touch-action: none;
-      cursor: nwse-resize;
-      pointer-events: auto;
-    }
-
-    .scan-line {
-      top: 14%;
-      bottom: auto;
-      height: 3px;
-      left: 14%;
-      right: 14%;
-      border-radius: 999px;
-      background: linear-gradient(90deg, transparent, rgba(255, 175, 141, 0.96), transparent);
-      box-shadow: 0 0 18px rgba(255, 146, 92, 0.95);
-      opacity: 0;
-      transform: translateY(0);
-    }
-
-    .preview-frame.is-scanning .scan-line {
-      opacity: 1;
-      animation: scanMove 1.8s linear infinite;
-    }
-
-    @keyframes scanMove {
-      0% { transform: translateY(0); }
-      50% { transform: translateY(56vw); }
-      100% { transform: translateY(0); }
-    }
-
-    .preview-placeholder {
-      display: grid;
-      place-items: center;
-      padding: 16px;
-      text-align: center;
-      color: rgba(255, 255, 255, 0.9);
-      background: linear-gradient(180deg, rgba(10, 16, 22, 0.16), rgba(10, 16, 22, 0.78));
-      font-size: 0.82rem;
-    }
-
-    .preview-placeholder[hidden] { display: none; }
-
-    .preview-meta {
-      position: absolute;
-      top: 14px;
-      left: 14px;
-      right: 14px;
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      pointer-events: none;
-    }
-
-    .api-loader {
-      position: absolute;
-      left: 14px;
-      bottom: 14px;
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      border: 3px solid rgba(255, 255, 255, 0.28);
-      border-top-color: #fff;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 160ms ease;
-      z-index: 6;
-    }
-
-    .api-loader.is-visible {
-      opacity: 1;
-      animation: api-loader-spin 700ms linear infinite;
-    }
-
-    @keyframes api-loader-spin {
-      to { transform: rotate(360deg); }
-    }
-
-    .badge,
-    .mini-pill {
-      padding: 5px 9px;
-      border-radius: 999px;
-      font-size: 0.72rem;
-    }
-
-    .badge {
-      background: rgba(8, 12, 16, 0.58);
-      color: #fff;
-      backdrop-filter: blur(12px);
-    }
-
-    .controls,
-    .lookup-row,
-    .field-grid,
-    .helper-row,
-    .dialog-actions,
-    .field-list,
-    .history-list {
-      display: grid;
-      gap: 12px;
-    }
-
-    .controls { margin-top: 10px; }
-    .controls.top-tools { margin-top: 2px; }
-
-    .history-list.is-locked-scroll {
-      max-height: 55vh;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior: contain;
-      padding-right: 4px;
-    }
-
-    .top-tools { grid-template-columns: 1fr; }
-    .button-row { grid-template-columns: 1fr; }
-    .lookup-row { grid-template-columns: minmax(0, 1fr) 88px 88px; }
-
-    .input-mode-switch {
-      display: flex;
-      padding: 3px;
-      border-radius: 999px;
-      background: rgba(20, 28, 36, 0.06);
-      gap: 3px;
-    }
-
-    .input-mode-option {
-      flex: 1;
-      border: none;
-      background: transparent;
-      color: var(--muted);
-      font-weight: 700;
-      font-size: 0.76rem;
-      padding: 7px 0;
-      border-radius: 999px;
-      cursor: pointer;
-      transition: background 150ms ease, color 150ms ease;
-    }
-
-    .input-mode-option[aria-pressed="true"] {
-      background: var(--panel);
-      color: var(--text);
-      box-shadow: 0 1px 4px rgba(18, 24, 31, 0.16);
-    }
-
-    body.mode-scanner .preview-frame,
-    body.mode-scanner .scan-actions,
-    body.mode-scanner #torchBtn {
-      display: none !important;
-    }
-
-    .field-grid {
-      grid-template-columns: repeat(6, minmax(0, 1fr));
-      margin-top: 10px;
-    }
-
-    .span-half { grid-column: span 3; }
-    .span-full { grid-column: 1 / -1; }
-    .span-third { grid-column: span 2; }
-
-    .pi-slider {
-      margin-top: 10px;
-      overflow-x: auto;
-      overflow-y: hidden;
-      scroll-snap-type: x mandatory;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;
-    }
-
-    .pi-slider::-webkit-scrollbar {
-      display: none;
-    }
-
-    .pi-track {
-      display: flex;
-    }
-
-    .pi-slide {
-      flex: 0 0 100%;
-      scroll-snap-align: start;
-      scroll-snap-stop: always;
-      min-width: 100%;
-    }
-
-    .pi-row {
-      display: flex;
-      gap: 12px;
-    }
-
-    .pi-row + .pi-row {
-      margin-top: 12px;
-    }
-
-    .pi-row .field-card {
-      min-width: 0;
-    }
-
-    .pi-w-60 { width: 60%; }
-    .pi-w-40 { width: 40%; }
-    .pi-w-70 { width: 70%; }
-    .pi-w-30 { width: 30%; }
-    .pi-w-50 { width: 50%; }
-    .pi-w-33 { flex: 1 1 0; }
-
-    .pi-dots {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 5px;
-      margin-top: 4px;
-      line-height: 0;
-    }
-
-    .pi-dot {
-      width: 5px;
-      height: 5px;
-      padding: 0;
-      border: none;
-      border-radius: 50%;
-      background: rgba(20, 28, 36, 0.18);
-      cursor: pointer;
-      transition: background 160ms ease, transform 160ms ease;
-    }
-
-    .pi-dot.is-active {
-      background: var(--accent);
-      transform: scale(1.25);
-    }
-
-    .helper-row {
-      grid-template-columns: var(--control-square-size) minmax(0, 1fr) minmax(0, 1fr) var(--control-square-size);
-      align-items: stretch;
-      margin-top: 8px;
-      column-gap: 8px;
-      row-gap: 0;
-    }
-
-    #scanBtn {
-      grid-column: 3 / -1;
-    }
-
-    .scan-actions {
-      display: contents;
-    }
-
-    .manual-entry-group {
-      display: contents;
-    }
-
-    .manual-entry-group > * {
-      min-width: 0;
-    }
-
-    .manual-entry-lock,
-    .manual-entry-qty,
-    .manual-entry-add {
-      position: relative;
-      z-index: 0;
-    }
-
-    .manual-entry-lock {
-      border-top-right-radius: 0;
-      border-bottom-right-radius: 0;
-      padding: 0;
-      display: grid;
-      place-items: center;
-      width: var(--control-square-size);
-      min-width: var(--control-square-size);
-      max-width: var(--control-square-size);
-      min-height: var(--control-square-size);
-      height: var(--control-square-size);
-    }
-
-    .manual-entry-lock svg {
-      width: 18px;
-      height: 18px;
-    }
-
-    .manual-entry-qty {
-      border-top-right-radius: var(--radius-md);
-      border-bottom-right-radius: var(--radius-md);
-      border-top-left-radius: 0;
-      border-bottom-left-radius: 0;
-      border-left: 0;
-      text-align: center;
-      font-weight: 700;
-      min-height: var(--control-square-size);
-    }
-
-    .manual-entry-qty.is-locked {
-      opacity: 1;
-      background: rgba(246, 240, 231, 0.96);
-      color: var(--text);
-      pointer-events: none;
-    }
-
-    .manual-entry-add {
-      display: none;
-    }
-
-    .floating-action-btn {
-      position: fixed;
-      top: max(16px, env(safe-area-inset-top));
-      right: max(16px, env(safe-area-inset-right));
-      z-index: 18;
-      width: 42px;
-      min-width: 42px;
-      height: 42px;
-      max-width: 42px;
-      padding: 0;
-      border-radius: 999px;
-      display: grid;
-      place-items: center;
-      flex: 0 0 42px;
-      background: #101720;
-      border: 1px solid #101720;
-      box-shadow: 0 14px 28px rgba(17, 24, 31, 0.18);
-      backdrop-filter: blur(10px);
-      transition: box-shadow 150ms ease;
-    }
-
-    .btn.floating-action-btn {
-      width: 42px;
-      min-height: 42px;
-      border-radius: 999px;
-    }
-
-    .floating-action-btn:disabled {
-      opacity: 0.88;
-    }
-
-    .floating-action-btn svg {
-      width: 18px;
-      height: 18px;
-      color: #c8ced5;
-      transition: color 150ms ease;
-    }
-
-    .floating-action-btn.is-on svg,
-    .floating-action-btn.torch-on svg {
-      color: #000;
-    }
-
-    .floating-refresh-btn {
-      top: calc(max(16px, env(safe-area-inset-top)) + 50px);
-    }
-
-    .floating-lock-scroll-btn {
-      top: calc(max(16px, env(safe-area-inset-top)) + 100px);
-    }
-
-    .floating-lock-scroll-btn.is-on svg {
-      color: #000;
-    }
-
-    body.is-scroll-locked {
-      position: fixed;
-      left: 0;
-      right: 0;
-      width: 100%;
-      overflow: hidden;
-    }
-
-    .dialog-actions {
-      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-      margin-top: 16px;
-    }
-
-    button,
-    select,
-    input,
-    textarea {
-      font: inherit;
-      touch-action: manipulation;
-    }
-
-    .btn,
-    .input,
-    .select {
-      min-height: var(--control-square-size);
-      border-radius: var(--radius-md);
-      border: 1px solid transparent;
-      width: 100%;
-    }
-
-    .btn {
-      cursor: pointer;
-      padding: 0 10px;
-      font-weight: 700;
-      transition: transform 150ms ease, opacity 150ms ease;
-      font-size: 0.82rem;
-    }
-
-    .btn:hover { transform: translateY(-1px); }
-    .btn:disabled,
-    .input:disabled,
-    .select:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
-
-    .btn-primary {
-      color: #fff7f2;
-      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-      box-shadow: 0 16px 28px rgba(191, 90, 49, 0.22);
-    }
-
-    .btn-primary[data-mode="stop"] {
-      background: linear-gradient(135deg, #7d2431, #9f3343);
-      box-shadow: 0 16px 28px rgba(125, 36, 49, 0.18);
-    }
-
-    .btn-muted,
-    .select {
-      color: var(--text);
-      background: rgba(20, 28, 36, 0.06);
-      border-color: rgba(20, 28, 36, 0.08);
-    }
-
-    #cameraSelect {
-      font-size: 0.72rem;
-    }
-
-    .input,
-    .textarea {
-      padding: 9px 10px;
-      border-color: rgba(20, 28, 36, 0.12);
-      background: rgba(255, 255, 255, 0.96);
-      color: var(--text);
-      font-size: 0.84rem;
-    }
-
-    .textarea {
-      min-height: 96px;
-      resize: vertical;
-    }
-
-    .input:focus,
-    .select:focus,
-    .textarea:focus {
-      outline: 2px solid rgba(191, 90, 49, 0.28);
-      outline-offset: 1px;
-    }
-
-    .mini-pill {
-      background: rgba(20, 28, 36, 0.05);
-      color: var(--muted);
-      text-align: center;
-    }
-
-    .section-card {
-      margin-top: 10px;
-    }
-
-    .field-card {
-      padding: 4.5px 8px;
-      border-radius: var(--radius-md);
-      background: rgba(255, 255, 255, 0.68);
-      border: 1px solid rgba(20, 28, 36, 0.08);
-    }
-
-    .field-card label {
-      display: block;
-      color: var(--muted);
-      font-size: 0.62rem;
-      margin-bottom: 5px;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-
-    .field-value {
-      font-size: 0.8rem;
-      font-weight: 700;
-      line-height: 1.28;
-      word-break: break-word;
-      min-height: 1.25em;
-    }
-
-    .field-card[hidden] {
-      display: none;
-    }
-
-    .field-value.is-discount {
-      color: #b42318;
-      font-weight: 800;
-    }
-
-    #field_disc_cost,
-    #field_disc_iva,
-    #field_discount_percent {
-      color: var(--text);
-      font-weight: 700;
-    }
-
-    .history-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 8px;
-    }
-
-    .qty-pad-card {
-      margin-top: 10px;
-      padding: 5px;
-    }
-
-    .qty-pad-grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 8px;
-    }
-
-    .qty-pad-key {
-      min-height: 35px;
-      border-radius: var(--radius-md);
-      border: 1px solid rgba(20, 28, 36, 0.08);
-      background: rgba(255, 255, 255, 0.96);
-      color: var(--text);
-      font-weight: 800;
-      font-size: 0.96rem;
-      cursor: pointer;
-    }
-
-    .qty-pad-key[data-key="enter"] {
-      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-      color: #fff7f2;
-      border-color: transparent;
-    }
-
-    .qty-pad-key[data-key="backspace"],
-    .qty-pad-key[data-key="clear"] {
-      background: rgba(20, 28, 36, 0.06);
-    }
-
-    .qty-pad-card.is-disabled .qty-pad-key {
-      opacity: 0.55;
-      cursor: not-allowed;
-    }
-
-    .history-actions {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 10px;
-      margin-bottom: 8px;
-    }
-
-    .history-actions .btn {
-      border-radius: var(--radius-lg);
-    }
-
-    .history-actions .mini-pill {
-      display: grid;
-      place-items: center;
-      min-height: 42px;
-      padding: 0 10px;
-      font-weight: 700;
-      white-space: nowrap;
-      border-radius: var(--radius-lg);
-    }
-
-    .history-empty {
-      margin: 0;
-      padding: 14px;
-      border-radius: var(--radius-md);
-      background: rgba(20, 28, 36, 0.04);
-      color: var(--muted);
-      text-align: center;
-    }
-
-    .history-item {
-      padding: 10px 12px;
-      border-radius: var(--radius-md);
-      background: rgba(255, 255, 255, 0.68);
-      border: 1px solid rgba(20, 28, 36, 0.08);
-      font-size: 1rem;
-      font-weight: 700;
-      line-height: 1.35;
-      word-break: break-word;
-      cursor: pointer;
-      transition: background-color 150ms ease, border-color 150ms ease, transform 150ms ease;
-    }
-
-    .history-primary {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 10px;
-      font-size: 0.96rem;
-      font-weight: 800;
-    }
-
-    .history-code {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .history-qty {
-      color: var(--accent-strong);
-      font-size: 0.74rem;
-      font-weight: 800;
-      white-space: nowrap;
-    }
-
-    .history-name {
-      margin-top: 4px;
-      color: var(--muted);
-      font-size: 0.72rem;
-      line-height: 1.28;
-      font-weight: 600;
-    }
-
-    .history-meta {
-      display: flex;
-      gap: 14px;
-      margin-top: 8px;
-      color: var(--text);
-      font-size: 0.73rem;
-      font-weight: 700;
-      flex-wrap: wrap;
-    }
-
-    .history-meta span {
-      white-space: nowrap;
-    }
-
-    .history-price.is-discount {
-      color: #b42318;
-      font-weight: 800;
-    }
-
-    .history-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-top: 8px;
-    }
-
-    .history-detail-btn {
-      min-height: 32px;
-      width: auto;
-      padding: 0 10px;
-      margin-left: auto;
-      margin-right: 50px;
-      font-size: 0.72rem;
-      border-radius: 999px;
-      flex: 0 0 auto;
-    }
-
-    .history-item:hover {
-      transform: translateY(-1px);
-      background: rgba(255, 255, 255, 0.92);
-    }
-
-    .history-item.is-selected {
-      border-color: rgba(191, 90, 49, 0.44);
-      background: rgba(191, 90, 49, 0.1);
-    }
-
-    .fab {
-      position: fixed;
-      right: max(16px, env(safe-area-inset-right));
-      bottom: max(16px, env(safe-area-inset-bottom));
-      width: 50px;
-      height: 50px;
-      border: none;
-      border-radius: 999px;
-      display: grid;
-      place-items: center;
-      background: linear-gradient(135deg, #1b2430, #101720);
-      color: #fff;
-      box-shadow: 0 18px 35px rgba(17, 24, 31, 0.28);
-      z-index: 15;
-    }
-
-    .fab svg {
-      width: 24px;
-      height: 24px;
-    }
-
-    .toast {
-      position: fixed;
-      left: 50%;
-      bottom: max(78px, calc(env(safe-area-inset-bottom) + 78px));
-      transform: translateX(-50%) translateY(16px);
-      padding: 10px 14px;
-      border-radius: 999px;
-      background: rgba(24, 33, 42, 0.94);
-      color: #fff;
-      font-size: 0.8rem;
-      font-weight: 700;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 180ms ease, transform 180ms ease;
-      z-index: 30;
-    }
-
-    .toast.is-visible {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
-    }
-
-    .dialog-backdrop {
-      position: fixed;
-      inset: 0;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 18px;
-      background: rgba(10, 16, 22, 0.45);
-      z-index: 20;
-    }
-
-    .dialog-backdrop.is-open { display: flex; }
-
-    .dialog-card {
-      width: min(100%, 400px);
-      padding: 7px;
-    }
-
-    .dialog-card p {
-      margin: 10px 0 0;
-      color: var(--muted);
-      line-height: 1.45;
-    }
-
-    #closestSearchDialog,
-    #historyEditDialog {
-      align-items: flex-start;
-      justify-content: center;
-      padding: max(12px, env(safe-area-inset-top)) 16px 16px;
-    }
-
-    #closestSearchDialog .dialog-card,
-    #historyEditDialog .dialog-card {
-      position: fixed;
-      top: max(12px, env(safe-area-inset-top));
-      left: 50%;
-      transform: translateX(-50%);
-      width: min(calc(100% - 32px), 400px);
-      height: 45vh;
-      max-height: 45vh;
-      overflow-y: auto;
-      overscroll-behavior: contain;
-      scrollbar-gutter: stable;
-    }
-
-    .closest-search-dialog-card,
-    .detail-popup-card {
-      display: grid;
-      gap: 12px;
-      align-content: start;
-    }
-
-    .closest-search-status:empty {
-      display: none;
-    }
-
-    .closest-search-results {
-      gap: 0;
-      padding: 2px 2px 0;
-      overflow-y: auto;
-      align-content: start;
-    }
-
-    .closest-search-item {
-      display: grid;
-      grid-template-columns: minmax(0, 85fr) minmax(76px, 15fr);
-      gap: 12px;
-      align-items: center;
-      padding: 12px 4px;
-      border-bottom: 1px solid rgba(20, 28, 36, 0.1);
-    }
-
-    .closest-search-item:last-child {
-      border-bottom: 0;
-    }
-
-    .closest-search-info {
-      min-width: 0;
-      display: grid;
-      gap: 6px;
-    }
-
-    .closest-search-name {
-      min-width: 0;
-      font-size: 0.84rem;
-      font-weight: 800;
-      line-height: 1.25;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .closest-search-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      color: var(--muted);
-      font-size: 0.71rem;
-      line-height: 1.25;
-    }
-
-    .closest-search-meta span:not(:last-child)::after {
-      content: "|";
-      margin-left: 8px;
-      color: rgba(20, 28, 36, 0.3);
-    }
-
-    .closest-search-barcode {
-      color: var(--text);
-      font-weight: 800;
-    }
-
-    .closest-search-select-btn {
-      min-height: 34px;
-      margin: 0;
-      justify-self: center;
-      align-self: center;
-      padding: 0 12px;
-      border-radius: 999px;
-    }
-
-    .detail-popup-grid {
-      display: grid;
-      gap: 10px;
-      align-content: start;
-    }
-
-    .detail-popup-row {
-      display: grid;
-      gap: 10px;
-    }
-
-    .detail-popup-row--60-40 {
-      grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-    }
-
-    .detail-popup-row--half {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .detail-popup-field {
-      display: grid;
-      gap: 6px;
-      min-width: 0;
-    }
-
-    .detail-popup-field span {
-      color: var(--muted);
-      font-size: 0.62rem;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-
-    .detail-popup-actions {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-      margin-top: 2px;
-    }
-
-    .save-note {
-      margin-top: 12px;
-      min-height: 1.3em;
-      color: var(--success);
-      font-size: 0.92rem;
-      transition: opacity 160ms ease, color 160ms ease;
-    }
-
-    .save-note:empty {
-      opacity: 0;
-    }
-
-    .save-note.show-success {
-      color: var(--success);
-      opacity: 1;
-    }
-
-    .visually-hidden {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border: 0;
-    }
-
-    @media (max-width: 680px) {
-      .app-shell { width: min(100%, calc(100% - 16px)); }
-      .card,
-      .dialog-card {
-        box-shadow: 0 12px 24px rgba(18, 24, 31, 0.1);
-        backdrop-filter: none;
-      }
-      .top-tools { grid-template-columns: 1fr; }
-      .button-row { grid-template-columns: 1fr; }
-      .lookup-row { grid-template-columns: minmax(0, 1fr) 74px 74px; }
-      .field-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-      .helper-row { grid-template-columns: var(--control-square-size) minmax(0, 1fr) minmax(0, 1fr) var(--control-square-size); }
-      .card { border-radius: 22px; }
-      .preview-frame { width: 100%; aspect-ratio: 2.02; }
-      .preview-meta { top: 8px; left: 8px; right: 8px; }
-      .preview-placeholder { font-size: 0.74rem; }
-    }
-
-    @media (max-width: 430px) {
-      :root {
-        --control-square-size: 38px;
-      }
-      .top-tools,
-      .button-row { gap: 8px; }
-      .helper-row {
-        grid-template-columns: var(--control-square-size) minmax(0, 1fr) minmax(0, 1fr) var(--control-square-size);
-        gap: 8px;
-      }
-      .btn,
-      .input,
-      .select { min-height: var(--control-square-size); }
-      .btn { font-size: 0.74rem; padding: 0 8px; }
-      .field-grid { gap: 8px; }
-      .field-card { padding: 4px 6px; }
-      .field-value { font-size: 0.74rem; }
-      .history-actions { gap: 8px; }
-      .history-primary { font-size: 0.88rem; }
-      .history-qty { font-size: 0.68rem; }
-      .history-name { font-size: 0.68rem; }
-      .history-meta { gap: 10px; font-size: 0.68rem; }
-      .floating-action-btn {
-        top: max(12px, env(safe-area-inset-top));
-        right: max(12px, env(safe-area-inset-right));
-        width: 38px;
-        min-width: 38px;
-        max-width: 38px;
-        height: 38px;
-        flex-basis: 38px;
-      }
-      .floating-refresh-btn {
-        top: calc(max(12px, env(safe-area-inset-top)) + 46px);
-      }
-      .floating-lock-scroll-btn {
-        top: calc(max(12px, env(safe-area-inset-top)) + 92px);
-      }
-      #closestSearchDialog .dialog-card,
-      #historyEditDialog .dialog-card {
-        width: min(calc(100% - 20px), 400px);
-        top: max(10px, env(safe-area-inset-top));
-      }
-      .closest-search-item {
-        grid-template-columns: minmax(0, 85fr) minmax(72px, 15fr);
-        gap: 10px;
-        padding: 10px 2px;
-      }
-      .detail-popup-row--60-40,
-      .detail-popup-row--half {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-      .history-detail-btn { min-height: 30px; width: auto; padding: 0 8px; margin-right: 32px; font-size: 0.68rem; }
-      .toast { width: calc(100% - 28px); text-align: center; }
-    }
-
-    /* Prevent iOS Safari auto-zoom when focusing form fields. */
-    @supports (-webkit-touch-callout: none) {
-      .input,
-      .select,
-      .textarea,
-      #barcodeInput,
-      #cameraSelect,
-      #historyEditItalianNameInput,
-      #historyEditPPriceInput,
-      #historyEditSPriceInput,
-      #historyEditSDiscountInput,
-      #historyEditQtyInput {
-        font-size: 16px;
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      *,
-      *::before,
-      *::after {
-        animation: none !important;
-        transition: none !important;
-        scroll-behavior: auto !important;
-      }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>StockCheck</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root{
+    --bg: #12181F;
+    --surface: #1B2430;
+    --surface-alt: #232E3A;
+    --surface-raised: #2A3644;
+    --line: #313E4C;
+    --ink: #EDEFF2;
+    --muted: #8B98A6;
+    --amber: #F2A93B;
+    --amber-dim: #7A5A26;
+    --teal: #6FD6D2;
+    --green: #3FB67A;
+    --green-bg: rgba(63,182,122,0.14);
+    --yellow: #F2C94C;
+    --yellow-bg: rgba(242,201,76,0.14);
+    --red: #E5595E;
+    --red-bg: rgba(229,89,94,0.14);
+    --radius: 12px;
+    --font-ui: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; background: #05070A; color: var(--ink);
+    font-family: var(--font-ui);
+    -webkit-tap-highlight-color: transparent;
+    height: 100%;
+  }
+  body { display: flex; justify-content: center; }
+  #app {
+    width: 100%; max-width: 480px; height: 100vh; height: 100dvh;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    position: relative;
+    box-shadow: 0 0 60px rgba(0,0,0,0.5);
+    overflow: hidden;
+  }
+
+  main { flex: 1; min-height: 0; display:flex; flex-direction:column; }
+  .tab-panel { display: none; flex-direction: column; min-height: 0; }
+  .tab-panel.active { display: flex; }
+  .tab-panel.scroll { overflow-y: auto; padding: 14px 16px 18px 16px; }
+
+  /* ---------- Scan tab: fills the whole screen, no scroll ---------- */
+  #tab-scan { padding: 14px 16px 16px 16px; gap: 10px; }
+  .barcode-input-row { display:flex; gap:8px; flex-shrink:0; }
+  input[type="text"], textarea {
+    background: var(--surface-alt); border: 1px solid var(--line); color: var(--ink);
+    border-radius: 10px; padding: 12px 14px; font-family: var(--font-mono); font-size: 15px;
+    width: 100%; outline: none;
+  }
+  input[type="text"]:focus, textarea:focus, button:focus-visible {
+    border-color: var(--amber); box-shadow: 0 0 0 3px rgba(242,169,59,0.25);
+  }
+  .btn {
+    border: none; border-radius: 10px; font-family: var(--font-ui); font-weight: 600;
+    cursor: pointer; padding: 12px 16px; font-size: 14px; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 6px; justify-content:center;
+  }
+  .btn-amber { background: var(--amber); color: #1A1204; }
+  .btn-ghost { background: var(--surface-raised); color: var(--ink); border: 1px solid var(--line); }
+  .btn-danger { background: rgba(229,89,94,0.15); color: var(--red); border: 1px solid rgba(229,89,94,0.4); }
+  .btn:active { transform: scale(0.97); }
+  .btn-block { width: 100%; }
+
+  .icon-square { padding: 12px; flex-shrink:0; }
+  .icon-square svg { width:18px; height:18px; }
+  #loginBtn.logged-in { border-color: var(--green); color: var(--green); }
+  #loginBtn.logging-in { border-color: var(--amber); color: var(--amber); }
+  #loginBtn.login-error { border-color: var(--red); color: var(--red); }
+
+  .dialog-overlay {
+    position: absolute; inset: 0; background: rgba(5,7,10,0.72);
+    display:none; align-items:center; justify-content:center; z-index: 100; padding: 24px;
+  }
+  .dialog-overlay.show { display:flex; }
+  .dialog-card {
+    width: 100%; max-width: 320px; background: var(--surface-alt); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 18px; display:flex; flex-direction:column; gap:10px;
+  }
+  .dialog-title { font-size: 13px; font-weight:700; letter-spacing:0.4px; color: var(--ink); margin-bottom: 2px; }
+  .dialog-field input { padding: 10px 12px; font-size: 14px; }
+  .dialog-actions { display:flex; gap:8px; margin-top: 6px; }
+  .dialog-actions .btn { flex:1; }
+
+  .bill-select-row {
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
+    background: var(--surface-raised); border:1px solid var(--line); border-radius:10px;
+    padding:10px 12px; cursor:pointer;
+  }
+  .bill-select-row:active { background: var(--amber-dim); }
+  .bill-select-id { font-family: var(--font-mono); font-weight:700; font-size:14px; }
+  .bill-select-meta { font-size:11.5px; color: var(--muted); margin-top:2px; }
+  .bill-select-price { font-family: var(--font-mono); color: var(--teal); font-weight:600; font-size:13.5px; white-space:nowrap; }
+
+  .bill-meta-label {
+    font-size: 12px; color: var(--muted); margin-bottom: 10px;
+    background: var(--surface-alt); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+  }
+  .bill-meta-label .mono { color: var(--teal); font-family: var(--font-mono); }
+
+  #cameraWrap { position: relative; border-radius: var(--radius); overflow: hidden; display:none; flex-shrink:0; }
+  #reader { width: 100%; }
+  .scan-line {
+    position: absolute; left: 6%; right: 6%; height: 2px; top: 10%;
+    background: var(--amber); box-shadow: 0 0 8px var(--amber);
+    animation: sweep 1.8s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes sweep { 0% { top: 12%; } 50% { top: 82%; } 100% { top: 12%; } }
+
+  .product-card {
+    background: var(--surface-alt); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 12px 16px; flex-shrink: 0;
+  }
+  .product-card.empty { display:flex; align-items:center; justify-content:center; min-height: 56px; }
+  .muted { color: var(--muted); font-style: normal; }
+  .info-row { display:flex; justify-content: space-between; align-items:center; padding: 5px 0; border-bottom: 1px solid var(--line); }
+  .info-row:last-child { border-bottom: none; }
+  .info-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .info-value { font-size: 15px; font-weight: 500; text-align: right; }
+  .info-value.mono { font-family: var(--font-mono); color: var(--teal); }
+  .new-item-form { display:flex; flex-direction:column; gap:8px; }
+  .new-item-title { font-size: 12px; color: var(--amber); text-transform:uppercase; letter-spacing:0.5px; font-weight:700; margin-bottom:2px; }
+  .field-row { display:flex; gap:8px; }
+  .field-row input { padding: 10px 12px; font-size: 14px; }
+  .field-label { font-size: 10.5px; color: var(--muted); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:3px; display:block; }
+
+  .qty-display {
+    flex: 1; min-height: 0; display:flex; align-items:center; justify-content:center;
+    text-align:center; font-family: var(--font-mono);
+    font-size: clamp(30px, 9vh, 64px); font-weight: 600; letter-spacing: 2px;
+    background: var(--surface-alt); border: 1px solid var(--line); border-radius: var(--radius);
+    color: var(--amber);
+  }
+  .keypad { display:grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(4, 1fr); gap: 8px; flex: 2.2; min-height: 0; }
+  .key {
+    background: var(--surface-raised); border: 1px solid var(--line); color: var(--ink);
+    border-radius: 12px; font-family: var(--font-mono); font-weight: 600;
+    font-size: clamp(18px, 4.2vh, 28px);
+    cursor: pointer; width:100%; height:100%;
+  }
+  .key:active { background: var(--amber-dim); transform: scale(0.96); }
+  .key.func { color: var(--muted); font-family: var(--font-ui); font-size: clamp(11px, 2vh, 14px); text-transform: uppercase; letter-spacing: 0.5px; }
+  .add-btn { padding: 16px; font-size: 16px; flex-shrink:0; }
+
+  /* ---------- Log & Bill tabs (scrollable) ---------- */
+  .summary-bar { display:flex; gap: 8px; margin-bottom: 12px; }
+  .summary-chip {
+    flex:1; background: var(--surface-alt); border:1px solid var(--line); border-radius: 10px;
+    padding: 8px 10px; text-align:center;
+  }
+  .summary-chip .num { font-family: var(--font-mono); font-size: 18px; font-weight: 700; color: var(--teal); }
+  .summary-chip .lbl { font-size: 9.5px; text-transform:uppercase; letter-spacing:0.5px; color: var(--muted); margin-top:2px; }
+
+  .toolbar-row { display:flex; justify-content:flex-end; gap:8px; margin-bottom: 12px; }
+  .icon-btn-lg {
+    background: var(--surface-raised); border: 1px solid var(--line); color: var(--ink);
+    border-radius: 10px; padding: 9px 12px; font-size: 12.5px; font-weight:600;
+    display:flex; align-items:center; gap:6px; cursor:pointer;
+  }
+  .icon-btn-lg svg { width:15px; height:15px; }
+  .icon-btn-lg:active { background: var(--amber-dim); }
+
+  .search-row { position: relative; margin-bottom: 10px; }
+  .search-row input { padding-left: 34px; font-family: var(--font-ui); font-size: 13.5px; padding-top:10px; padding-bottom:10px; }
+  .search-row svg {
+    position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+    width: 15px; height: 15px; color: var(--muted); pointer-events:none;
+  }
+
+  .filter-row { display:flex; gap:8px; margin-bottom: 12px; }
+  .filter-chk {
+    flex:1; display:flex; align-items:center; justify-content:center; gap:6px;
+    border:1px solid var(--line); border-radius: 10px; padding: 7px 6px; font-size: 12px; font-weight:600;
+    cursor:pointer; background: var(--surface-alt); user-select:none;
+  }
+  .filter-chk input { accent-color: var(--amber); width:14px; height:14px; margin:0; }
+  .filter-chk.green { color: var(--green); }
+  .filter-chk.yellow { color: var(--yellow); }
+  .filter-chk.red { color: var(--red); }
+  .filter-chk.off { opacity: 0.35; }
+
+  /* Record cards */
+  .record-card {
+    background: var(--surface-alt); border: 1px solid var(--line); border-left: 4px solid var(--line);
+    border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;
+  }
+  .record-card.green { border-left-color: var(--green); background: var(--green-bg); }
+  .record-card.yellow { border-left-color: var(--yellow); background: var(--yellow-bg); }
+  .record-card.red { border-left-color: var(--red); background: var(--red-bg); }
+  .record-top { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .record-barcode { font-family: var(--font-mono); font-weight:700; font-size:15.5px; color: var(--ink); }
+  .record-time { font-size:10.5px; color: var(--muted); margin-top:1px; }
+  .record-qtys { font-family: var(--font-mono); font-size:15px; font-weight:700; text-align:right; white-space:nowrap; }
+  .record-qtys .mine { color: var(--teal); }
+  .record-qtys .sep { color: var(--muted); font-weight:400; margin:0 2px; }
+  .record-qtys .bill { color: var(--muted); }
+  .record-status { font-size:9.5px; text-transform:uppercase; letter-spacing:0.5px; font-weight:700; text-align:right; margin-top:1px; }
+  .record-status.green { color: var(--green); } .record-status.yellow { color: var(--yellow); } .record-status.red { color: var(--red); }
+  .record-name { font-size:14px; margin-top:6px; font-weight:500; line-height:1.3; }
+  .record-sub { display:flex; gap:16px; margin-top:5px; font-size:12px; color: var(--muted); }
+  .record-sub .val { color: var(--ink); font-family: var(--font-mono); margin-left:4px; }
+  .record-actions { display:flex; gap:6px; margin-top:8px; justify-content:flex-end; }
+  .icon-btn {
+    background: transparent; border: 1px solid var(--line); color: var(--muted);
+    border-radius: 8px; padding: 4px 9px; font-size: 11px; cursor:pointer;
+  }
+  .icon-btn:active { background: var(--surface-raised); }
+  .empty-state { text-align:center; color: var(--muted); padding: 26px 10px; font-size: 13.5px; }
+
+  /* ---------- Bottom nav ---------- */
+  nav.tabbar {
+    flex-shrink: 0; width: 100%; background: var(--surface);
+    border-top: 1px solid var(--line); display:flex;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px)) 8px;
+  }
+  .tab-btn {
+    flex:1; background:none; border:none; color: var(--muted); display:flex; flex-direction:column;
+    align-items:center; gap:3px; padding: 6px 0; cursor:pointer; font-family: var(--font-ui);
+    font-size: 10.5px; font-weight: 600; letter-spacing: 0.3px; border-radius: 10px;
+  }
+  .tab-btn svg { width:19px; height:19px; }
+  .tab-btn.active { color: var(--amber); }
+  .tab-btn.active svg { filter: drop-shadow(0 0 4px rgba(242,169,59,0.5)); }
+
+  /* ---------- Toast ---------- */
+  #toast {
+    position: absolute; left: 50%; bottom: 66px; transform: translateX(-50%) translateY(20px);
+    background: var(--surface-raised); border: 1px solid var(--line); color: var(--ink);
+    padding: 9px 16px; border-radius: 999px; font-size: 12.5px; font-weight:600;
+    opacity: 0; pointer-events:none; transition: all 0.25s ease; z-index: 50;
+    max-width: 90%; white-space: nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.green { border-color: var(--green); color: var(--green); }
+  #toast.red { border-color: var(--red); color: var(--red); }
+
+  ::-webkit-scrollbar { width:0; height:0; }
+</style>
 </head>
 <body>
-  <main class="app-shell">
-    <section class="card">
-      <div class="preview-frame" id="previewFrame">
-        <video id="cameraPreview" autoplay playsinline muted></video>
-        <div id="cameraPreviewQuagga" hidden></div>
-        <div class="preview-grid" aria-hidden="true"></div>
-        <div class="top-status" id="statusText" aria-live="polite">Opening camera preview...</div>
-        <div class="scan-window" id="roiBox" style="left:10%;top:10%;width:80%;height:80%;" aria-hidden="true">
-          <div class="roi-handle" id="roiResizeHandle"></div>
-        </div>
-        <div class="scan-line" aria-hidden="true"></div>
+<div id="app">
 
-        <div class="preview-meta">
-          <div class="badge" id="cameraBadge">Preview off</div>
-          <div class="badge" id="resolutionBadge">0 x 0</div>
-        </div>
+  <main>
 
-        <div class="api-loader" id="apiLoader" aria-hidden="true"></div>
-
-        <div class="preview-placeholder" id="previewPlaceholder">
-          The app is trying to open the live camera preview automatically. If permission was blocked, tap "Start Scanning" to try again.
-        </div>
+    <!-- TAB 1: SCAN (fills the entire screen, no scroll) -->
+    <section class="tab-panel active" id="tab-scan">
+      <div class="barcode-input-row">
+        <input type="text" id="barcodeInput" placeholder="Barcode" inputmode="numeric">
+        <button class="btn btn-amber" id="startScanBtn">Scan</button>
+        <button class="btn btn-ghost" id="stopScanBtn" style="display:none;">Stop</button>
+        <button class="btn btn-ghost icon-square" id="loginBtn" title="Tap: refresh cookie · Hold: set credentials">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        </button>
+      </div>
+      <div id="cameraWrap">
+        <div id="reader"></div>
+        <div class="scan-line"></div>
       </div>
 
-      <div class="controls">
-        <div class="lookup-row">
-          <input class="input" id="barcodeInput" type="text" inputmode="numeric" autocomplete="off" placeholder="Barcode value" value="" />
-          <button class="btn btn-muted" id="searchBarcodeBtn" type="button">Search</button>
-          <button class="btn btn-muted" id="clearBarcodeBtn" type="button">Clear</button>
-        </div>
+      <div class="product-card empty" id="productInfo">
+        <p class="muted">Scan or enter a barcode.</p>
       </div>
 
-      <div class="helper-row">
-        <div class="manual-entry-group">
-          <button class="btn btn-muted manual-entry-lock" id="entryModeBtn" type="button" aria-label="Locked barcode entry" title="Locked barcode entry">
-            <svg id="entryModeIcon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="5" y="11" width="14" height="10" rx="2"></rect>
-              <path d="M8 11V8a4 4 0 1 1 8 0v3"></path>
-            </svg>
-          </button>
-          <input class="input manual-entry-qty" id="quantityInput" type="number" inputmode="none" min="1" step="1" value="" placeholder="Qty" aria-label="Quantity" readonly disabled />
-          <button class="btn btn-primary manual-entry-add" id="addBarcodeBtn" type="button" hidden tabindex="-1" aria-hidden="true" disabled>Add</button>
-        </div>
-        <div class="scan-actions">
-          <button class="btn btn-primary" id="scanBtn" type="button" data-mode="start">Start Scanning</button>
-        </div>
+      <div class="qty-display" id="qtyDisplay">0</div>
+      <div class="keypad" id="keypad">
+        <button class="key" data-k="1">1</button>
+        <button class="key" data-k="2">2</button>
+        <button class="key" data-k="3">3</button>
+        <button class="key" data-k="4">4</button>
+        <button class="key" data-k="5">5</button>
+        <button class="key" data-k="6">6</button>
+        <button class="key" data-k="7">7</button>
+        <button class="key" data-k="8">8</button>
+        <button class="key" data-k="9">9</button>
+        <button class="key func" data-k="clear">Clear</button>
+        <button class="key" data-k="0">0</button>
+        <button class="key func" data-k="back">⌫</button>
       </div>
+      <button class="btn btn-amber btn-block add-btn" id="addBtn">Add to count</button>
     </section>
 
-    <section class="card section-card" id="productInfoSection">
-      <h2 id="productInfoTitle"></h2>
-      <div class="pi-slider" id="productInfoSlider">
-        <div class="pi-track" id="productInfoTrack">
-          <div class="pi-slide" data-slide-index="0">
-            <div class="pi-row">
-              <div class="field-card pi-w-60" id="field_goods_code_card"><label for="field_goods_code">Goods Code</label><div class="field-value" id="field_goods_code"></div></div>
-              <div class="field-card pi-w-40" id="field_real_inventory_card"><label for="field_real_inventory">Inventory</label><div class="field-value" id="field_real_inventory"></div></div>
-            </div>
-            <div class="pi-row">
-              <div class="field-card pi-w-33" id="field_s_price_card"><label for="field_s_price">Price</label><div class="field-value" id="field_s_price"></div></div>
-              <div class="field-card pi-w-33" id="field_discount_price_card" hidden><label for="field_discount_price">Disc. Price</label><div class="field-value is-discount" id="field_discount_price"></div></div>
-              <div class="field-card pi-w-33" id="field_disc_price_percent_card" hidden><label for="field_disc_price_percent">D. Price%</label><div class="field-value is-discount" id="field_disc_price_percent"></div></div>
-            </div>
-          </div>
-          <div class="pi-slide" data-slide-index="1">
-            <div class="pi-row">
-              <div class="field-card pi-w-60" id="field_supplier_name_card"><label for="field_supplier_name">Supplier</label><div class="field-value" id="field_supplier_name"></div></div>
-              <div class="field-card pi-w-40" id="field_discount_percent_card"><label for="field_discount_percent">Discount%</label><div class="field-value is-discount" id="field_discount_percent"></div></div>
-            </div>
-            <div class="pi-row">
-              <div class="field-card pi-w-33" id="field_p_price_card"><label for="field_p_price">Cost</label><div class="field-value" id="field_p_price"></div></div>
-              <div class="field-card pi-w-33" id="field_disc_cost_card"><label for="field_disc_cost">Disc. Cost</label><div class="field-value is-discount" id="field_disc_cost"></div></div>
-              <div class="field-card pi-w-33" id="field_disc_iva_card"><label for="field_disc_iva">Disc + IVA</label><div class="field-value is-discount" id="field_disc_iva"></div></div>
-            </div>
-          </div>
-          <div class="pi-slide" data-slide-index="2">
-            <div class="pi-row">
-              <div class="field-card pi-w-70" id="field_italian_name_card"><label for="field_italian_name">Italian Name</label><div class="field-value" id="field_italian_name"></div></div>
-              <div class="field-card pi-w-30" id="field_spec_card"><label for="field_spec">Spec</label><div class="field-value" id="field_spec"></div></div>
-            </div>
-            <div class="pi-row">
-              <div class="field-card pi-w-50" id="field_create_time_card"><label for="field_create_time">Saved</label><div class="field-value" id="field_create_time"></div></div>
-            </div>
-          </div>
-        </div>
+    <!-- TAB 2: LOG (chronology of every add — independent from Tab 3) -->
+    <section class="tab-panel scroll" id="tab-log">
+      <div class="toolbar-row">
+        <button class="icon-btn-lg" id="exportLogBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg>
+          Export
+        </button>
+        <button class="icon-btn-lg" id="clearLogBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
+          Clear
+        </button>
       </div>
-      <div class="pi-dots" id="productInfoDots" role="tablist" aria-label="Product info pages">
-        <button class="pi-dot" type="button" data-goto-slide="0" role="tab" aria-label="Page 1" aria-selected="true"></button>
-        <button class="pi-dot" type="button" data-goto-slide="1" role="tab" aria-label="Page 2" aria-selected="false"></button>
-        <button class="pi-dot" type="button" data-goto-slide="2" role="tab" aria-label="Page 3" aria-selected="false"></button>
+      <div class="summary-bar">
+        <div class="summary-chip"><div class="num" id="logItemCount">0</div><div class="lbl">Entries</div></div>
       </div>
-      <div class="visually-hidden" aria-hidden="true">
-        <div class="field-card" id="field_supplier_name_compact_card" hidden><label for="field_supplier_name_compact">Supplier</label><div class="field-value" id="field_supplier_name_compact"></div></div>
-        <div class="field-card" id="field_id_card" hidden><label for="field_id">ID</label><div class="field-value" id="field_id"></div></div>
-      </div>
+      <div id="logListWrap"></div>
     </section>
 
-    <section class="card section-card qty-pad-card" id="quantityPadCard" aria-label="Quantity keypad" hidden>
-      <div class="qty-pad-grid" id="quantityPad">
-        <button class="qty-pad-key" type="button" data-key="1">1</button>
-        <button class="qty-pad-key" type="button" data-key="2">2</button>
-        <button class="qty-pad-key" type="button" data-key="3">3</button>
-        <button class="qty-pad-key" type="button" data-key="backspace">Del</button>
-        <button class="qty-pad-key" type="button" data-key="4">4</button>
-        <button class="qty-pad-key" type="button" data-key="5">5</button>
-        <button class="qty-pad-key" type="button" data-key="6">6</button>
-        <button class="qty-pad-key" type="button" data-key="clear">C</button>
-        <button class="qty-pad-key" type="button" data-key="7">7</button>
-        <button class="qty-pad-key" type="button" data-key="8">8</button>
-        <button class="qty-pad-key" type="button" data-key="9">9</button>
-        <button class="qty-pad-key" type="button" data-key="0">0</button>
-        <button class="qty-pad-key" type="button" data-key="enter" style="grid-column: 1 / -1;">Enter / Add</button>
+    <!-- TAB 3: BILL -->
+    <section class="tab-panel scroll" id="tab-bill">
+      <div class="toolbar-row">
+        <button class="icon-btn-lg" id="prevBillBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 3"/></svg>
+          Previous
+        </button>
+        <button class="icon-btn-lg" id="uploadBillBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M5 21h14"/></svg>
+          Upload
+        </button>
+        <input type="file" id="billFile" accept=".csv,.txt" style="display:none">
       </div>
+
+      <div class="bill-meta-label" id="selectedBillMeta" style="display:none;"></div>
+
+      <div class="search-row">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input type="text" id="billSearch" placeholder="Search barcode or name">
+      </div>
+      <div class="summary-bar">
+        <div class="summary-chip"><div class="num" id="sumGreen" style="color:var(--green);">0</div><div class="lbl">Match</div></div>
+        <div class="summary-chip"><div class="num" id="sumYellow" style="color:var(--yellow);">0</div><div class="lbl">Short</div></div>
+        <div class="summary-chip"><div class="num" id="sumRed" style="color:var(--red);">0</div><div class="lbl">Over</div></div>
+      </div>
+      <div class="filter-row">
+        <label class="filter-chk green" id="lblGreen"><input type="checkbox" id="chkGreen" checked> Match</label>
+        <label class="filter-chk yellow" id="lblYellow"><input type="checkbox" id="chkYellow" checked> Short</label>
+        <label class="filter-chk red" id="lblRed"><input type="checkbox" id="chkRed" checked> Over</label>
+      </div>
+      <div id="billListWrap"></div>
+      <button class="btn btn-ghost btn-block" id="exportBillBtn" style="margin-top:6px;">Export comparison CSV</button>
     </section>
 
-    <section class="card section-card">
-      <div class="history-head">
-        <h2 id="historyTitle"></h2>
-      </div>
-      <div class="history-actions">
-        <button class="btn btn-muted" id="clearSelectedBtn" type="button" disabled>Clean Selected</button>
-        <button class="btn btn-muted" id="clearAllBtn" type="button">Clean All</button>
-        <div class="mini-pill" id="historyCountBadge" aria-live="polite">Count: 0</div>
-        <button class="btn btn-primary" id="printBtn" type="button">Print</button>
-      </div>
-      <div class="history-list" id="historyList" aria-live="polite">
-        <p class="history-empty" id="historyEmpty">No barcodes scanned yet.</p>
-      </div>
-    </section>
   </main>
 
-  <div class="toast" id="toast" aria-live="polite"></div>
+  <nav class="tabbar">
+    <button class="tab-btn active" data-tab="tab-scan">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5v14M7 5v14M11 5v10M15 5v14M19 5v10M21 5v14"/></svg>
+      Scan
+    </button>
+    <button class="tab-btn" data-tab="tab-log">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      Records
+    </button>
+    <button class="tab-btn" data-tab="tab-bill">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-2.5-1.5L14 21l-2.5-1.5L9 21l-2.5-1.5L4 21V3z"/><path d="M8 8h8M8 12h8"/></svg>
+      Bill
+    </button>
+  </nav>
 
-  <button class="btn btn-muted floating-action-btn" id="torchBtn" type="button" disabled>
-    <span class="visually-hidden">Torch</span>
-    <svg id="torchIcon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="4"></circle>
-      <path d="M12 2.5v2.5"></path>
-      <path d="M12 19v2.5"></path>
-      <path d="M4.9 4.9l1.8 1.8"></path>
-      <path d="M17.3 17.3l1.8 1.8"></path>
-      <path d="M2.5 12H5"></path>
-      <path d="M19 12h2.5"></path>
-      <path d="M4.9 19.1l1.8-1.8"></path>
-      <path d="M17.3 6.7l1.8-1.8"></path>
-    </svg>
-  </button>
+  <div id="toast"></div>
 
-  <button class="btn btn-muted floating-action-btn floating-refresh-btn" id="refreshCookieBtn" type="button" aria-label="Refresh cookie" title="Refresh cookie">
-    <span class="visually-hidden">Refresh cookie</span>
-    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 12a9 9 0 1 1-2.64-6.36"></path>
-      <path d="M21 3v6h-6"></path>
-    </svg>
-  </button>
-
-  <button class="btn btn-muted floating-action-btn floating-lock-scroll-btn" id="lockscreenscroll" type="button" aria-label="Lock screen scroll" title="Lock screen scroll" aria-pressed="false">
-    <span class="visually-hidden">Lock screen scroll</span>
-    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="5" y="11" width="14" height="10" rx="2"></rect>
-      <path d="M8 11V7a4 4 0 0 1 8 0v4"></path>
-    </svg>
-  </button>
-
-  <button class="fab" id="settingsBtn" type="button" aria-label="Open settings">
-    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="3.2"></circle>
-      <path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 0 1 0 2.8 2 2 0 0 1-2.8 0l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V20a2 2 0 0 1-4 0v-.2a1 1 0 0 0-.6-.9 1 1 0 0 0-1.1.2l-.1.1a2 2 0 0 1-2.8 0 2 2 0 0 1 0-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H4a2 2 0 0 1 0-4h.2a1 1 0 0 0 .9-.6 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 0 1 0-2.8 2 2 0 0 1 2.8 0l.1.1a1 1 0 0 0 1.1.2 1 1 0 0 0 .6-.9V4a2 2 0 0 1 4 0v.2a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.1-.1a2 2 0 0 1 2.8 0 2 2 0 0 1 0 2.8l-.1.1a1 1 0 0 0-.2 1.1 1 1 0 0 0 .9.6H20a2 2 0 0 1 0 4h-.2a1 1 0 0 0-.9.6z"></path>
-    </svg>
-  </button>
-
-  <div class="dialog-backdrop" id="settingsDialog" aria-hidden="true">
-    <div class="dialog-card" role="dialog" aria-modal="true" aria-labelledby="settingsDialogTitle">
-      <h2 id="settingsDialogTitle">Settings</h2>
-      <p>Save your credentials on this device. The app can reuse them to refresh the cookie automatically before product requests.</p>
-      <div class="field-list">
-        <label id="cameraSelectWrap">
-          <span class="visually-hidden">Choose camera</span>
-          <select class="select" id="cameraSelect" disabled></select>
-        </label>
-        <div class="input-mode-switch" id="inputModeSwitch" role="group" aria-label="Input mode">
-          <button class="input-mode-option" type="button" data-input-mode="phone" aria-pressed="true">Phone</button>
-          <button class="input-mode-option" type="button" data-input-mode="scanner" aria-pressed="false">Scanner</button>
-        </div>
-        <label>
-          <span class="visually-hidden">Shop key</span>
-          <input class="input" id="shopKeyInput" type="text" autocomplete="off" placeholder="Shop key" />
-        </label>
-        <label>
-          <span class="visually-hidden">Login</span>
-          <input class="input" id="loginInput" type="text" autocomplete="username" placeholder="Login" />
-        </label>
-        <label>
-          <span class="visually-hidden">Password</span>
-          <input class="input" id="passwordInput" type="password" autocomplete="current-password" placeholder="Password" />
-        </label>
+  <div class="dialog-overlay" id="loginDialogOverlay">
+    <div class="dialog-card">
+      <div class="dialog-title">Login credentials</div>
+      <div class="dialog-field">
+        <span class="field-label">Shopkey</span>
+        <input type="text" id="dlgShopkey">
       </div>
-      <div class="save-note" id="settingsSaveNote" aria-live="polite"></div>
-      <div class="dialog-actions">
-        <button class="btn btn-primary" id="loginSettingsBtn" type="button">Login</button>
-        <button class="btn btn-muted" id="closeSettingsBtn" type="button">Back</button>
+      <div class="dialog-field">
+        <span class="field-label">Login name</span>
+        <input type="text" id="dlgLoginName">
       </div>
-    </div>
-  </div>
-
-  <div class="dialog-backdrop" id="confirmDialog" aria-hidden="true">
-    <div class="dialog-card" role="dialog" aria-modal="true" aria-labelledby="confirmDialogTitle">
-      <h2 id="confirmDialogTitle">Confirm action</h2>
-      <p id="confirmDialogText">Are you sure?</p>
-      <div class="dialog-actions">
-        <button class="btn btn-primary" id="confirmDialogOkBtn" type="button">Confirm</button>
-        <button class="btn btn-muted" id="confirmDialogCancelBtn" type="button">Cancel</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="dialog-backdrop" id="printDialog" aria-hidden="true">
-    <div class="dialog-card" role="dialog" aria-modal="true" aria-labelledby="printDialogTitle">
-      <h2 id="printDialogTitle">Print Format</h2>
-      <p>Choose the label size for the current barcode list.</p>
-      <div class="dialog-actions">
-        <button class="btn btn-primary" id="printBigBtn" type="button">[BIG] 60*38</button>
-        <button class="btn btn-primary" id="printStickerBtn" type="button">[STICKER] 40*25</button>
-        <button class="btn btn-primary" id="sendTxtBtn" type="button">Send TXT</button>
-        <button class="btn btn-muted" id="printBackBtn" type="button">Back</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="dialog-backdrop" id="closestSearchDialog" aria-hidden="true">
-    <div class="dialog-card closest-search-dialog-card" role="dialog" aria-modal="true" aria-labelledby="closestSearchTitle">
-      <h2 id="closestSearchTitle">Closest Matches</h2>
-      <p class="closest-search-status" id="closestSearchStatus"></p>
-      <div class="history-list closest-search-results" id="closestSearchList" aria-live="polite">
-        <p class="history-empty">No similar products found.</p>
+      <div class="dialog-field">
+        <span class="field-label">Password</span>
+        <input type="password" id="dlgPassword">
       </div>
       <div class="dialog-actions">
-        <button class="btn btn-muted" id="closestSearchBackBtn" type="button">Back</button>
+        <button class="btn btn-ghost" id="dlgCancelBtn">Cancel</button>
+        <button class="btn btn-amber" id="dlgSaveBtn">Save &amp; login</button>
       </div>
     </div>
   </div>
 
-  <div class="dialog-backdrop" id="historyEditDialog" aria-hidden="true">
-    <div class="dialog-card detail-popup-card" role="dialog" aria-modal="true" aria-label="Edit Barcode">
-      <label class="visually-hidden">
-        <span>ID</span>
-        <input class="input" id="historyEditIdInput" type="text" readonly />
-      </label>
-      <div class="detail-popup-grid">
-        <div class="detail-popup-row detail-popup-row--60-40">
-          <label class="detail-popup-field">
-            <span>Barcode</span>
-            <input class="input" id="historyEditBarcodeInput" type="text" readonly />
-          </label>
-          <label class="detail-popup-field">
-            <span>Quantity</span>
-            <input class="input" id="historyEditQtyInput" type="number" min="1" step="1" />
-          </label>
-        </div>
-        <label class="detail-popup-field">
-          <span>Italian Name</span>
-          <input class="input" id="historyEditItalianNameInput" type="text" />
-        </label>
-        <div class="detail-popup-row detail-popup-row--half">
-          <label class="detail-popup-field">
-            <span>Cost</span>
-            <input class="input" id="historyEditPPriceInput" type="text" inputmode="decimal" />
-          </label>
-          <label class="detail-popup-field">
-            <span>Price</span>
-            <input class="input" id="historyEditSPriceInput" type="text" inputmode="decimal" />
-          </label>
-        </div>
-        <div class="detail-popup-row detail-popup-row--half">
-          <label class="detail-popup-field">
-            <span>Discount%</span>
-            <input class="input" id="historyEditSDiscountInput" type="text" inputmode="decimal" />
-          </label>
-          <label class="detail-popup-field">
-            <span>Disc. Price</span>
-            <input class="input" id="historyEditDiscountPriceInput" type="text" inputmode="decimal" readonly />
-          </label>
-        </div>
-        <div class="detail-popup-actions">
-          <button class="btn btn-primary" id="historyEditSaveBtn" type="button">Save</button>
-          <button class="btn btn-muted" id="historyEditBackBtn" type="button">Back</button>
-        </div>
+  <div class="dialog-overlay" id="billSelectOverlay">
+    <div class="dialog-card" style="max-width:340px; max-height:72vh;">
+      <div class="dialog-title">Select a bill</div>
+      <div id="billSelectStatus" class="muted" style="font-size:12.5px;"></div>
+      <div id="billSelectList" style="overflow-y:auto; flex:1; min-height:0; display:flex; flex-direction:column; gap:6px; margin-top:2px;"></div>
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" id="billSelectCancelBtn">Cancel</button>
+        <button class="btn btn-ghost" id="billSelectRefreshBtn">Refresh</button>
       </div>
-      <div class="save-note" id="historyEditSaveNote" aria-live="polite"></div>
     </div>
   </div>
+</div>
 
-  <canvas id="captureCanvas" class="visually-hidden" width="720" height="720"></canvas>
-  <!-- html5-qrcode: single decoding engine used for both iOS and Android (no native BarcodeDetector dependency). -->
-  <div id="html5QrScanHost" class="visually-hidden"></div>
-  <script>
-    window.__html5QrReadyPromise = new Promise(function (resolve) {
-      var script = document.createElement("script");
-      script.src = "https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js";
-      script.onload = resolve;
-      script.onerror = resolve;
-      document.head.appendChild(script);
+<script>
+/* ===================== State ===================== */
+let counted = {};      // barcode -> {qty, name, cost, price, ts}  (current qty per barcode — used for Tab 3 comparison)
+let history = [];      // [{id, code, qty, name, cost, price, ts}] chronological log of every "Add" action — Tab 2 only, independent of `counted`'s current-vs-bill comparison
+let nextHistoryId = 1;
+let bill = {};         // barcode -> {qty, cost, price, name}
+let billHistory = [];  // stack of previous bill snapshots
+let currentBarcode = '';
+let html5QrCode = null;
+let billSearchTerm = '';
+let statusFilter = { green: true, yellow: true, red: true };
+let credentials = { shopkey: '', login_name: '', password: '' };
+let authCookie = null;
+
+const qtyDisplay = document.getElementById('qtyDisplay');
+
+/* ===================== Helpers ===================== */
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function fmtMoney(n){
+  if(n === undefined || n === null || n === '' || isNaN(n)) return '';
+  return Number(n).toFixed(2);
+}
+function fmtTime(ts){
+  const d = new Date(ts);
+  return d.toLocaleDateString(undefined,{ day:'2-digit', month:'short' }) + ' · ' + d.toLocaleTimeString(undefined,{ hour:'2-digit', minute:'2-digit' });
+}
+function showToast(msg, kind){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show' + (kind ? ' ' + kind : '');
+  clearTimeout(showToast._tm);
+  showToast._tm = setTimeout(()=> t.className = '', 1800);
+}
+function getInfo(code){
+  const b = bill[code];
+  const c = counted[code];
+  return {
+    name: (b && b.name) || (c && c.name) || '',
+    cost: (b && b.cost !== '' && b.cost !== undefined) ? b.cost : ((c && c.cost !== undefined) ? c.cost : ''),
+    price: (b && b.price !== '' && b.price !== undefined) ? b.price : ((c && c.price !== undefined) ? c.price : ''),
+    billQty: b ? b.qty : 0,
+    myQty: c ? c.qty : 0
+  };
+}
+function statusOf(myQty, billQty){
+  if(myQty === billQty) return { status:'MATCH', cls:'green' };
+  if(myQty < billQty) return { status:'SHORT', cls:'yellow' };
+  return { status:'OVER', cls:'red' };
+}
+
+/* ===================== Tabs ===================== */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+    if(btn.dataset.tab !== 'tab-scan') stopScanning();
+    if(btn.dataset.tab === 'tab-log') renderLog();
+    if(btn.dataset.tab === 'tab-bill') renderBill();
+  });
+});
+
+/* ===================== Barcode input ===================== */
+const barcodeInput = document.getElementById('barcodeInput');
+barcodeInput.addEventListener('keydown', e=>{
+  if(e.key === 'Enter'){
+    e.preventDefault();
+    lookupProduct(barcodeInput.value);
+    const nameField = document.getElementById('newName');
+    if(nameField) nameField.focus();
+  }
+});
+barcodeInput.addEventListener('blur', ()=> lookupProduct(barcodeInput.value));
+
+function lookupProduct(raw){
+  const code = (raw || '').trim();
+  const infoBox = document.getElementById('productInfo');
+  if(!code){
+    currentBarcode = '';
+    infoBox.classList.add('empty');
+    infoBox.innerHTML = '<p class="muted">Scan or enter a barcode.</p>';
+    return;
+  }
+  currentBarcode = code;
+  barcodeInput.value = code;
+  const info = getInfo(code);
+  infoBox.classList.remove('empty');
+
+  if(!info.name){
+    // Unlisted item: ask for name, cost and price
+    infoBox.innerHTML = `
+      <div class="new-item-form">
+        <div class="new-item-title">New item — not on the bill</div>
+        <div>
+          <span class="field-label">Name</span>
+          <input type="text" id="newName" placeholder="Item name">
+        </div>
+        <div class="field-row">
+          <div style="flex:1;">
+            <span class="field-label">Cost</span>
+            <input type="text" id="newCost" inputmode="decimal" placeholder="0.00">
+          </div>
+          <div style="flex:1;">
+            <span class="field-label">Price</span>
+            <input type="text" id="newPrice" inputmode="decimal" placeholder="0.00">
+          </div>
+        </div>
+      </div>
+    `;
+  } else {
+    infoBox.innerHTML = `
+      <div class="info-row"><span class="info-label">Item</span><span class="info-value">${escapeHtml(info.name)}</span></div>
+      <div class="info-row"><span class="info-label">Bill qty</span><span class="info-value mono">${info.billQty}</span></div>
+      <div class="info-row"><span class="info-label">Counted</span><span class="info-value mono">${info.myQty}</span></div>
+      ${info.cost !== '' ? `<div class="info-row"><span class="info-label">Cost</span><span class="info-value mono">${fmtMoney(info.cost)}</span></div>` : ''}
+      ${info.price !== '' ? `<div class="info-row"><span class="info-label">Price</span><span class="info-value mono">${fmtMoney(info.price)}</span></div>` : ''}
+    `;
+  }
+}
+
+// Enter-to-next-field navigation inside the new-item form
+document.getElementById('productInfo').addEventListener('keydown', e=>{
+  if(e.key !== 'Enter') return;
+  if(e.target.id === 'newName'){ e.preventDefault(); document.getElementById('newCost').focus(); }
+  else if(e.target.id === 'newCost'){ e.preventDefault(); document.getElementById('newPrice').focus(); }
+  else if(e.target.id === 'newPrice'){ e.preventDefault(); document.getElementById('addBtn').click(); }
+});
+
+/* ===================== Keypad ===================== */
+document.getElementById('keypad').addEventListener('click', e=>{
+  const btn = e.target.closest('.key');
+  if(!btn) return;
+  const k = btn.dataset.k;
+  let val = qtyDisplay.textContent;
+  if(k === 'clear'){ val = '0'; }
+  else if(k === 'back'){ val = val.length > 1 ? val.slice(0,-1) : '0'; }
+  else {
+    val = (val === '0') ? k : (val + k);
+    if(val.length > 6) val = val.slice(0,6);
+  }
+  qtyDisplay.textContent = val;
+});
+function resetKeypad(){ qtyDisplay.textContent = '0'; }
+
+/* ===================== Add to count ===================== */
+document.getElementById('addBtn').addEventListener('click', ()=>{
+  if(!currentBarcode){ showToast('Scan a barcode first', 'red'); return; }
+  const qty = parseInt(qtyDisplay.textContent, 10) || 0;
+  if(qty <= 0){ showToast('Enter a quantity above 0', 'red'); return; }
+
+  const nameInput = document.getElementById('newName');
+  const costInput = document.getElementById('newCost');
+  const priceInput = document.getElementById('newPrice');
+  if(nameInput && !nameInput.value.trim()){ showToast('Enter the item name first', 'red'); nameInput.focus(); return; }
+
+  if(!counted[currentBarcode]){
+    counted[currentBarcode] = { qty: 0, name: '', cost: '', price: '', ts: Date.now() };
+  }
+  const rec = counted[currentBarcode];
+  rec.qty = qty;               // substitutes the previous quantity, does not sum
+  rec.ts = Date.now();
+  let entryName = rec.name, entryCost = rec.cost, entryPrice = rec.price;
+  if(nameInput){
+    rec.name = nameInput.value.trim();
+    const c = parseFloat(costInput.value); rec.cost = isNaN(c) ? '' : c;
+    const p = parseFloat(priceInput.value); rec.price = isNaN(p) ? '' : p;
+    entryName = rec.name; entryCost = rec.cost; entryPrice = rec.price;
+  }
+
+  // Log this add action into the chronological history (independent of `counted`)
+  history.push({ id: nextHistoryId++, code: currentBarcode, qty, name: entryName, cost: entryCost, price: entryPrice, ts: Date.now() });
+
+  showToast(`Added ${qty} × ${currentBarcode}`, 'green');
+  resetKeypad();
+  lookupProduct(currentBarcode);
+  renderLog();
+  renderBill();
+});
+
+/* ===================== Login / cookie refresh ===================== */
+const loginBtn = document.getElementById('loginBtn');
+const loginDialogOverlay = document.getElementById('loginDialogOverlay');
+const dlgShopkey = document.getElementById('dlgShopkey');
+const dlgLoginName = document.getElementById('dlgLoginName');
+const dlgPassword = document.getElementById('dlgPassword');
+
+let pressTimer = null;
+let longPressFired = false;
+
+function openLoginDialog(){
+  dlgShopkey.value = credentials.shopkey;
+  dlgLoginName.value = credentials.login_name;
+  dlgPassword.value = credentials.password;
+  loginDialogOverlay.classList.add('show');
+  setTimeout(()=> dlgShopkey.focus(), 50);
+}
+function closeLoginDialog(){
+  loginDialogOverlay.classList.remove('show');
+}
+
+loginBtn.addEventListener('pointerdown', ()=>{
+  longPressFired = false;
+  pressTimer = setTimeout(()=>{
+    longPressFired = true;
+    openLoginDialog();
+  }, 550);
+});
+['pointerup','pointerleave','pointercancel'].forEach(evt=>{
+  loginBtn.addEventListener(evt, ()=> clearTimeout(pressTimer));
+});
+loginBtn.addEventListener('click', (e)=>{
+  if(longPressFired){ e.preventDefault(); longPressFired = false; return; }
+  performLogin();
+});
+loginBtn.addEventListener('contextmenu', e=> e.preventDefault()); // avoid long-press context menu on mobile
+
+document.getElementById('dlgCancelBtn').addEventListener('click', closeLoginDialog);
+loginDialogOverlay.addEventListener('click', (e)=>{ if(e.target === loginDialogOverlay) closeLoginDialog(); });
+
+[dlgShopkey, dlgLoginName].forEach((el, i)=>{
+  el.addEventListener('keydown', e=>{
+    if(e.key === 'Enter'){ e.preventDefault(); (i === 0 ? dlgLoginName : dlgPassword).focus(); }
+  });
+});
+dlgPassword.addEventListener('keydown', e=>{
+  if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('dlgSaveBtn').click(); }
+});
+
+document.getElementById('dlgSaveBtn').addEventListener('click', ()=>{
+  const shopkey = dlgShopkey.value.trim();
+  const loginName = dlgLoginName.value.trim();
+  const password = dlgPassword.value;
+  if(!shopkey || !loginName || !password){ showToast('Fill in all 3 fields', 'red'); return; }
+  credentials = { shopkey, login_name: loginName, password };
+  closeLoginDialog();
+  performLogin();
+});
+
+async function performLogin(){
+  if(!credentials.shopkey || !credentials.login_name || !credentials.password){
+    showToast('Hold the button to set credentials', 'red');
+    openLoginDialog();
+    return;
+  }
+  loginBtn.classList.remove('logged-in','login-error');
+  loginBtn.classList.add('logging-in');
+  showToast('Refreshing cookie…');
+  try{
+    const params = new URLSearchParams();
+    params.append('shopkey', credentials.shopkey);
+    params.append('login_name', credentials.login_name);
+    params.append('password', credentials.password);
+
+    const res = await fetch('https://lgkiller.mattoteo96.workers.dev/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString()
     });
-  </script>
-  <script src="app.js?v=48" defer></script>
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+
+    loginBtn.classList.remove('logging-in');
+    if(data.success){
+      authCookie = data.cookie || data.fullCookie || null;
+      loginBtn.classList.add('logged-in');
+      showToast('Cookie refreshed', 'green');
+    } else {
+      loginBtn.classList.add('login-error');
+      showToast('Login failed: ' + (data.error || 'check credentials'), 'red');
+    }
+  } catch(err){
+    loginBtn.classList.remove('logging-in');
+    loginBtn.classList.add('login-error');
+    showToast('Could not reach login service', 'red');
+  }
+}
+
+/* ===================== Camera scanning ===================== */
+const startBtn = document.getElementById('startScanBtn');
+const stopBtn = document.getElementById('stopScanBtn');
+const cameraWrap = document.getElementById('cameraWrap');
+
+startBtn.addEventListener('click', startScanning);
+stopBtn.addEventListener('click', stopScanning);
+
+function startScanning(){
+  cameraWrap.style.display = 'block';
+  startBtn.style.display = 'none';
+  stopBtn.style.display = 'inline-flex';
+  html5QrCode = new Html5Qrcode("reader", {
+    formatsToSupport: [
+      Html5QrcodeSupportedFormats.EAN_13,
+      Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.UPC_A,
+      Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.CODE_93,
+      Html5QrcodeSupportedFormats.ITF,
+      Html5QrcodeSupportedFormats.QR_CODE
+    ],
+    verbose: false
+  });
+  html5QrCode.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: { width: 240, height: 110 } },
+    (decodedText) => {
+      lookupProduct(decodedText);
+      showToast('Scanned ' + decodedText, 'green');
+      stopScanning();
+    },
+    () => { /* ignore per-frame decode errors */ }
+  ).catch(err => {
+    showToast('Camera unavailable', 'red');
+    resetCameraButtons();
+  });
+}
+function stopScanning(){
+  if(html5QrCode){
+    html5QrCode.stop().then(()=>{
+      html5QrCode.clear();
+      resetCameraButtons();
+    }).catch(()=> resetCameraButtons());
+  } else {
+    resetCameraButtons();
+  }
+}
+function resetCameraButtons(){
+  cameraWrap.style.display = 'none';
+  startBtn.style.display = 'inline-flex';
+  stopBtn.style.display = 'none';
+}
+
+/* ===================== Tab 2: chronological history (independent of Tab 3) ===================== */
+function historyCardHtml(entry){
+  return `
+    <div class="record-card">
+      <div class="record-top">
+        <div>
+          <div class="record-barcode">${escapeHtml(entry.code)}</div>
+          <div class="record-time">${fmtTime(entry.ts)}</div>
+        </div>
+        <div class="record-qtys">${entry.qty}</div>
+      </div>
+      <div class="record-name">${entry.name ? escapeHtml(entry.name) : '<span class="muted">Unlisted item</span>'}</div>
+      <div class="record-sub">
+        <span>Cost<span class="val">${entry.cost !== '' ? fmtMoney(entry.cost) : '—'}</span></span>
+        <span>Price<span class="val">${entry.price !== '' ? fmtMoney(entry.price) : '—'}</span></span>
+      </div>
+      <div class="record-actions">
+        <button class="icon-btn" onclick="deleteHistoryEntry(${entry.id})">Delete</button>
+      </div>
+    </div>
+  `;
+}
+function renderLog(){
+  const wrap = document.getElementById('logListWrap');
+  const entries = [...history].sort((a,b)=> b.ts - a.ts);
+  document.getElementById('logItemCount').textContent = entries.length;
+
+  if(entries.length === 0){
+    wrap.innerHTML = '<div class="empty-state">No adds recorded yet.<br>Scan something on the Scan tab to begin.</div>';
+    return;
+  }
+  wrap.innerHTML = entries.map(historyCardHtml).join('');
+}
+function deleteHistoryEntry(id){
+  if(!confirm('Remove this entry from the history?')) return;
+  history = history.filter(e => e.id !== id);
+  renderLog();
+}
+document.getElementById('clearLogBtn').addEventListener('click', ()=>{
+  if(history.length === 0) return;
+  if(!confirm('Clear the entire add history? This cannot be undone.')) return;
+  history = [];
+  renderLog();
+});
+document.getElementById('exportLogBtn').addEventListener('click', ()=>{
+  const rows = [['timestamp','barcode','qty_added','name','cost','price']];
+  [...history].sort((a,b)=> a.ts - b.ts).forEach(e=>{
+    rows.push([new Date(e.ts).toISOString(), e.code, e.qty, e.name, fmtMoney(e.cost), fmtMoney(e.price)]);
+  });
+  downloadCsv(rows, 'stockcheck_history.csv');
+});
+
+/* ===================== Tab 3: Bill comparison (uses current `counted` qty, not history) ===================== */
+function recordCardHtml(code){
+  const info = getInfo(code);
+  const s = statusOf(info.myQty, info.billQty);
+  return `
+    <div class="record-card ${s.cls}">
+      <div class="record-top">
+        <div class="record-barcode">${escapeHtml(code)}</div>
+        <div>
+          <div class="record-qtys"><span class="mine">${info.myQty}</span><span class="sep">/</span><span class="bill">${info.billQty}</span></div>
+          <div class="record-status ${s.cls}">${s.status}</div>
+        </div>
+      </div>
+      <div class="record-name">${info.name ? escapeHtml(info.name) : '<span class="muted">Unlisted item</span>'}</div>
+      <div class="record-sub">
+        <span>Cost<span class="val">${info.cost !== '' ? fmtMoney(info.cost) : '—'}</span></span>
+        <span>Price<span class="val">${info.price !== '' ? fmtMoney(info.price) : '—'}</span></span>
+      </div>
+    </div>
+  `;
+}
+
+/* ===================== Tab 3: bill selector (fetches list, then loads its CSV) ===================== */
+const billSelectOverlay = document.getElementById('billSelectOverlay');
+const billSelectList = document.getElementById('billSelectList');
+const billSelectStatus = document.getElementById('billSelectStatus');
+let fetchedBills = [];
+let selectedBillMeta = null;
+
+document.getElementById('uploadBillBtn').addEventListener('click', ()=>{
+  billSelectOverlay.classList.add('show');
+  fetchBillList();
+});
+document.getElementById('billSelectCancelBtn').addEventListener('click', ()=>{
+  billSelectOverlay.classList.remove('show');
+});
+document.getElementById('billSelectRefreshBtn').addEventListener('click', fetchBillList);
+billSelectOverlay.addEventListener('click', (e)=>{
+  if(e.target === billSelectOverlay) billSelectOverlay.classList.remove('show');
+});
+billSelectList.addEventListener('click', (e)=>{
+  const row = e.target.closest('.bill-select-row');
+  if(!row) return;
+  const idx = parseInt(row.dataset.idx, 10);
+  selectBillByIndex(idx);
+});
+
+async function fetchBillList(){
+  billSelectList.innerHTML = '';
+  billSelectStatus.textContent = 'Loading bills…';
+  try{
+    const headers = { 'Accept': 'application/json' };
+    if(authCookie) headers['X-Auth-Cookie'] = authCookie;
+    const res = await fetch('https://getbill-id.mattoteo96.workers.dev/', { method: 'GET', headers });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    fetchedBills = Array.isArray(data) ? data : [];
+    if(fetchedBills.length === 0){
+      billSelectStatus.textContent = 'No bills found. The session may have expired — try refreshing the cookie (hold the key button on the Scan tab).';
+      return;
+    }
+    billSelectStatus.textContent = `${fetchedBills.length} bill(s) found — tap one to select`;
+    billSelectList.innerHTML = fetchedBills.map((b, i) => `
+      <div class="bill-select-row" data-idx="${i}">
+        <div>
+          <div class="bill-select-id">#${escapeHtml(String(b.id ?? ''))}</div>
+          <div class="bill-select-meta">${escapeHtml(b.supplier || '')}${b.opr_time ? ' · ' + escapeHtml(b.opr_time) : ''}</div>
+        </div>
+        <div class="bill-select-price">${b.bill_price !== undefined ? fmtMoney(b.bill_price) : ''}</div>
+      </div>
+    `).join('');
+  } catch(err){
+    billSelectStatus.textContent = 'Could not load bills — check your connection or refresh the cookie.';
+  }
+}
+
+function selectBillByIndex(idx){
+  const b = fetchedBills[idx];
+  if(!b) return;
+  selectedBillMeta = b;
+  billSelectOverlay.classList.remove('show');
+  renderSelectedBillMeta();
+  showToast(`Selected bill #${b.id} — now pick its CSV file`, 'green');
+  document.getElementById('billFile').click();
+}
+
+function renderSelectedBillMeta(){
+  const el = document.getElementById('selectedBillMeta');
+  if(!selectedBillMeta){ el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = `Bill <span class="mono">#${escapeHtml(String(selectedBillMeta.id ?? ''))}</span>${selectedBillMeta.supplier ? ' · ' + escapeHtml(selectedBillMeta.supplier) : ''}${selectedBillMeta.bill_price !== undefined ? ' · ' + fmtMoney(selectedBillMeta.bill_price) : ''}${selectedBillMeta.opr_time ? ' · ' + escapeHtml(selectedBillMeta.opr_time) : ''}`;
+}
+
+document.getElementById('billFile').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => loadBillFromText(reader.result);
+  reader.readAsText(file);
+  e.target.value = '';
+});
+document.getElementById('prevBillBtn').addEventListener('click', ()=>{
+  if(billHistory.length === 0){ showToast('No previous bill saved', 'red'); return; }
+  const prev = billHistory.pop();
+  billHistory.push(bill);
+  bill = prev;
+  renderBill();
+  showToast('Loaded previous bill', 'green');
+  if(currentBarcode) lookupProduct(currentBarcode);
+});
+document.getElementById('billSearch').addEventListener('input', (e)=>{
+  billSearchTerm = e.target.value.trim().toLowerCase();
+  renderBill();
+});
+[['chkGreen','green','lblGreen'], ['chkYellow','yellow','lblYellow'], ['chkRed','red','lblRed']].forEach(([id, cls, lblId])=>{
+  document.getElementById(id).addEventListener('change', e=>{
+    statusFilter[cls] = e.target.checked;
+    document.getElementById(lblId).classList.toggle('off', !e.target.checked);
+    renderBill();
+  });
+});
+
+function loadBillFromText(text){
+  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  const newBill = {};
+  let count = 0;
+  lines.forEach(line=>{
+    const parts = line.split(',');
+    const code = (parts[0]||'').trim();
+    const qty = parseInt((parts[1]||'').trim(), 10);
+    const cost = parseFloat((parts[2]||'').trim());
+    const price = parseFloat((parts[3]||'').trim());
+    const name = (parts[4]||'').trim();
+    if(code && !isNaN(qty)){
+      newBill[code] = { qty, cost: isNaN(cost)?'':cost, price: isNaN(price)?'':price, name };
+      count++;
+    }
+  });
+  if(count === 0){ showToast('No valid bill lines found', 'red'); return; }
+  if(Object.keys(bill).length > 0){
+    billHistory.push(bill);
+    if(billHistory.length > 5) billHistory.shift();
+  }
+  bill = newBill;
+  showToast(`Loaded ${count} bill line(s)`, 'green');
+  renderBill();
+  if(currentBarcode) lookupProduct(currentBarcode);
+}
+
+function renderBill(){
+  const wrap = document.getElementById('billListWrap');
+  const codes = new Set([...Object.keys(bill), ...Object.keys(counted)]);
+
+  if(codes.size === 0){
+    wrap.innerHTML = '<div class="empty-state">No bill loaded yet.<br>Tap Upload above to add one.</div>';
+    document.getElementById('sumGreen').textContent = 0;
+    document.getElementById('sumYellow').textContent = 0;
+    document.getElementById('sumRed').textContent = 0;
+    return;
+  }
+
+  let g=0,y=0,r=0;
+  [...codes].forEach(code=>{
+    const info = getInfo(code);
+    const s = statusOf(info.myQty, info.billQty);
+    if(s.cls === 'green') g++; else if(s.cls === 'yellow') y++; else r++;
+  });
+  document.getElementById('sumGreen').textContent = g;
+  document.getElementById('sumYellow').textContent = y;
+  document.getElementById('sumRed').textContent = r;
+
+  const filtered = [...codes].sort().filter(code=>{
+    const info = getInfo(code);
+    const s = statusOf(info.myQty, info.billQty);
+    if(!statusFilter[s.cls]) return false;
+    if(!billSearchTerm) return true;
+    return code.toLowerCase().includes(billSearchTerm) || info.name.toLowerCase().includes(billSearchTerm);
+  });
+
+  wrap.innerHTML = filtered.length
+    ? filtered.map(recordCardHtml).join('')
+    : '<div class="empty-state">No matches for the current filters.</div>';
+}
+document.getElementById('exportBillBtn').addEventListener('click', ()=>{
+  const codes = new Set([...Object.keys(bill), ...Object.keys(counted)]);
+  if(codes.size === 0){ showToast('Nothing to export', 'red'); return; }
+  const rows = [['barcode','name','bill_qty','my_qty','cost','price','status']];
+  [...codes].sort().forEach(code=>{
+    const info = getInfo(code);
+    const s = statusOf(info.myQty, info.billQty);
+    rows.push([code, info.name, info.billQty, info.myQty, fmtMoney(info.cost), fmtMoney(info.price), s.status]);
+  });
+  downloadCsv(rows, 'stockcheck_comparison.csv');
+});
+
+/* ===================== CSV export util ===================== */
+function downloadCsv(rows, filename){
+  const csv = rows.map(r => r.map(cell => {
+    const s = String(cell);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+  }).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ===================== Init ===================== */
+renderLog();
+renderBill();
+</script>
 </body>
 </html>
