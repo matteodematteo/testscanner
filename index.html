@@ -7,302 +7,438 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-  :root{
-    --bg: #12181F;
-    --surface: #1B2430;
-    --surface-alt: #232E3A;
-    --surface-raised: #2A3644;
-    --line: #313E4C;
-    --ink: #EDEFF2;
-    --muted: #8B98A6;
-    --amber: #F2A93B;
-    --amber-dim: #7A5A26;
-    --teal: #6FD6D2;
-    --green: #3FB67A;
-    --green-bg: rgba(63,182,122,0.14);
-    --yellow: #F2C94C;
-    --yellow-bg: rgba(242,201,76,0.14);
-    --red: #E5595E;
-    --red-bg: rgba(229,89,94,0.14);
-    --radius: 12px;
-    --font-ui: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
-  }
-  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
+:root{
+--bg: #12181F;
+--surface: #1B2430;
+--surface-alt: #232E3A;
+--surface-raised: #2A3644;
+--line: #313E4C;
+--ink: #EDEFF2;
+--muted: #8B98A6;
+--amber: #F2A93B;
+--amber-dim: #7A5A26;
+--teal: #6FD6D2;
+--green: #3FB67A;
+--green-bg: rgba(63,182,122,0.14);
+--yellow: #F2C94C;
+--yellow-bg: rgba(242,201,76,0.14);
+--red: #E5595E;
+--red-bg: rgba(229,89,94,0.14);
+--radius: 12px;
+--font-ui: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+--font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+}
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
 
-  * { box-sizing: border-box; }
-  html, body {
-    margin: 0; padding: 0; background: #05070A; color: var(--ink);
-    font-family: var(--font-ui);
-    -webkit-tap-highlight-color: transparent;
-    height: 100%;
-  }
-  body { display: flex; justify-content: center; }
-  #app {
-    width: 100%; max-width: 480px; height: 100vh; height: 100dvh;
-    background: var(--bg);
-    display: flex; flex-direction: column;
-    position: relative;
-    box-shadow: 0 0 60px rgba(0,0,0,0.5);
-    overflow: hidden;
-  }
+* { box-sizing: border-box; }
+html, body {
+margin: 0; padding: 0; background: #05070A; color: var(--ink);
+font-family: var(--font-ui);
+-webkit-tap-highlight-color: transparent;
+height: 100%;
+}
+body { display: flex; justify-content: center; }
+#app {
+width: 100%; max-width: 480px; height: 100vh; height: 100dvh;
+background: var(--bg);
+display: flex; flex-direction: column;
+position: relative;
+box-shadow: 0 0 60px rgba(0,0,0,0.5);
+overflow: hidden;
+}
 
-  main { flex: 1; min-height: 0; display:flex; flex-direction:column; }
-  .tab-panel { display: none; flex-direction: column; min-height: 0; }
-  .tab-panel.active { display: flex; }
-  .tab-panel.scroll { overflow-y: auto; padding: 14px 16px 18px 16px; }
+main { flex: 1; min-height: 0; display:flex; flex-direction:column; }
+.tab-panel { display: none; flex-direction: column; min-height: 0; }
+.tab-panel.active { display: flex; }
+.tab-panel.scroll { overflow-y: auto; padding: 14px 16px 18px 16px; }
 
-  /* ---------- Scan tab: mobile 50/50 split ---------- */
-  #tab-scan { padding: 10px 12px; gap: 8px; height:100%; overflow:hidden; display:flex; flex-direction:column; }
-  .scan-left-column { flex: 0 0 50%; max-height: 50%; min-height: 0; display:flex; flex-direction:column; gap:8px; overflow-y:auto; }
-  #productInfo { flex:1 1 0; min-height:0; overflow-y:auto; }
-  #cameraWrap { max-height:140px; overflow-y:auto; }
-  .scan-bottom-controls { flex: 0 0 50%; height: 50%; min-height:0; display:flex; flex-direction:column; gap:6px; }
-  .scan-bottom-controls .qty-display { flex:1; min-height:36px; font-size:clamp(24px, 5.5vh, 40px); }
-  .scan-bottom-controls .keypad { flex:4; }
-  .scan-bottom-controls .add-btn { flex-shrink:0; padding:12px; }
+/* ---------- Scan tab: fills the whole screen, no scroll ---------- */
+#tab-scan { padding: 14px 16px 16px 16px; gap: 10px; height:100%; overflow:hidden; }
+#tab-scan > #productInfo { flex:1 1 0; min-height:0; overflow-y:auto; }
+#cameraWrap { max-height:34%; overflow-y:auto; }
+.scan-bottom-controls { flex:0 0 calc(50% - 5px); min-height:0; display:flex; flex-direction:column; gap:8px; }
+.scan-bottom-controls .qty-display { flex:.65; min-height:38px; font-size:clamp(24px, 6vh, 44px); }
+.scan-bottom-controls .keypad { flex:3.35; }
+.scan-bottom-controls .add-btn { flex-shrink:0; }
+.barcode-input-row { display:flex; gap:8px; flex-shrink:0; }
+input[type="text"], textarea {
+background: var(--surface-alt); border: 1px solid var(--line); color: var(--ink);
+border-radius: 10px; padding: 12px 14px; font-family: var(--font-mono); font-size: 15px;
+width: 100%; outline: none;
+}
+input[type="text"]:focus, textarea:focus, button:focus-visible {
+border-color: var(--amber); box-shadow: 0 0 0 3px rgba(242,169,59,0.25);
+}
+.btn {
+border: none; border-radius: 10px; font-family: var(--font-ui); font-weight: 600;
+cursor: pointer; padding: 12px 16px; font-size: 14px; white-space: nowrap;
+display: inline-flex; align-items: center; gap: 6px; justify-content:center;
+}
+.btn-amber { background: var(--amber); color: #1A1204; }
+.btn-ghost { background: var(--surface-raised); color: var(--ink); border: 1px solid var(--line); }
+.btn-danger { background: rgba(229,89,94,0.15); color: var(--red); border: 1px solid rgba(229,89,94,0.4); }
+.btn:active { transform: scale(0.97); }
+.btn-block { width: 100%; }
 
-  /* Record cards: compact & simple */
-  .record-card {
-    background: var(--surface-alt); border: 1px solid var(--line); border-left: 3px solid var(--line);
-    border-radius: 8px; padding: 7px 10px; margin-bottom: 6px; display:flex; flex-direction:column; gap:3px;
-  }
-  .record-card.green { border-left-color: var(--green); }
-  .record-card.yellow { border-left-color: var(--yellow); }
-  .record-card.red { border-left-color: var(--red); }
+.icon-square { padding: 12px; flex-shrink:0; }
+.icon-square svg { width:18px; height:18px; }
+#loginBtn.logged-in { border-color: var(--green); color: var(--green); }
+#loginBtn.logging-in { border-color: var(--amber); color: var(--amber); }
+#loginBtn.login-error { border-color: var(--red); color: var(--red); }
+
+.dialog-overlay {
+position: absolute; inset: 0; background: rgba(5,7,10,0.72);
+display:none; align-items:center; justify-content:center; z-index: 100; padding: 24px;
+}
+.dialog-overlay.show { display:flex; }
+.dialog-card {
+width: 100%; max-width: 320px; background: var(--surface-alt); border: 1px solid var(--line);
+border-radius: var(--radius); padding: 18px; display:flex; flex-direction:column; gap:10px;
+}
+.dialog-title { font-size: 13px; font-weight:700; letter-spacing:0.4px; color: var(--ink); margin-bottom: 2px; }
+.dialog-field input { padding: 10px 12px; font-size: 14px; }
+.dialog-actions { display:flex; gap:8px; margin-top: 6px; }
+.dialog-actions .btn { flex:1; }
+
+.bill-select-row {
+display:flex; justify-content:space-between; align-items:center; gap:10px;
+background: var(--surface-raised); border:1px solid var(--line); border-radius:10px;
+padding:10px 12px; cursor:pointer;
+}
+.bill-select-row:active { background: var(--amber-dim); }
+.bill-select-supplier { font-size:14.5px; font-weight:700; color: var(--ink); }
+.bill-select-meta { font-size:11px; color: var(--muted); margin-top:2px; font-family: var(--font-mono); }
+.bill-select-price { font-family: var(--font-mono); color: var(--teal); font-weight:600; font-size:13.5px; white-space:nowrap; }
+
+.bill-meta-label {
+font-size: 12px; color: var(--muted); margin-bottom: 10px;
+background: var(--surface-alt); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+}
+.bill-meta-label .mono { color: var(--teal); font-family: var(--font-mono); }
+
+#cameraWrap { position: relative; border-radius: var(--radius); overflow: hidden; display:none; flex-shrink:0; }
+#reader { width: 100%; }
+.scan-line {
+position: absolute; left: 6%; right: 6%; height: 2px; top: 10%;
+background: var(--amber); box-shadow: 0 0 8px var(--amber);
+animation: sweep 1.8s ease-in-out infinite;
+pointer-events: none;
+}
+@keyframes sweep { 0% { top: 12%; } 50% { top: 82%; } 100% { top: 12%; } }
+
+.product-card {
+background: var(--surface-alt); border: 1px solid var(--line);
+border-radius: var(--radius); padding: 12px 16px; flex-shrink: 0;
+}
+.product-card.empty { display:flex; align-items:center; justify-content:center; min-height: 56px; }
+.muted { color: var(--muted); font-style: normal; }
+.info-row { display:flex; justify-content: space-between; align-items:center; padding: 5px 0; border-bottom: 1px solid var(--line); }
+.info-row:last-child { border-bottom: none; }
+.info-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.info-value { font-size: 15px; font-weight: 500; text-align: right; }
+.info-value.mono { font-family: var(--font-mono); color: var(--teal); }
+.cost-boxes { display:flex; gap:8px; margin-top:8px; }
+.cost-box { flex:1; background:var(--surface-raised); border:1px solid var(--line); border-radius:8px; padding:7px 9px; }
+.cost-box .label { display:block; color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.4px; }
+.cost-box .value { display:block; color:var(--teal); font-family:var(--font-mono); font-size:14px; font-weight:600; margin-top:2px; }
+.new-item-form { display:flex; flex-direction:column; gap:8px; }
+.new-item-title { font-size: 12px; color: var(--amber); text-transform:uppercase; letter-spacing:0.5px; font-weight:700; margin-bottom:2px; }
+.field-row { display:flex; gap:8px; }
+.field-row input { padding: 10px 12px; font-size: 14px; }
+.field-label { font-size: 10.5px; color: var(--muted); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:3px; display:block; }
+
+.qty-display {
+flex: 1; min-height: 0; display:flex; align-items:center; justify-content:center;
+text-align:center; font-family: var(--font-mono);
+font-size: clamp(30px, 9vh, 64px); font-weight: 600; letter-spacing: 2px;
+background: var(--surface-alt); border: 1px solid var(--line); border-radius: var(--radius);
+color: var(--amber);
+}
+.keypad { display:grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(4, 1fr); gap: 8px; flex: 2.2; min-height: 0; }
+.key {
+background: var(--surface-raised); border: 1px solid var(--line); color: var(--ink);
+border-radius: 12px; font-family: var(--font-mono); font-weight: 600;
+font-size: clamp(18px, 4.2vh, 28px);
+cursor: pointer; width:100%; height:100%;
+}
+.key:active { background: var(--amber-dim); transform: scale(0.96); }
+.key.func { color: var(--muted); font-family: var(--font-ui); font-size: clamp(11px, 2vh, 14px); text-transform: uppercase; letter-spacing: 0.5px; }
+.add-btn { padding: 16px; font-size: 16px; flex-shrink:0; }
+
+/* ---------- Log & Bill tabs (scrollable) ---------- */
+.summary-bar { display:flex; gap: 8px; margin-bottom: 12px; }
+.summary-chip {
+flex:1; background: var(--surface-alt); border:1px solid var(--line); border-radius: 10px;
+padding: 8px 10px; text-align:center;
+}
+.summary-chip .num { font-family: var(--font-mono); font-size: 18px; font-weight: 700; color: var(--teal); }
+.summary-chip .lbl { font-size: 9.5px; text-transform:uppercase; letter-spacing:0.5px; color: var(--muted); margin-top:2px; }
+
+.toolbar-row { display:flex; justify-content:flex-end; gap:8px; margin-bottom: 12px; }
+.bill-toolbar-totals { margin-right:auto; display:flex; gap:6px; min-width:0; }
+.bill-toolbar-total { background:var(--surface-alt); border:1px solid var(--line); border-radius:8px; padding:5px 7px; min-width:0; }
+.bill-toolbar-total .value { display:block; color:var(--teal); font-family:var(--font-mono); font-size:12px; font-weight:700; white-space:nowrap; }
+.bill-toolbar-total .label { display:block; color:var(--muted); font-size:8px; text-transform:uppercase; white-space:nowrap; }
+.icon-btn-lg {
+background: var(--surface-raised); border: 1px solid var(--line); color: var(--ink);
+border-radius: 10px; padding: 9px 12px; font-size: 12.5px; font-weight:600;
+display:flex; align-items:center; gap:6px; cursor:pointer;
+}
+.icon-btn-lg svg { width:15px; height:15px; }
+.icon-btn-lg:active { background: var(--amber-dim); }
+
+.search-row { position: relative; margin-bottom: 10px; }
+.search-row input { padding-left: 34px; font-family: var(--font-ui); font-size: 13.5px; padding-top:10px; padding-bottom:10px; }
+.search-row svg {
+position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+width: 15px; height: 15px; color: var(--muted); pointer-events:none;
+}
+
+.filter-row { display:flex; gap:8px; margin-bottom: 12px; }
+.filter-chk {
+flex:1; display:flex; align-items:center; justify-content:center; gap:6px;
+border:1px solid var(--line); border-radius: 10px; padding: 7px 6px; font-size: 12px; font-weight:600;
+cursor:pointer; background: var(--surface-alt); user-select:none;
+}
+.filter-chk input { accent-color: var(--amber); width:14px; height:14px; margin:0; }
+.filter-chk.green { color: var(--green); }
+.filter-chk.yellow { color: var(--yellow); }
+.filter-chk.red { color: var(--red); }
+  .filter-chk.off { opacity: 0.35; }
+
+/* Record cards */
+.record-card {
+background: var(--surface-alt); border: 1px solid var(--line); border-left: 4px solid var(--line);
+border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;
+}
+.record-card.green { border-left-color: var(--green); background: var(--green-bg); }
+.record-card.yellow { border-left-color: var(--yellow); background: var(--yellow-bg); }
+.record-card.red { border-left-color: var(--red); background: var(--red-bg); }
   .record-card.is-unlisted {
-    border-style: dashed; border-width: 1px 1px 1px 3px; background: rgba(167, 139, 250, 0.03);
+    border-style: dashed;
+    border-width: 1px 1px 1px 4px;
+    background: rgba(167, 139, 250, 0.04);
   }
   .tag-unlisted {
-    display: inline-flex; align-items: center;
-    background: rgba(167, 139, 250, 0.16); color: #C4B5FD; border: 1px solid rgba(167, 139, 250, 0.35);
-    font-size: 8.5px; font-weight: 700; text-transform: uppercase; padding: 1px 5px; border-radius: 4px;
+    display: inline-flex; align-items: center; gap: 3px;
+    background: rgba(167, 139, 250, 0.16); color: #C4B5FD;
+    border: 1px solid rgba(167, 139, 250, 0.4);
+    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; padding: 2px 6px; border-radius: 6px;
+    margin-left: 6px; vertical-align: middle;
   }
   .tag-proxy {
-    display: inline-flex; align-items: center;
-    background: rgba(111, 214, 210, 0.12); color: var(--teal); border: 1px solid rgba(111, 214, 210, 0.3);
-    font-size: 8.5px; font-weight: 700; text-transform: uppercase; padding: 1px 5px; border-radius: 4px;
+    display: inline-flex; align-items: center; gap: 3px;
+    background: rgba(111, 214, 210, 0.12); color: var(--teal);
+    border: 1px solid rgba(111, 214, 210, 0.3);
+    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; padding: 2px 6px; border-radius: 6px;
+    margin-left: 6px; vertical-align: middle;
   }
-  .record-top { display:flex; justify-content:space-between; align-items:center; gap:6px; }
-  .record-barcode-wrap { display:flex; align-items:center; gap:6px; min-width:0; }
-  .record-barcode { font-family: var(--font-mono); font-weight:700; font-size:14px; color: var(--ink); }
-  .record-top-right { display:flex; align-items:center; gap:6px; flex-shrink:0; }
-  .record-qtys { font-family: var(--font-mono); font-size:13.5px; font-weight:700; }
-  .record-qtys .mine { color: var(--teal); }
-  .record-qtys .sep { color: var(--muted); margin:0 1px; }
-  .record-qtys .bill { color: var(--muted); }
-  .record-status { font-size:8.5px; text-transform:uppercase; letter-spacing:0.4px; font-weight:700; padding:1px 5px; border-radius:4px; }
-  .record-status.green { color: var(--green); background: rgba(63,182,122,0.12); }
-  .record-status.yellow { color: var(--yellow); background: rgba(242,201,76,0.12); }
-  .record-status.red { color: var(--red); background: rgba(229,89,94,0.12); }
+.record-top { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+.record-barcode { font-family: var(--font-mono); font-weight:700; font-size:15.5px; color: var(--ink); }
+.record-time { font-size:10.5px; color: var(--muted); margin-top:1px; }
+.record-qtys { font-family: var(--font-mono); font-size:15px; font-weight:700; text-align:right; white-space:nowrap; }
+.record-qtys .mine { color: var(--teal); }
+.record-qtys .sep { color: var(--muted); font-weight:400; margin:0 2px; }
+.record-qtys .bill { color: var(--muted); }
+.record-status { font-size:9.5px; text-transform:uppercase; letter-spacing:0.5px; font-weight:700; text-align:right; margin-top:1px; }
+.record-status.green { color: var(--green); } .record-status.yellow { color: var(--yellow); } .record-status.red { color: var(--red); }
+.record-name { font-size:14px; margin-top:6px; font-weight:500; line-height:1.3; }
+.record-sub { display:flex; gap:16px; margin-top:5px; font-size:12px; color: var(--muted); }
+.record-sub .val { color: var(--ink); font-family: var(--font-mono); margin-left:4px; }
+.cost-chain { color:var(--muted); font-family:var(--font-mono); font-size:10.5px; margin-left:4px; white-space:nowrap; }
+.record-discounts { color:var(--amber); font-family:var(--font-mono); font-size:10.5px; text-align:right; margin-top:5px; }
+.record-actions { display:flex; gap:6px; margin-top:8px; justify-content:flex-end; }
+.icon-btn {
+background: transparent; border: 1px solid var(--line); color: var(--muted);
+border-radius: 8px; padding: 4px 9px; font-size: 11px; cursor:pointer;
+}
+.icon-btn:active { background: var(--surface-raised); }
+.empty-state { text-align:center; color: var(--muted); padding: 26px 10px; font-size: 13.5px; }
 
-  .record-name-compact { font-size:12.5px; font-weight:600; color: var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .record-details-compact { display:flex; align-items:center; flex-wrap:wrap; gap:8px; font-size:11px; color: var(--muted); }
-  .record-details-compact .val { color: var(--ink); font-family: var(--font-mono); }
-  .record-details-compact .disc { color: var(--amber); font-family: var(--font-mono); font-size:10.5px; }
-  .mod-price-inline { display:inline-flex; align-items:center; gap:3px; margin-left:auto; font-size:10.5px; }
-  .mod-price-inline input {
-    width: 68px; padding: 2px 6px; font-size: 11.5px; font-family: var(--font-mono);
-    text-align: right; background: var(--surface-raised); border: 1px solid var(--line);
-    border-radius: 5px; color: var(--teal); outline: none;
-  }
-  .mod-price-inline input:focus { border-color: var(--amber); }
+/* ---------- Bottom nav ---------- */
+nav.tabbar {
+flex-shrink: 0; width: 100%; background: var(--surface);
+border-top: 1px solid var(--line); display:flex;
+padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px)) 8px;
+}
+.tab-btn {
+flex:1; background:none; border:none; color: var(--muted); display:flex; flex-direction:column;
+align-items:center; gap:3px; padding: 6px 0; cursor:pointer; font-family: var(--font-ui);
+font-size: 10.5px; font-weight: 600; letter-spacing: 0.3px; border-radius: 10px;
+}
+.tab-btn svg { width:19px; height:19px; }
+.tab-btn.active { color: var(--amber); }
+.tab-btn.active svg { filter: drop-shadow(0 0 4px rgba(242,169,59,0.5)); }
 
-  .btn-danger-sm {
-    background: rgba(229,89,94,0.15); color: var(--red); border: 1px solid rgba(229,89,94,0.4);
-    padding: 1px 5px; font-size: 10px; font-weight: 700; border-radius: 4px; cursor: pointer; line-height: 1.2;
-  }
-  .btn-danger-sm:active { background: rgba(229,89,94,0.3); }
+/* ---------- Toast ---------- */
+#toast {
+position: absolute; left: 50%; bottom: 66px; transform: translateX(-50%) translateY(20px);
+background: var(--surface-raised); border: 1px solid var(--line); color: var(--ink);
+padding: 9px 16px; border-radius: 999px; font-size: 12.5px; font-weight:600;
+opacity: 0; pointer-events:none; transition: all 0.25s ease; z-index: 50;
+max-width: 90%; white-space: nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast.green { border-color: var(--green); color: var(--green); }
+#toast.red { border-color: var(--red); color: var(--red); }
 
-  /* ---------- Desktop layout ---------- */
-  @media (min-width: 768px) {
-    body { padding: 20px 0; background: #07090D; }
-    #app {
-      max-width: 1100px; height: calc(100vh - 40px); height: calc(100dvh - 40px);
-      border-radius: 16px; border: 1px solid var(--line);
-      box-shadow: 0 16px 60px rgba(0,0,0,0.75);
-    }
-    #tab-scan {
-      display: none;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px; height: 100%; overflow: hidden; padding: 20px;
-    }
-    #tab-scan.active { display: grid; }
-    .scan-left-column {
-      display: flex; flex-direction: column; gap: 12px; height: 100%; overflow-y: auto;
-    }
-    .scan-bottom-controls {
-      height: 100%; flex: 1; min-height: 0;
-    }
-    #logListWrap, #billListWrap {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-      gap: 12px;
-    }
-    .record-card { margin-bottom: 0; }
-  }
-
-  ::-webkit-scrollbar { width:0; height:0; }
+::-webkit-scrollbar { width:0; height:0; }
 </style>
 </head>
 <body>
 <div id="app">
 
-  <main>
+<main>
 
-    <!-- TAB 1: SCAN (fills the entire screen, no scroll) -->
-    <section class="tab-panel active" id="tab-scan">
-      <div class="scan-left-column">
-        <div class="barcode-input-row">
-          <input type="text" id="barcodeInput" placeholder="Barcode" inputmode="numeric">
-          <button class="btn btn-amber" id="startScanBtn">Scan</button>
-          <button class="btn btn-ghost" id="stopScanBtn" style="display:none;">Stop</button>
-          <button class="btn btn-ghost icon-square" id="loginBtn" title="Tap: refresh cookie · Hold: set credentials">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-          </button>
-        </div>
-        <div id="cameraWrap">
-          <div id="reader"></div>
-          <div class="scan-line"></div>
-        </div>
+<!-- TAB 1: SCAN (fills the entire screen, no scroll) -->
+<section class="tab-panel active" id="tab-scan">
+<div class="barcode-input-row">
+<input type="text" id="barcodeInput" placeholder="Barcode" inputmode="numeric">
+<button class="btn btn-amber" id="startScanBtn">Scan</button>
+<button class="btn btn-ghost" id="stopScanBtn" style="display:none;">Stop</button>
+<button class="btn btn-ghost icon-square" id="loginBtn" title="Tap: refresh cookie · Hold: set credentials">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+</button>
+</div>
+<div id="cameraWrap">
+<div id="reader"></div>
+<div class="scan-line"></div>
+</div>
 
-        <div class="product-card empty" id="productInfo">
-          <p class="muted">Scan or enter a barcode.</p>
-        </div>
-      </div>
+<div class="product-card empty" id="productInfo">
+<p class="muted">Scan or enter a barcode.</p>
+</div>
 
-      <div class="scan-bottom-controls">
-        <div class="qty-display" id="qtyDisplay">0</div>
-        <div class="keypad" id="keypad">
-          <button class="key" data-k="1">1</button>
-          <button class="key" data-k="2">2</button>
-          <button class="key" data-k="3">3</button>
-          <button class="key" data-k="4">4</button>
-          <button class="key" data-k="5">5</button>
-          <button class="key" data-k="6">6</button>
-          <button class="key" data-k="7">7</button>
-          <button class="key" data-k="8">8</button>
-          <button class="key" data-k="9">9</button>
-          <button class="key func" data-k="clear">Clear</button>
-          <button class="key" data-k="0">0</button>
-          <button class="key func" data-k="back">⌫</button>
-        </div>
-        <button class="btn btn-amber btn-block add-btn" id="addBtn">Add to count</button>
-      </div>
-    </section>
+<div class="scan-bottom-controls">
+<div class="qty-display" id="qtyDisplay">0</div>
+<div class="keypad" id="keypad">
+<button class="key" data-k="1">1</button>
+<button class="key" data-k="2">2</button>
+<button class="key" data-k="3">3</button>
+<button class="key" data-k="4">4</button>
+<button class="key" data-k="5">5</button>
+<button class="key" data-k="6">6</button>
+<button class="key" data-k="7">7</button>
+<button class="key" data-k="8">8</button>
+<button class="key" data-k="9">9</button>
+<button class="key func" data-k="clear">Clear</button>
+<button class="key" data-k="0">0</button>
+<button class="key func" data-k="back">⌫</button>
+</div>
+<button class="btn btn-amber btn-block add-btn" id="addBtn">Add to count</button>
+</div>
+</section>
 
-    <!-- TAB 2: LOG (chronology of every add — independent from Tab 3) -->
-    <section class="tab-panel scroll" id="tab-log">
-      <div class="toolbar-row">
-        <button class="icon-btn-lg" id="exportLogBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg>
-          Export
-        </button>
-        <button class="icon-btn-lg" id="clearLogBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
-          Clear
-        </button>
-      </div>
-      <div class="summary-bar">
-        <div class="summary-chip"><div class="num" id="logItemCount">0</div><div class="lbl">Entries</div></div>
-      </div>
-      <div id="logListWrap"></div>
-    </section>
+<!-- TAB 2: LOG (chronology of every add — independent from Tab 3) -->
+<section class="tab-panel scroll" id="tab-log">
+<div class="toolbar-row">
+<button class="icon-btn-lg" id="exportLogBtn">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg>
+Export
+</button>
+<button class="icon-btn-lg" id="clearLogBtn">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
+Clear
+</button>
+</div>
+<div class="summary-bar">
+<div class="summary-chip"><div class="num" id="logItemCount">0</div><div class="lbl">Entries</div></div>
+</div>
+<div id="logListWrap"></div>
+</section>
 
-    <!-- TAB 3: BILL -->
-    <section class="tab-panel scroll" id="tab-bill">
-      <div class="toolbar-row">
-        <div class="bill-toolbar-totals" aria-label="Counted stock value totals">
-          <div class="bill-toolbar-total"><span class="value" id="sumNetCost">€0.00</span><span class="label">Cost</span></div>
-          <div class="bill-toolbar-total"><span class="value" id="sumCostWithVat">€0.00</span><span class="label">+ IVA</span></div>
-        </div>
-        <button class="icon-btn-lg" id="exportBillBtn" title="Export XLSX">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg>
-          Export XLSX
-        </button>
-        <button class="icon-btn-lg" id="prevBillBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 3"/></svg>
-          Previous
-        </button>
-        <button class="icon-btn-lg" id="uploadBillBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M5 21h14"/></svg>
-          Upload
-        </button>
-      </div>
+<!-- TAB 3: BILL -->
+<section class="tab-panel scroll" id="tab-bill">
+<div class="toolbar-row">
+<div class="bill-toolbar-totals" aria-label="Counted stock value totals">
+<div class="bill-toolbar-total"><span class="value" id="sumNetCost">€0.00</span><span class="label">Cost</span></div>
+<div class="bill-toolbar-total"><span class="value" id="sumCostWithVat">€0.00</span><span class="label">+ IVA</span></div>
+</div>
+<button class="icon-btn-lg" id="prevBillBtn">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 3"/></svg>
+Previous
+</button>
+<button class="icon-btn-lg" id="uploadBillBtn">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M5 21h14"/></svg>
+Upload
+</button>
+</div>
 
-      <div class="bill-meta-label" id="selectedBillMeta" style="display:none;"></div>
+<div class="bill-meta-label" id="selectedBillMeta" style="display:none;"></div>
 
-      <div class="search-row">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-        <input type="text" id="billSearch" placeholder="Search barcode or name">
-      </div>
-      <div class="summary-bar">
-        <div class="summary-chip"><div class="num" id="sumGreen" style="color:var(--green);">0</div><div class="lbl">Match</div></div>
-        <div class="summary-chip"><div class="num" id="sumYellow" style="color:var(--yellow);">0</div><div class="lbl">Short</div></div>
-        <div class="summary-chip"><div class="num" id="sumRed" style="color:var(--red);">0</div><div class="lbl">Over</div></div>
-      </div>
-      <div class="filter-row">
-        <label class="filter-chk green" id="lblGreen"><input type="checkbox" id="chkGreen" checked> Match</label>
-        <label class="filter-chk yellow" id="lblYellow"><input type="checkbox" id="chkYellow" checked> Short</label>
-        <label class="filter-chk red" id="lblRed"><input type="checkbox" id="chkRed" checked> Over</label>
-      </div>
-      <div id="billListWrap"></div>
-    </section>
+<div class="search-row">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+<input type="text" id="billSearch" placeholder="Search barcode or name">
+</div>
+<div class="summary-bar">
+<div class="summary-chip"><div class="num" id="sumGreen" style="color:var(--green);">0</div><div class="lbl">Match</div></div>
+<div class="summary-chip"><div class="num" id="sumYellow" style="color:var(--yellow);">0</div><div class="lbl">Short</div></div>
+<div class="summary-chip"><div class="num" id="sumRed" style="color:var(--red);">0</div><div class="lbl">Over</div></div>
+</div>
+<div class="filter-row">
+<label class="filter-chk green" id="lblGreen"><input type="checkbox" id="chkGreen" checked> Match</label>
+<label class="filter-chk yellow" id="lblYellow"><input type="checkbox" id="chkYellow" checked> Short</label>
+<label class="filter-chk red" id="lblRed"><input type="checkbox" id="chkRed" checked> Over</label>
+</div>
+<div id="billListWrap"></div>
+<button class="btn btn-ghost btn-block" id="exportBillBtn" style="margin-top:6px;">Export comparison CSV</button>
+</section>
 
-  </main>
+</main>
 
-  <nav class="tabbar">
-    <button class="tab-btn active" data-tab="tab-scan">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5v14M7 5v14M11 5v10M15 5v14M19 5v10M21 5v14"/></svg>
-      Scan
-    </button>
-    <button class="tab-btn" data-tab="tab-log">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
-      Records
-    </button>
-    <button class="tab-btn" data-tab="tab-bill">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-2.5-1.5L14 21l-2.5-1.5L9 21l-2.5-1.5L4 21V3z"/><path d="M8 8h8M8 12h8"/></svg>
-      Bill
-    </button>
-  </nav>
+<nav class="tabbar">
+<button class="tab-btn active" data-tab="tab-scan">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5v14M7 5v14M11 5v10M15 5v14M19 5v10M21 5v14"/></svg>
+Scan
+</button>
+<button class="tab-btn" data-tab="tab-log">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+Records
+</button>
+<button class="tab-btn" data-tab="tab-bill">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-2.5-1.5L14 21l-2.5-1.5L9 21l-2.5-1.5L4 21V3z"/><path d="M8 8h8M8 12h8"/></svg>
+Bill
+</button>
+</nav>
 
-  <div id="toast"></div>
+<div id="toast"></div>
 
-  <div class="dialog-overlay" id="loginDialogOverlay">
-    <div class="dialog-card">
-      <div class="dialog-title">Login credentials</div>
-      <div class="dialog-field">
-        <span class="field-label">Shopkey</span>
-        <input type="text" id="dlgShopkey">
-      </div>
-      <div class="dialog-field">
-        <span class="field-label">Login name</span>
-        <input type="text" id="dlgLoginName">
-      </div>
-      <div class="dialog-field">
-        <span class="field-label">Password</span>
-        <input type="password" id="dlgPassword">
-      </div>
-      <div class="dialog-actions">
-        <button class="btn btn-ghost" id="dlgCancelBtn">Cancel</button>
-        <button class="btn btn-amber" id="dlgSaveBtn">Save &amp; login</button>
-      </div>
-    </div>
-  </div>
+<div class="dialog-overlay" id="loginDialogOverlay">
+<div class="dialog-card">
+<div class="dialog-title">Login credentials</div>
+<div class="dialog-field">
+<span class="field-label">Shopkey</span>
+<input type="text" id="dlgShopkey">
+</div>
+<div class="dialog-field">
+<span class="field-label">Login name</span>
+<input type="text" id="dlgLoginName">
+</div>
+<div class="dialog-field">
+<span class="field-label">Password</span>
+<input type="password" id="dlgPassword">
+</div>
+<div class="dialog-actions">
+<button class="btn btn-ghost" id="dlgCancelBtn">Cancel</button>
+<button class="btn btn-amber" id="dlgSaveBtn">Save &amp; login</button>
+</div>
+</div>
+</div>
 
-  <div class="dialog-overlay" id="billSelectOverlay">
-    <div class="dialog-card" style="max-width:340px; max-height:72vh;">
-      <div class="dialog-title" id="billSelectTitle">Select a bill</div>
-      <div id="billSelectStatus" class="muted" style="font-size:12.5px;"></div>
-      <div id="billSelectList" style="overflow-y:auto; flex:1; min-height:0; display:flex; flex-direction:column; gap:6px; margin-top:2px;"></div>
-      <div class="dialog-actions">
-        <button class="btn btn-ghost" id="billSelectCancelBtn">Cancel</button>
-        <button class="btn btn-ghost" id="billSelectRefreshBtn">Refresh</button>
-      </div>
-    </div>
-  </div>
+<div class="dialog-overlay" id="billSelectOverlay">
+<div class="dialog-card" style="max-width:340px; max-height:72vh;">
+<div class="dialog-title" id="billSelectTitle">Select a bill</div>
+<div id="billSelectStatus" class="muted" style="font-size:12.5px;"></div>
+<div id="billSelectList" style="overflow-y:auto; flex:1; min-height:0; display:flex; flex-direction:column; gap:6px; margin-top:2px;"></div>
+<div class="dialog-actions">
+<button class="btn btn-ghost" id="billSelectCancelBtn">Cancel</button>
+<button class="btn btn-ghost" id="billSelectRefreshBtn">Refresh</button>
+</div>
+</div>
+</div>
 </div>
 
 <script>
@@ -327,323 +463,308 @@ const qtyDisplay = document.getElementById('qtyDisplay');
 // Firebase client configuration is public by design. Protect the database itself
 // with Firebase Realtime Database rules before deploying this app publicly.
 const firebaseConfig = {
-  apiKey: 'AIzaSyA98q2-ZsnOV309O9YNH-xLflsCBmit1uY',
-  authDomain: 'database-2be93.firebaseapp.com',
-  databaseURL: 'https://database-2be93-default-rtdb.europe-west1.firebasedatabase.app',
-  projectId: 'database-2be93',
-  storageBucket: 'database-2be93.firebasestorage.app',
-  messagingSenderId: '111002760311',
-  appId: '1:111002760311:web:a34c1fbe4430af6ab10272'
+apiKey: 'AIzaSyA98q2-ZsnOV309O9YNH-xLflsCBmit1uY',
+authDomain: 'database-2be93.firebaseapp.com',
+databaseURL: 'https://database-2be93-default-rtdb.europe-west1.firebasedatabase.app',
+projectId: 'database-2be93',
+storageBucket: 'database-2be93.firebasestorage.app',
+messagingSenderId: '111002760311',
+appId: '1:111002760311:web:a34c1fbe4430af6ab10272'
 };
 firebase.initializeApp(firebaseConfig);
 const firebaseDb = firebase.database();
 
 function firebaseBillKey(meta){
-  const id = meta && meta.id !== undefined ? String(meta.id) : String(Date.now());
-  return id.replace(/[.#$\\/\\[\\]]/g, '_');
+const id = meta && meta.id !== undefined ? String(meta.id) : String(Date.now());
+return id.replace(/[.#$\\/\\[\\]]/g, '_');
 }
 function firebaseShopKey(shopkey = credentials.shopkey){
-  shopkey = (shopkey || '').trim();
-  if(!shopkey) throw new Error('Set your shopkey before saving bills');
-  return shopkey.replace(/[.#$\\/\\[\\]]/g, '_');
+shopkey = (shopkey || '').trim();
+if(!shopkey) throw new Error('Set your shopkey before saving bills');
+return shopkey.replace(/[.#$\\/\\[\\]]/g, '_');
 }
 function firebaseBillsRef(shopkey){
-  // Firebase path: {shopkey}/{billId}
-  return firebaseDb.ref(firebaseShopKey(shopkey));
+// Firebase path: {shopkey}/{billId}
+return firebaseDb.ref(firebaseShopKey(shopkey));
 }
 function firebaseBillRef(key, shopkey){
-  return firebaseBillsRef(shopkey).child(key);
+return firebaseBillsRef(shopkey).child(key);
 }
 async function saveBillToFirebase(key, meta, items, counts){
-  const safeMeta = {
-    id: meta && meta.id !== undefined ? String(meta.id) : '',
-    supplier: (meta && meta.supplier) || '',
-    bill_price: meta && meta.bill_price !== undefined ? meta.bill_price : '',
-    opr_time: (meta && meta.opr_time) || '',
-    savedAt: firebase.database.ServerValue.TIMESTAMP,
-    updatedAt: firebase.database.ServerValue.TIMESTAMP
-  };
-  await firebaseBillRef(key).update({ meta: safeMeta, items, counted: counts || {} });
+const safeMeta = {
+id: meta && meta.id !== undefined ? String(meta.id) : '',
+supplier: (meta && meta.supplier) || '',
+bill_price: meta && meta.bill_price !== undefined ? meta.bill_price : '',
+opr_time: (meta && meta.opr_time) || '',
+savedAt: firebase.database.ServerValue.TIMESTAMP,
+updatedAt: firebase.database.ServerValue.TIMESTAMP
+};
+await firebaseBillRef(key).update({ meta: safeMeta, items, counted: counts || {} });
 }
 async function syncCountToFirebase(code){
-  if(!currentBillKey) return;
-  try{
-    await firebaseBillRef(currentBillKey, currentBillShopKey).child('counted').child(code).set(counted[code]);
-  } catch(err){
-    showToast('Count saved locally; Firebase sync failed', 'red');
-  }
+if(!currentBillKey) return;
+try{
+await firebaseBillRef(currentBillKey, currentBillShopKey).child('counted').child(code).set(counted[code]);
+} catch(err){
+showToast('Count saved locally; Firebase sync failed', 'red');
+}
 }
 
 /* ===================== Helpers ===================== */
 function escapeHtml(str){
-  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 function fmtMoney(n){
-  const value = typeof n === 'string' ? n.replace(',', '.') : n;
-  if(value === undefined || value === null || value === '' || isNaN(value)) return '';
-  return Number(value).toFixed(2);
+const value = typeof n === 'string' ? n.replace(',', '.') : n;
+if(value === undefined || value === null || value === '' || isNaN(value)) return '';
+return Number(value).toFixed(2);
 }
 function discountValues(item){
-  if(!item) return [];
-  // Supports p_discount, p_discount2, p_discount3, etc. returned by the bill API.
-  return Object.keys(item)
-    .filter(key => /^p_discount\d*$/i.test(key))
-    .sort((a,b) => a.localeCompare(b, undefined, { numeric:true }))
-    .map(key => Number(String(item[key]).replace(',', '.')) || 0)
-    .filter(value => value > 0);
+if(!item) return [];
+// Supports p_discount, p_discount2, p_discount3, etc. returned by the bill API.
+return Object.keys(item)
+.filter(key => /^p_discount\d*$/i.test(key))
+.sort((a,b) => a.localeCompare(b, undefined, { numeric:true }))
+.map(key => Number(String(item[key]).replace(',', '.')) || 0)
+.filter(value => value > 0);
 }
 function discountsText(discounts){
-  return discounts.map(value => fmtMoney(value).replace(/\.00$/, '') + '%').join(', ');
+return discounts.map(value => fmtMoney(value).replace(/\.00$/, '') + '%').join(', ');
 }
 function costBreakdown(cost, discounts){
-  const base = Number(String(cost).replace(',', '.'));
-  if(!Number.isFinite(base)) return { net:'', withVat:'' };
-  // Each p_discount reduces the running cost: 50 means × (1 - 50 / 100).
-  // Multiple supplied percentages are applied one after another.
-  const multiplier = discounts.length
-    ? discounts.reduce((product, value) => product * (1 - value / 100), 1)
-    : 1;
-  const net = Math.max(0, base * multiplier);
-  return { net, withVat: net * 1.22 };
+const base = Number(String(cost).replace(',', '.'));
+if(!Number.isFinite(base)) return { net:'', withVat:'' };
+// Each p_discount reduces the running cost: 50 means × (1 - 50 / 100).
+// Multiple supplied percentages are applied one after another.
+const multiplier = discounts.length
+? discounts.reduce((product, value) => product * (1 - value / 100), 1)
+: 1;
+const net = Math.max(0, base * multiplier);
+return { net, withVat: net * 1.22 };
 }
 function fmtTime(ts){
-  const d = new Date(ts);
-  return d.toLocaleDateString(undefined,{ day:'2-digit', month:'short' }) + ' · ' + d.toLocaleTimeString(undefined,{ hour:'2-digit', minute:'2-digit' });
+const d = new Date(ts);
+return d.toLocaleDateString(undefined,{ day:'2-digit', month:'short' }) + ' · ' + d.toLocaleTimeString(undefined,{ hour:'2-digit', minute:'2-digit' });
 }
 function showToast(msg, kind){
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'show' + (kind ? ' ' + kind : '');
-  clearTimeout(showToast._tm);
-  showToast._tm = setTimeout(()=> t.className = '', 1800);
+const t = document.getElementById('toast');
+t.textContent = msg;
+t.className = 'show' + (kind ? ' ' + kind : '');
+clearTimeout(showToast._tm);
+showToast._tm = setTimeout(()=> t.className = '', 1800);
 }
 function getInfo(code){
-  const b = bill[code];
-  const c = counted[code];
-  const discounts = discountValues(b || c);
-  const cost = (b && b.cost !== '' && b.cost !== undefined) ? b.cost : ((c && c.cost !== undefined) ? c.cost : '');
-  const modPrice = (c && c.modPrice !== undefined) ? c.modPrice : '';
-  return {
-    name: (b && b.name) || (c && c.name) || '',
-    cost,
-    price: (b && b.price !== '' && b.price !== undefined) ? b.price : ((c && c.price !== undefined) ? c.price : ''),
-    modPrice,
-    discounts,
-    ...costBreakdown(cost, discounts),
-    billQty: b ? b.qty : 0,
-    myQty: c ? c.qty : 0
-  };
+const b = bill[code];
+const c = counted[code];
+const discounts = discountValues(b || c);
+const cost = (b && b.cost !== '' && b.cost !== undefined) ? b.cost : ((c && c.cost !== undefined) ? c.cost : '');
+return {
+name: (b && b.name) || (c && c.name) || '',
+cost,
+price: (b && b.price !== '' && b.price !== undefined) ? b.price : ((c && c.price !== undefined) ? c.price : ''),
+discounts,
+...costBreakdown(cost, discounts),
+billQty: b ? b.qty : 0,
+myQty: c ? c.qty : 0
+};
 }
 function statusOf(myQty, billQty){
-  if(myQty === billQty) return { status:'MATCH', cls:'green' };
-  if(myQty < billQty) return { status:'SHORT', cls:'yellow' };
-  return { status:'OVER', cls:'red' };
+if(myQty === billQty) return { status:'MATCH', cls:'green' };
+if(myQty < billQty) return { status:'SHORT', cls:'yellow' };
+return { status:'OVER', cls:'red' };
 }
 
 /* ===================== Tabs ===================== */
 document.querySelectorAll('.tab-btn').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById(btn.dataset.tab).classList.add('active');
-    if(btn.dataset.tab !== 'tab-scan') stopScanning();
-    if(btn.dataset.tab === 'tab-log') renderLog();
-    if(btn.dataset.tab === 'tab-bill') renderBill();
-  });
+btn.addEventListener('click', ()=>{
+document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+btn.classList.add('active');
+document.getElementById(btn.dataset.tab).classList.add('active');
+if(btn.dataset.tab !== 'tab-scan') stopScanning();
+if(btn.dataset.tab === 'tab-log') renderLog();
+if(btn.dataset.tab === 'tab-bill') renderBill();
+});
 });
 
 /* ===================== Barcode input ===================== */
 const barcodeInput = document.getElementById('barcodeInput');
 barcodeInput.addEventListener('keydown', e=>{
-  if(e.key === 'Enter'){
-    e.preventDefault();
-    lookupProduct(barcodeInput.value);
-    const nameField = document.getElementById('newName');
-    if(nameField) nameField.focus();
-  }
+if(e.key === 'Enter'){
+e.preventDefault();
+lookupProduct(barcodeInput.value);
+const nameField = document.getElementById('newName');
+if(nameField) nameField.focus();
+}
 });
 barcodeInput.addEventListener('blur', ()=> lookupProduct(barcodeInput.value));
 
 function newDiscountInput(index){
-  return `<div style="flex:1;"><span class="field-label">Discount ${index} %</span><input type="text" class="newDiscount" inputmode="decimal" placeholder="0"></div>`;
+return `<div style="flex:1;"><span class="field-label">Discount ${index} %</span><input type="text" class="newDiscount" inputmode="decimal" placeholder="0"></div>`;
 }
 function updateNewItemCostPreview(){
-  const costInput = document.getElementById('newCost');
-  const netEl = document.getElementById('newNetCost');
-  const vatEl = document.getElementById('newCostWithVat');
-  if(!costInput || !netEl || !vatEl) return;
-  const discounts = [...document.querySelectorAll('.newDiscount')]
-    .map(input => Number(input.value.replace(',', '.')) || 0)
-    .filter(value => value > 0);
-  const totals = costBreakdown(costInput.value, discounts);
-  netEl.textContent = totals.net === '' ? '€0.00' : '€' + fmtMoney(totals.net);
-  vatEl.textContent = totals.withVat === '' ? '€0.00' : '€' + fmtMoney(totals.withVat);
+const costInput = document.getElementById('newCost');
+const netEl = document.getElementById('newNetCost');
+const vatEl = document.getElementById('newCostWithVat');
+if(!costInput || !netEl || !vatEl) return;
+const discounts = [...document.querySelectorAll('.newDiscount')]
+.map(input => Number(input.value.replace(',', '.')) || 0)
+.filter(value => value > 0);
+const totals = costBreakdown(costInput.value, discounts);
+netEl.textContent = totals.net === '' ? '€0.00' : '€' + fmtMoney(totals.net);
+vatEl.textContent = totals.withVat === '' ? '€0.00' : '€' + fmtMoney(totals.withVat);
 }
 
 function lookupProduct(raw){
-  const code = (raw || '').trim();
-  const infoBox = document.getElementById('productInfo');
-  if(!code){
-    currentBarcode = '';
-    infoBox.classList.add('empty');
-    infoBox.innerHTML = '<p class="muted">Scan or enter a barcode.</p>';
-    return;
-  }
-  currentBarcode = code;
-  barcodeInput.value = code;
-  const info = getInfo(code);
-  infoBox.classList.remove('empty');
+const code = (raw || '').trim();
+const infoBox = document.getElementById('productInfo');
+if(!code){
+currentBarcode = '';
+infoBox.classList.add('empty');
+infoBox.innerHTML = '<p class="muted">Scan or enter a barcode.</p>';
+return;
+}
+currentBarcode = code;
+barcodeInput.value = code;
+const info = getInfo(code);
+infoBox.classList.remove('empty');
 
-  if(!info.name){
-    // Unlisted item: ask for name, cost and price
-    infoBox.innerHTML = `
-      <div class="new-item-form">
-        <div class="new-item-title">New item — not on the bill</div>
-        <div>
-          <span class="field-label">Name</span>
-          <input type="text" id="newName" placeholder="Item name">
-        </div>
-        <div class="field-row">
-          <div style="flex:1;">
-            <span class="field-label">Cost</span>
-            <input type="text" id="newCost" inputmode="decimal" placeholder="0.00">
-          </div>
-          <div style="flex:1;">
-            <span class="field-label">Price</span>
-            <input type="text" id="newPrice" inputmode="decimal" placeholder="0.00">
-          </div>
-        </div>
-        <div class="field-row" style="margin-top:4px;">
-          <div style="flex:1;">
-            <span class="field-label">Modify Price</span>
-            <input type="text" id="tab1ModPrice" inputmode="decimal" placeholder="0.00" value="${info.modPrice !== '' ? fmtMoney(info.modPrice) : ''}">
-          </div>
-        </div>
-        <div class="field-row" id="newDiscountFields">${newDiscountInput(1)}${newDiscountInput(2)}</div>
-        <button type="button" class="icon-btn" id="addDiscountBtn" style="align-self:flex-start;">+ Discount</button>
-        <div class="cost-boxes">
-          <div class="cost-box"><span class="label">Cost after discount</span><span class="value" id="newNetCost">€0.00</span></div>
-          <div class="cost-box"><span class="label">Cost + IVA (22%)</span><span class="value" id="newCostWithVat">€0.00</span></div>
-        </div>
-      </div>
-    `;
-  } else {
-    infoBox.innerHTML = `
-      <div class="info-row"><span class="info-label">Item</span><span class="info-value">${escapeHtml(info.name)}</span></div>
-      <div class="info-row"><span class="info-label">Bill qty</span><span class="info-value mono">${info.billQty}</span></div>
-      <div class="info-row"><span class="info-label">Counted</span><span class="info-value mono">${info.myQty}</span></div>
-      ${info.cost !== '' ? `<div class="info-row"><span class="info-label">Cost</span><span class="info-value mono">${fmtMoney(info.cost)}</span></div>` : ''}
-      ${info.price !== '' ? `<div class="info-row"><span class="info-label">Price</span><span class="info-value mono">${fmtMoney(info.price)}</span></div>` : ''}
-      <div class="info-row"><span class="info-label">Modify Price</span><input type="text" id="tab1ModPrice" inputmode="decimal" placeholder="New price" value="${info.modPrice !== '' ? fmtMoney(info.modPrice) : ''}" style="width:100px; padding:4px 8px; font-size:13px; text-align:right; font-family:var(--font-mono); border-radius:6px; background:var(--surface-raised); border:1px solid var(--line); color:var(--teal);"></div>
-      ${info.discounts.length ? `<div class="info-row"><span class="info-label">Discounts</span><span class="info-value mono">${discountsText(info.discounts)}</span></div>` : ''}
-      ${info.net !== '' ? `<div class="cost-boxes">
-        <div class="cost-box"><span class="label">Cost after discount</span><span class="value">€${fmtMoney(info.net)}</span></div>
-        <div class="cost-box"><span class="label">Cost + IVA (22%)</span><span class="value">€${fmtMoney(info.withVat)}</span></div>
-      </div>` : ''}
-    `;
-  }
+if(!info.name){
+// Unlisted item: ask for name, cost and price
+infoBox.innerHTML = `
+<div class="new-item-form">
+<div class="new-item-title">New item — not on the bill</div>
+<div>
+<span class="field-label">Name</span>
+<input type="text" id="newName" placeholder="Item name">
+</div>
+<div class="field-row">
+<div style="flex:1;">
+<span class="field-label">Cost</span>
+<input type="text" id="newCost" inputmode="decimal" placeholder="0.00">
+</div>
+<div style="flex:1;">
+<span class="field-label">Price</span>
+<input type="text" id="newPrice" inputmode="decimal" placeholder="0.00">
+</div>
+</div>
+<div class="field-row" id="newDiscountFields">${newDiscountInput(1)}${newDiscountInput(2)}</div>
+<button type="button" class="icon-btn" id="addDiscountBtn" style="align-self:flex-start;">+ Discount</button>
+<div class="cost-boxes">
+<div class="cost-box"><span class="label">Cost after discount</span><span class="value" id="newNetCost">€0.00</span></div>
+<div class="cost-box"><span class="label">Cost + IVA (22%)</span><span class="value" id="newCostWithVat">€0.00</span></div>
+</div>
+</div>
+`;
+} else {
+infoBox.innerHTML = `
+<div class="info-row"><span class="info-label">Item</span><span class="info-value">${escapeHtml(info.name)}</span></div>
+<div class="info-row"><span class="info-label">Bill qty</span><span class="info-value mono">${info.billQty}</span></div>
+<div class="info-row"><span class="info-label">Counted</span><span class="info-value mono">${info.myQty}</span></div>
+${info.cost !== '' ? `<div class="info-row"><span class="info-label">Cost</span><span class="info-value mono">${fmtMoney(info.cost)}</span></div>` : ''}
+${info.price !== '' ? `<div class="info-row"><span class="info-label">Price</span><span class="info-value mono">${fmtMoney(info.price)}</span></div>` : ''}
+${info.discounts.length ? `<div class="info-row"><span class="info-label">Discounts</span><span class="info-value mono">${discountsText(info.discounts)}</span></div>` : ''}
+${info.net !== '' ? `<div class="cost-boxes">
+<div class="cost-box"><span class="label">Cost after discount</span><span class="value">€${fmtMoney(info.net)}</span></div>
+<div class="cost-box"><span class="label">Cost + IVA (22%)</span><span class="value">€${fmtMoney(info.withVat)}</span></div>
+</div>` : ''}
+`;
+}
 }
 
 // Enter-to-next-field navigation inside the new-item form
 document.getElementById('productInfo').addEventListener('keydown', e=>{
-  if(e.key !== 'Enter') return;
-  if(e.target.id === 'newName'){ e.preventDefault(); document.getElementById('newCost').focus(); }
-  else if(e.target.id === 'newCost'){ e.preventDefault(); document.getElementById('newPrice').focus(); }
-  else if(e.target.id === 'newPrice'){ e.preventDefault(); document.getElementById('addBtn').click(); }
+if(e.key !== 'Enter') return;
+if(e.target.id === 'newName'){ e.preventDefault(); document.getElementById('newCost').focus(); }
+else if(e.target.id === 'newCost'){ e.preventDefault(); document.getElementById('newPrice').focus(); }
+else if(e.target.id === 'newPrice'){ e.preventDefault(); document.getElementById('addBtn').click(); }
 });
 document.getElementById('productInfo').addEventListener('input', e=>{
-  if(e.target.id === 'newCost' || e.target.classList.contains('newDiscount')) updateNewItemCostPreview();
+if(e.target.id === 'newCost' || e.target.classList.contains('newDiscount')) updateNewItemCostPreview();
 });
 document.getElementById('productInfo').addEventListener('click', e=>{
-  if(e.target.id !== 'addDiscountBtn') return;
-  const fields = document.getElementById('newDiscountFields');
-  const nextIndex = fields.querySelectorAll('.newDiscount').length + 1;
-  fields.insertAdjacentHTML('beforeend', newDiscountInput(nextIndex));
+if(e.target.id !== 'addDiscountBtn') return;
+const fields = document.getElementById('newDiscountFields');
+const nextIndex = fields.querySelectorAll('.newDiscount').length + 1;
+fields.insertAdjacentHTML('beforeend', newDiscountInput(nextIndex));
 });
 
 /* ===================== Keypad ===================== */
 document.getElementById('keypad').addEventListener('click', e=>{
-  const btn = e.target.closest('.key');
-  if(!btn) return;
-  const k = btn.dataset.k;
-  let val = qtyDisplay.textContent;
-  if(k === 'clear'){ val = '0'; }
-  else if(k === 'back'){ val = val.length > 1 ? val.slice(0,-1) : '0'; }
-  else {
-    val = (val === '0') ? k : (val + k);
-    if(val.length > 6) val = val.slice(0,6);
-  }
-  qtyDisplay.textContent = val;
+const btn = e.target.closest('.key');
+if(!btn) return;
+const k = btn.dataset.k;
+let val = qtyDisplay.textContent;
+if(k === 'clear'){ val = '0'; }
+else if(k === 'back'){ val = val.length > 1 ? val.slice(0,-1) : '0'; }
+else {
+val = (val === '0') ? k : (val + k);
+if(val.length > 6) val = val.slice(0,6);
+}
+qtyDisplay.textContent = val;
 });
 function resetKeypad(){ qtyDisplay.textContent = '0'; }
 
 /* ===================== Add to count ===================== */
 document.getElementById('addBtn').addEventListener('click', ()=>{
-  if(!currentBarcode){ showToast('Scan a barcode first', 'red'); return; }
-  const qty = parseInt(qtyDisplay.textContent, 10) || 0;
-  if(qty <= 0){ showToast('Enter a quantity above 0', 'red'); return; }
+if(!currentBarcode){ showToast('Scan a barcode first', 'red'); return; }
+const qty = parseInt(qtyDisplay.textContent, 10) || 0;
+if(qty <= 0){ showToast('Enter a quantity above 0', 'red'); return; }
 
-  const nameInput = document.getElementById('newName');
-  const costInput = document.getElementById('newCost');
-  const priceInput = document.getElementById('newPrice');
-  if(nameInput && !nameInput.value.trim()){ showToast('Enter the item name first', 'red'); nameInput.focus(); return; }
+const nameInput = document.getElementById('newName');
+const costInput = document.getElementById('newCost');
+const priceInput = document.getElementById('newPrice');
+if(nameInput && !nameInput.value.trim()){ showToast('Enter the item name first', 'red'); nameInput.focus(); return; }
 
-  if(!counted[currentBarcode]){
-    const billInfo = getInfo(currentBarcode);
-    counted[currentBarcode] = { qty: 0, name: billInfo.name, cost: billInfo.cost, price: billInfo.price, ts: Date.now() };
-  }
-  const rec = counted[currentBarcode];
-  rec.qty = qty;               // substitutes the previous quantity, does not sum
-  rec.ts = Date.now();
-  const modPriceEl = document.getElementById('tab1ModPrice');
-  if(modPriceEl){
-    const mpVal = modPriceEl.value.replace(',', '.').trim();
-    const mp = parseFloat(mpVal);
-    rec.modPrice = isNaN(mp) ? '' : mp;
-  }
-  let entryName = rec.name, entryPrice = rec.price;
-  if(nameInput){
-    rec.name = nameInput.value.trim();
-    const c = parseFloat(costInput.value); rec.cost = isNaN(c) ? '' : c;
-    const p = parseFloat(priceInput.value); rec.price = isNaN(p) ? '' : p;
-    Object.keys(rec).filter(key => /^p_discount\d*$/i.test(key)).forEach(key => delete rec[key]);
-    [...document.querySelectorAll('.newDiscount')].forEach((input, index) => {
-      const value = Number(input.value.replace(',', '.')) || 0;
-      if(value > 0) rec[index === 0 ? 'p_discount' : 'p_discount' + (index + 1)] = value;
-    });
-    entryName = rec.name; entryPrice = rec.price;
-  }
+if(!counted[currentBarcode]){
+const billInfo = getInfo(currentBarcode);
+counted[currentBarcode] = { qty: 0, name: billInfo.name, cost: billInfo.cost, price: billInfo.price, ts: Date.now() };
+}
+const rec = counted[currentBarcode];
+rec.qty = qty;               // substitutes the previous quantity, does not sum
+rec.ts = Date.now();
+let entryName = rec.name, entryPrice = rec.price;
+if(nameInput){
+rec.name = nameInput.value.trim();
+const c = parseFloat(costInput.value); rec.cost = isNaN(c) ? '' : c;
+const p = parseFloat(priceInput.value); rec.price = isNaN(p) ? '' : p;
+Object.keys(rec).filter(key => /^p_discount\d*$/i.test(key)).forEach(key => delete rec[key]);
+[...document.querySelectorAll('.newDiscount')].forEach((input, index) => {
+const value = Number(input.value.replace(',', '.')) || 0;
+if(value > 0) rec[index === 0 ? 'p_discount' : 'p_discount' + (index + 1)] = value;
+});
+entryName = rec.name; entryPrice = rec.price;
+}
 
-  // Log this add action into the chronological history (independent of `counted`)
-  const activeBillInfo = getInfo(currentBarcode);
-  history.push({
-    id: nextHistoryId++, code: currentBarcode, qty,
-    name: activeBillInfo.name || entryName,
-    price: activeBillInfo.price !== '' ? activeBillInfo.price : entryPrice,
-    ts: Date.now()
-  });
+// Log this add action into the chronological history (independent of `counted`)
+const activeBillInfo = getInfo(currentBarcode);
+history.push({
+id: nextHistoryId++, code: currentBarcode, qty,
+name: activeBillInfo.name || entryName,
+price: activeBillInfo.price !== '' ? activeBillInfo.price : entryPrice,
+ts: Date.now()
+});
 
-  // Each active bill keeps its own counted quantities in Firebase.
-  syncCountToFirebase(currentBarcode);
+// Each active bill keeps its own counted quantities in Firebase.
+syncCountToFirebase(currentBarcode);
 
-  showToast(`Added ${qty} × ${currentBarcode}`, 'green');
-  resetKeypad();
-  lookupProduct(currentBarcode);
-  renderLog();
-  renderBill();
+showToast(`Added ${qty} × ${currentBarcode}`, 'green');
+resetKeypad();
+lookupProduct(currentBarcode);
+renderLog();
+renderBill();
 });
 
 /* ===================== Login / cookie refresh ===================== */
 /* Mirrors the working reference app's method: credentials + cookie persisted in
-   localStorage, cookie extracted by scanning the proxy response for SESSION=/
-   rememberMe= tokens (ignoring the rememberMe=deleteMe placeholder), and a lazy
-   getCookieForRequests() that auto-refreshes the cookie only when needed. */
+localStorage, cookie extracted by scanning the proxy response for SESSION=/
+rememberMe= tokens (ignoring the rememberMe=deleteMe placeholder), and a lazy
+getCookieForRequests() that auto-refreshes the cookie only when needed. */
 
 const STORAGE_KEYS = {
-  credentials: 'stockcheck_credentials',
-  cookie: 'stockcheck_auth_cookie',
-  cookieStatus: 'stockcheck_auth_cookie_status'
+credentials: 'stockcheck_credentials',
+cookie: 'stockcheck_auth_cookie',
+cookieStatus: 'stockcheck_auth_cookie_status'
 };
 
 const loginBtn = document.getElementById('loginBtn');
@@ -657,117 +778,117 @@ let longPressFired = false;
 let authStatus = '';
 
 function loadCredentials(){
-  try{
-    const raw = localStorage.getItem(STORAGE_KEYS.credentials);
-    if(raw) credentials = JSON.parse(raw);
-  } catch(e){ /* ignore malformed/blocked storage */ }
+try{
+const raw = localStorage.getItem(STORAGE_KEYS.credentials);
+if(raw) credentials = JSON.parse(raw);
+} catch(e){ /* ignore malformed/blocked storage */ }
 }
 function saveCredentials(){
-  try{ localStorage.setItem(STORAGE_KEYS.credentials, JSON.stringify(credentials)); }
-  catch(e){ /* ignore blocked storage (e.g. private browsing) */ }
+try{ localStorage.setItem(STORAGE_KEYS.credentials, JSON.stringify(credentials)); }
+catch(e){ /* ignore blocked storage (e.g. private browsing) */ }
 }
 function loadCookieState(){
-  try{
-    authCookie = localStorage.getItem(STORAGE_KEYS.cookie) || null;
-    authStatus = localStorage.getItem(STORAGE_KEYS.cookieStatus) || 'No cookie saved yet.';
-  } catch(e){ authCookie = null; authStatus = 'No cookie saved yet.'; }
+try{
+authCookie = localStorage.getItem(STORAGE_KEYS.cookie) || null;
+authStatus = localStorage.getItem(STORAGE_KEYS.cookieStatus) || 'No cookie saved yet.';
+} catch(e){ authCookie = null; authStatus = 'No cookie saved yet.'; }
 }
 function saveCookieState(cookie, status){
-  authCookie = cookie || null;
-  authStatus = status || '';
-  try{
-    localStorage.setItem(STORAGE_KEYS.cookie, authCookie || '');
-    localStorage.setItem(STORAGE_KEYS.cookieStatus, authStatus);
-  } catch(e){ /* ignore blocked storage */ }
-  updateLoginButtonVisual();
+authCookie = cookie || null;
+authStatus = status || '';
+try{
+localStorage.setItem(STORAGE_KEYS.cookie, authCookie || '');
+localStorage.setItem(STORAGE_KEYS.cookieStatus, authStatus);
+} catch(e){ /* ignore blocked storage */ }
+updateLoginButtonVisual();
 }
 function updateLoginButtonVisual(){
-  loginBtn.classList.remove('logged-in','login-error','logging-in');
-  if(isValidSessionCookie(authCookie)) loginBtn.classList.add('logged-in');
+loginBtn.classList.remove('logged-in','login-error','logging-in');
+if(isValidSessionCookie(authCookie)) loginBtn.classList.add('logged-in');
 }
 
 function isValidSessionCookie(c){
-  return typeof c === 'string' && c.trim().length > 0 && /SESSION=/i.test(c);
+return typeof c === 'string' && c.trim().length > 0 && /SESSION=/i.test(c);
 }
 
 // Digs through whatever shape the proxy responds with and pulls out a clean
 // "SESSION=...; rememberMe=..." cookie string, skipping the deleteMe placeholder.
 function extractCookieFromResponse(payload){
-  if(!payload) return '';
-  let rawCookie = '';
+if(!payload) return '';
+let rawCookie = '';
 
-  if(typeof payload === 'string'){
-    rawCookie = payload;
-  } else if(typeof payload === 'object'){
-    rawCookie =
-      payload.fullCookie ||
-      (payload.data && payload.data.fullCookie) ||
-      payload.cookieString ||
-      (payload.data && payload.data.cookieString) ||
-      payload.cookie ||
-      (payload.data && payload.data.cookie) ||
-      '';
+if(typeof payload === 'string'){
+rawCookie = payload;
+} else if(typeof payload === 'object'){
+rawCookie =
+payload.fullCookie ||
+(payload.data && payload.data.fullCookie) ||
+payload.cookieString ||
+(payload.data && payload.data.cookieString) ||
+payload.cookie ||
+(payload.data && payload.data.cookie) ||
+'';
 
-    if(!rawCookie){
-      const queue = [payload];
-      while(queue.length > 0 && !rawCookie){
-        const item = queue.shift();
-        const values = Object.values(item);
-        for(let i = 0; i < values.length; i++){
-          const value = values[i];
-          if(typeof value === 'string' && /SESSION=|rememberMe=/i.test(value)){
-            rawCookie = value;
-            break;
-          }
-          if(value && typeof value === 'object'){
-            queue.push(value);
-          }
-        }
-      }
-    }
-  }
+if(!rawCookie){
+const queue = [payload];
+while(queue.length > 0 && !rawCookie){
+const item = queue.shift();
+const values = Object.values(item);
+for(let i = 0; i < values.length; i++){
+const value = values[i];
+if(typeof value === 'string' && /SESSION=|rememberMe=/i.test(value)){
+rawCookie = value;
+break;
+}
+if(value && typeof value === 'object'){
+queue.push(value);
+}
+}
+}
+}
+}
 
-  const sessionMatch = rawCookie.match(/SESSION=([^;,\r\n]+)/i);
-  const rememberMatches = [...rawCookie.matchAll(/rememberMe=([^;,\r\n]+)/gi)];
-  let rememberValue = '';
-  for(let i = 0; i < rememberMatches.length; i++){
-    const candidate = (rememberMatches[i] && rememberMatches[i][1]) || '';
-    if(candidate && candidate.toLowerCase() !== 'deleteme'){
-      rememberValue = candidate;
-    }
-  }
+const sessionMatch = rawCookie.match(/SESSION=([^;,\r\n]+)/i);
+const rememberMatches = [...rawCookie.matchAll(/rememberMe=([^;,\r\n]+)/gi)];
+let rememberValue = '';
+for(let i = 0; i < rememberMatches.length; i++){
+const candidate = (rememberMatches[i] && rememberMatches[i][1]) || '';
+if(candidate && candidate.toLowerCase() !== 'deleteme'){
+rememberValue = candidate;
+}
+}
 
-  const cookieParts = [];
-  if(sessionMatch && sessionMatch[1]) cookieParts.push('SESSION=' + sessionMatch[1]);
-  if(rememberValue) cookieParts.push('rememberMe=' + rememberValue);
+const cookieParts = [];
+if(sessionMatch && sessionMatch[1]) cookieParts.push('SESSION=' + sessionMatch[1]);
+if(rememberValue) cookieParts.push('rememberMe=' + rememberValue);
 
-  return cookieParts.join('; ');
+return cookieParts.join('; ');
 }
 
 function openLoginDialog(){
-  dlgShopkey.value = credentials.shopkey;
-  dlgLoginName.value = credentials.login_name;
-  dlgPassword.value = credentials.password;
-  loginDialogOverlay.classList.add('show');
-  setTimeout(()=> dlgShopkey.focus(), 50);
+dlgShopkey.value = credentials.shopkey;
+dlgLoginName.value = credentials.login_name;
+dlgPassword.value = credentials.password;
+loginDialogOverlay.classList.add('show');
+setTimeout(()=> dlgShopkey.focus(), 50);
 }
 function closeLoginDialog(){
-  loginDialogOverlay.classList.remove('show');
+loginDialogOverlay.classList.remove('show');
 }
 
 loginBtn.addEventListener('pointerdown', ()=>{
-  longPressFired = false;
-  pressTimer = setTimeout(()=>{
-    longPressFired = true;
-    openLoginDialog();
-  }, 550);
+longPressFired = false;
+pressTimer = setTimeout(()=>{
+longPressFired = true;
+openLoginDialog();
+}, 550);
 });
 ['pointerup','pointerleave','pointercancel'].forEach(evt=>{
-  loginBtn.addEventListener(evt, ()=> clearTimeout(pressTimer));
+loginBtn.addEventListener(evt, ()=> clearTimeout(pressTimer));
 });
 loginBtn.addEventListener('click', (e)=>{
-  if(longPressFired){ e.preventDefault(); longPressFired = false; return; }
-  performLogin(false);
+if(longPressFired){ e.preventDefault(); longPressFired = false; return; }
+performLogin(false);
 });
 loginBtn.addEventListener('contextmenu', e=> e.preventDefault()); // avoid long-press context menu on mobile
 
@@ -775,84 +896,84 @@ document.getElementById('dlgCancelBtn').addEventListener('click', closeLoginDial
 loginDialogOverlay.addEventListener('click', (e)=>{ if(e.target === loginDialogOverlay) closeLoginDialog(); });
 
 [dlgShopkey, dlgLoginName].forEach((el, i)=>{
-  el.addEventListener('keydown', e=>{
-    if(e.key === 'Enter'){ e.preventDefault(); (i === 0 ? dlgLoginName : dlgPassword).focus(); }
-  });
+el.addEventListener('keydown', e=>{
+if(e.key === 'Enter'){ e.preventDefault(); (i === 0 ? dlgLoginName : dlgPassword).focus(); }
+});
 });
 dlgPassword.addEventListener('keydown', e=>{
-  if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('dlgSaveBtn').click(); }
+if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('dlgSaveBtn').click(); }
 });
 
 document.getElementById('dlgSaveBtn').addEventListener('click', ()=>{
-  const shopkey = dlgShopkey.value.trim();
-  const loginName = dlgLoginName.value.trim();
-  const password = dlgPassword.value;
-  if(!shopkey || !loginName || !password){ showToast('Fill in all 3 fields', 'red'); return; }
-  credentials = { shopkey, login_name: loginName, password };
-  saveCredentials();
-  closeLoginDialog();
-  performLogin(false);
+const shopkey = dlgShopkey.value.trim();
+const loginName = dlgLoginName.value.trim();
+const password = dlgPassword.value;
+if(!shopkey || !loginName || !password){ showToast('Fill in all 3 fields', 'red'); return; }
+credentials = { shopkey, login_name: loginName, password };
+saveCredentials();
+closeLoginDialog();
+performLogin(false);
 });
 
 // silent=true is used by getCookieForRequests() for a lazy, background refresh
 // (no toast/dialog noise) — silent=false is the explicit button-tap flow.
 async function performLogin(silent){
-  if(!credentials.shopkey || !credentials.login_name || !credentials.password){
-    if(!silent){
-      showToast('Hold the button to set credentials', 'red');
-      openLoginDialog();
-    }
-    return '';
-  }
-  if(!silent){
-    loginBtn.classList.remove('logged-in','login-error');
-    loginBtn.classList.add('logging-in');
-    showToast('Refreshing cookie…');
-  }
-  try{
-    const params = new URLSearchParams();
-    params.set('shopkey', credentials.shopkey);
-    params.set('login_name', credentials.login_name);
-    params.set('password', credentials.password);
+if(!credentials.shopkey || !credentials.login_name || !credentials.password){
+if(!silent){
+showToast('Hold the button to set credentials', 'red');
+openLoginDialog();
+}
+return '';
+}
+if(!silent){
+loginBtn.classList.remove('logged-in','login-error');
+loginBtn.classList.add('logging-in');
+showToast('Refreshing cookie…');
+}
+try{
+const params = new URLSearchParams();
+params.set('shopkey', credentials.shopkey);
+params.set('login_name', credentials.login_name);
+params.set('password', credentials.password);
 
-    const res = await fetch('https://lgkiller.mattoteo96.workers.dev/', {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json, text/plain, */*',
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: params.toString()
-    });
-    if(!res.ok) throw new Error(`Proxy request failed with status ${res.status}`);
+const res = await fetch('https://lgkiller.mattoteo96.workers.dev/', {
+method: 'POST',
+headers: {
+Accept: 'application/json, text/plain, */*',
+'Content-Type': 'application/x-www-form-urlencoded'
+},
+body: params.toString()
+});
+if(!res.ok) throw new Error(`Proxy request failed with status ${res.status}`);
 
-    const responseText = await res.text();
-    let parsed = responseText;
-    try{ parsed = JSON.parse(responseText); } catch(e){ /* keep plain text fallback */ }
+const responseText = await res.text();
+let parsed = responseText;
+try{ parsed = JSON.parse(responseText); } catch(e){ /* keep plain text fallback */ }
 
-    const cookie = extractCookieFromResponse(parsed);
-    if(!cookie){
-      saveCookieState('', 'Proxy answered, but no usable cookie was returned.');
-      if(!silent) showToast('No usable session returned — check credentials', 'red');
-      return '';
-    }
+const cookie = extractCookieFromResponse(parsed);
+if(!cookie){
+saveCookieState('', 'Proxy answered, but no usable cookie was returned.');
+if(!silent) showToast('No usable session returned — check credentials', 'red');
+return '';
+}
 
-    saveCookieState(cookie, `Cookie refreshed successfully for ${credentials.login_name}.`);
-    if(!silent) showToast('Cookie refreshed', 'green');
-    return cookie;
+saveCookieState(cookie, `Cookie refreshed successfully for ${credentials.login_name}.`);
+if(!silent) showToast('Cookie refreshed', 'green');
+return cookie;
 
-  } catch(err){
-    const message = err.message || 'Login request failed.';
-    saveCookieState('', `Login failed: ${message}`);
-    if(!silent) showToast(message, 'red');
-    return '';
-  }
+} catch(err){
+const message = err.message || 'Login request failed.';
+saveCookieState('', `Login failed: ${message}`);
+if(!silent) showToast(message, 'red');
+return '';
+}
 }
 
 // Lazily ensures a usable cookie before a request that needs one: reuses the
 // stored cookie if it's still valid, otherwise triggers a silent re-login.
 async function getCookieForRequests(){
-  if(isValidSessionCookie(authCookie)) return authCookie;
-  return await performLogin(true);
+if(isValidSessionCookie(authCookie)) return authCookie;
+return await performLogin(true);
 }
 
 loadCredentials();
@@ -868,215 +989,184 @@ startBtn.addEventListener('click', startScanning);
 stopBtn.addEventListener('click', stopScanning);
 
 function startScanning(){
-  cameraWrap.style.display = 'block';
-  startBtn.style.display = 'none';
-  stopBtn.style.display = 'inline-flex';
-  html5QrCode = new Html5Qrcode("reader", {
-    formatsToSupport: [
-      Html5QrcodeSupportedFormats.EAN_13,
-      Html5QrcodeSupportedFormats.EAN_8,
-      Html5QrcodeSupportedFormats.UPC_A,
-      Html5QrcodeSupportedFormats.UPC_E,
-      Html5QrcodeSupportedFormats.CODE_128,
-      Html5QrcodeSupportedFormats.CODE_39,
-      Html5QrcodeSupportedFormats.CODE_93,
-      Html5QrcodeSupportedFormats.ITF,
-      Html5QrcodeSupportedFormats.QR_CODE
-    ],
-    verbose: false
-  });
-  html5QrCode.start(
-    { facingMode: "environment" },
-    { fps: 10, qrbox: { width: 240, height: 110 } },
-    (decodedText) => {
-      lookupProduct(decodedText);
-      showToast('Scanned ' + decodedText, 'green');
-      stopScanning();
-    },
-    () => { /* ignore per-frame decode errors */ }
-  ).catch(err => {
-    showToast('Camera unavailable', 'red');
-    resetCameraButtons();
-  });
+cameraWrap.style.display = 'block';
+startBtn.style.display = 'none';
+stopBtn.style.display = 'inline-flex';
+html5QrCode = new Html5Qrcode("reader", {
+formatsToSupport: [
+Html5QrcodeSupportedFormats.EAN_13,
+Html5QrcodeSupportedFormats.EAN_8,
+Html5QrcodeSupportedFormats.UPC_A,
+Html5QrcodeSupportedFormats.UPC_E,
+Html5QrcodeSupportedFormats.CODE_128,
+Html5QrcodeSupportedFormats.CODE_39,
+Html5QrcodeSupportedFormats.CODE_93,
+Html5QrcodeSupportedFormats.ITF,
+Html5QrcodeSupportedFormats.QR_CODE
+],
+verbose: false
+});
+html5QrCode.start(
+{ facingMode: "environment" },
+{ fps: 10, qrbox: { width: 240, height: 110 } },
+(decodedText) => {
+lookupProduct(decodedText);
+showToast('Scanned ' + decodedText, 'green');
+stopScanning();
+},
+() => { /* ignore per-frame decode errors */ }
+).catch(err => {
+showToast('Camera unavailable', 'red');
+resetCameraButtons();
+});
 }
 function stopScanning(){
-  if(html5QrCode){
-    html5QrCode.stop().then(()=>{
-      html5QrCode.clear();
-      resetCameraButtons();
-    }).catch(()=> resetCameraButtons());
-  } else {
-    resetCameraButtons();
-  }
+if(html5QrCode){
+html5QrCode.stop().then(()=>{
+html5QrCode.clear();
+resetCameraButtons();
+}).catch(()=> resetCameraButtons());
+} else {
+resetCameraButtons();
+}
 }
 function resetCameraButtons(){
-  cameraWrap.style.display = 'none';
-  startBtn.style.display = 'inline-flex';
-  stopBtn.style.display = 'none';
+cameraWrap.style.display = 'none';
+startBtn.style.display = 'inline-flex';
+stopBtn.style.display = 'none';
 }
 
 /* ===================== Tab 2: chronological history (independent of Tab 3) ===================== */
 function historyCardHtml(entry){
-  return `
-    <div class="record-card">
-      <div class="record-top">
-        <div>
-          <div class="record-barcode">${escapeHtml(entry.code)}</div>
-          <div class="record-time">${fmtTime(entry.ts)}</div>
-        </div>
-        <div class="record-qtys">${entry.qty}</div>
-      </div>
-      <div class="record-name">${entry.name ? escapeHtml(entry.name) : '<span class="muted">Unlisted item</span>'}</div>
-      <div class="record-sub">
-        <span>Selling price<span class="val">${entry.price !== '' && entry.price !== undefined ? fmtMoney(entry.price) : '—'}</span></span>
-      </div>
-      <div class="record-actions">
-        <button class="icon-btn" onclick="deleteHistoryEntry(${entry.id})">Delete</button>
-      </div>
-    </div>
-  `;
+return `
+<div class="record-card">
+<div class="record-top">
+<div>
+<div class="record-barcode">${escapeHtml(entry.code)}</div>
+<div class="record-time">${fmtTime(entry.ts)}</div>
+</div>
+<div class="record-qtys">${entry.qty}</div>
+</div>
+<div class="record-name">${entry.name ? escapeHtml(entry.name) : '<span class="muted">Unlisted item</span>'}</div>
+<div class="record-sub">
+<span>Selling price<span class="val">${entry.price !== '' && entry.price !== undefined ? fmtMoney(entry.price) : '—'}</span></span>
+</div>
+<div class="record-actions">
+<button class="icon-btn" onclick="deleteHistoryEntry(${entry.id})">Delete</button>
+</div>
+</div>
+`;
 }
 function renderLog(){
-  const wrap = document.getElementById('logListWrap');
-  const entries = [...history].sort((a,b)=> b.ts - a.ts);
-  document.getElementById('logItemCount').textContent = entries.length;
+const wrap = document.getElementById('logListWrap');
+const entries = [...history].sort((a,b)=> b.ts - a.ts);
+document.getElementById('logItemCount').textContent = entries.length;
 
-  if(entries.length === 0){
-    wrap.innerHTML = '<div class="empty-state">No adds recorded yet.<br>Scan something on the Scan tab to begin.</div>';
-    return;
-  }
-  wrap.innerHTML = entries.map(historyCardHtml).join('');
+if(entries.length === 0){
+wrap.innerHTML = '<div class="empty-state">No adds recorded yet.<br>Scan something on the Scan tab to begin.</div>';
+return;
+}
+wrap.innerHTML = entries.map(historyCardHtml).join('');
 }
 function deleteHistoryEntry(id){
-  if(!confirm('Remove this entry from the history?')) return;
-  history = history.filter(e => e.id !== id);
-  renderLog();
+if(!confirm('Remove this entry from the history?')) return;
+history = history.filter(e => e.id !== id);
+renderLog();
 }
 document.getElementById('clearLogBtn').addEventListener('click', ()=>{
-  if(history.length === 0) return;
-  if(!confirm('Clear the entire add history? This cannot be undone.')) return;
-  history = [];
-  renderLog();
+if(history.length === 0) return;
+if(!confirm('Clear the entire add history? This cannot be undone.')) return;
+history = [];
+renderLog();
 });
 function formatSessionId() {
-  const d = new Date();
-  const pad = n => String(n).padStart(2, '0');
-  return `session_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+const d = new Date();
+const pad = n => String(n).padStart(2, '0');
+return `session_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
 }
 
 function buildHistoryPayloadItem(entry) {
-  const sPrice = (entry.price !== undefined && entry.price !== null && entry.price !== '') ? fmtMoney(entry.price) : '0.00';
-  return {
-    barcode: entry.code || entry.barcode || '',
-    italian_name: entry.name || entry.italian_name || '',
-    comparison_qty: Number(entry.qty || entry.comparison_qty) || 1,
-    s_price: sPrice
-  };
+const sPrice = (entry.price !== undefined && entry.price !== null && entry.price !== '') ? fmtMoney(entry.price) : '0.00';
+return {
+barcode: entry.code || entry.barcode || '',
+italian_name: entry.name || entry.italian_name || '',
+comparison_qty: Number(entry.qty || entry.comparison_qty) || 1,
+s_price: sPrice
+};
 }
 
 document.getElementById('exportLogBtn').addEventListener('click', async ()=>{
-  if (history.length === 0) {
-    showToast('Barcode list is empty', 'red');
-    return;
-  }
+if (history.length === 0) {
+showToast('Barcode list is empty', 'red');
+return;
+}
 
-  const payload = {
-    session_id: formatSessionId(),
-    session_cost: "$0.00",
-    data: [
-      {
-        stack: "full_tickets",
-        items: history.map(buildHistoryPayloadItem)
-      }
-    ]
-  };
+const payload = {
+session_id: formatSessionId(),
+session_cost: "$0.00",
+data: [
+{
+stack: "full_tickets",
+items: history.map(buildHistoryPayloadItem)
+}
+]
+};
 
-  showToast('Sending TXT...');
-  try {
-    const response = await fetch("https://withered-base-e090.mattoteo96.workers.dev/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/plain"
-      },
-      body: JSON.stringify(payload)
-    });
+showToast('Sending TXT...');
+try {
+const response = await fetch("https://withered-base-e090.mattoteo96.workers.dev/", {
+method: "POST",
+headers: {
+"Content-Type": "text/plain"
+},
+body: JSON.stringify(payload)
+});
 
-    if (!response.ok) {
-      throw new Error(`Send TXT failed with status ${response.status}`);
-    }
+if (!response.ok) {
+throw new Error(`Send TXT failed with status ${response.status}`);
+}
 
-    history = [];
-    renderLog();
-    showToast('TXT sent successfully', 'green');
-  } catch (err) {
-    showToast(err.message || 'Failed to send TXT', 'red');
-  }
+history = [];
+renderLog();
+showToast('TXT sent successfully', 'green');
+} catch (err) {
+showToast(err.message || 'Failed to send TXT', 'red');
+}
 });
 
 /* ===================== Tab 3: Bill comparison (uses current `counted` qty, not history) ===================== */
 function recordCardHtml(code){
-  const info = getInfo(code);
-  const s = statusOf(info.myQty, info.billQty);
+const info = getInfo(code);
+const s = statusOf(info.myQty, info.billQty);
   const isFromProxy = !!bill[code];
+const costChain = info.net === '' ? '' : (info.discounts.length
+? ` &gt; disc. €${fmtMoney(info.net)} &gt; +IVA €${fmtMoney(info.withVat)} /`
+: ` &gt; +IVA €${fmtMoney(info.withVat)} /`);
   const sourceTag = isFromProxy
     ? `<span class="tag-proxy">Bill</span>`
-    : `<span class="tag-unlisted">Scratch</span>`;
+    : `<span class="tag-unlisted">✦ Scratch</span>`;
 
-  const deleteBtn = !isFromProxy
-    ? `<button class="btn-danger-sm" onclick="deleteScratchItem('${escapeHtml(code)}')">✕</button>`
-    : '';
-
-  return `
+return `
+    <div class="record-card ${s.cls}">
     <div class="record-card ${s.cls} ${isFromProxy ? 'is-proxy' : 'is-unlisted'}">
-      <div class="record-top">
-        <div class="record-barcode-wrap">
-          <span class="record-barcode">${escapeHtml(code)}</span>
-          ${sourceTag}
+<div class="record-top">
+        <div class="record-barcode">${escapeHtml(code)}</div>
+        <div>
+          <div class="record-barcode">${escapeHtml(code)}${sourceTag}</div>
         </div>
-        <div class="record-top-right">
-          <span class="record-qtys"><span class="mine">${info.myQty}</span><span class="sep">/</span><span class="bill">${info.billQty}</span></span>
-          <span class="record-status ${s.cls}">${s.status}</span>
-          ${deleteBtn}
-        </div>
-      </div>
-      <div class="record-name-compact">${info.name ? escapeHtml(info.name) : '<span class="muted">Unlisted item</span>'}</div>
-      <div class="record-details-compact">
-        <span>C: <strong class="val">${info.cost !== '' ? '€' + fmtMoney(info.cost) : '—'}</strong></span>
-        <span>P: <strong class="val">${info.price !== '' ? '€' + fmtMoney(info.price) : '—'}</strong></span>
-        ${info.discounts.length ? `<span class="disc">${discountsText(info.discounts)}</span>` : ''}
-        <div class="mod-price-inline">
-          <span>Mod: €</span>
-          <input type="text" inputmode="decimal" placeholder="0.00" value="${info.modPrice !== '' ? fmtMoney(info.modPrice) : ''}" onchange="updateModPrice('${escapeHtml(code)}', this.value)">
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function deleteScratchItem(code){
-  if(!confirm(`Delete scratch item ${code}?`)) return;
-  delete counted[code];
-  if(currentBillKey){
-    try{
-      firebaseBillRef(currentBillKey, currentBillShopKey).child('counted').child(code).remove();
-    } catch(e){}
-  }
-  renderBill();
-  if(currentBarcode === code) lookupProduct(code);
-  showToast(`Deleted ${code}`, 'green');
-}
-
-function updateModPrice(code, value){
-  if(!counted[code]){
-    const billInfo = getInfo(code);
-    counted[code] = { qty: 0, name: billInfo.name, cost: billInfo.cost, price: billInfo.price, ts: Date.now() };
-  }
-  const clean = String(value || '').replace(',', '.').trim();
-  const parsed = parseFloat(clean);
-  counted[code].modPrice = isNaN(parsed) ? '' : parsed;
-  syncCountToFirebase(code);
-  renderBill();
-  showToast(`Updated price for ${code}`, 'green');
+<div>
+<div class="record-qtys"><span class="mine">${info.myQty}</span><span class="sep">/</span><span class="bill">${info.billQty}</span></div>
+<div class="record-status ${s.cls}">${s.status}</div>
+</div>
+</div>
+<div class="record-name">${info.name ? escapeHtml(info.name) : '<span class="muted">Unlisted item</span>'}</div>
+<div class="record-sub">
+<span>Cost<span class="val">${info.cost !== '' ? '€' + fmtMoney(info.cost) : '—'}</span><span class="cost-chain">${costChain}</span></span>
+<span>Price<span class="val">${info.price !== '' ? '€' + fmtMoney(info.price) : '—'}</span></span>
+</div>
+${info.discounts.length ? `<div class="record-discounts">${discountsText(info.discounts)}</div>` : ''}
+</div>
+`;
 }
 
 /* ===================== Tab 3: bill selector (fetches list, then loads its CSV) ===================== */
@@ -1088,309 +1178,282 @@ let selectedBillMeta = null;
 let billSelectMode = 'upload';
 
 document.getElementById('uploadBillBtn').addEventListener('click', ()=>{
-  billSelectMode = 'upload';
-  document.getElementById('billSelectTitle').textContent = 'Select a bill to upload';
-  billSelectOverlay.classList.add('show');
-  fetchBillList();
+billSelectMode = 'upload';
+document.getElementById('billSelectTitle').textContent = 'Select a bill to upload';
+billSelectOverlay.classList.add('show');
+fetchBillList();
 });
 document.getElementById('billSelectCancelBtn').addEventListener('click', ()=>{
-  billSelectOverlay.classList.remove('show');
+billSelectOverlay.classList.remove('show');
 });
 document.getElementById('billSelectRefreshBtn').addEventListener('click', ()=>{
-  if(billSelectMode === 'previous') fetchSavedBills(); else fetchBillList();
+if(billSelectMode === 'previous') fetchSavedBills(); else fetchBillList();
 });
 billSelectOverlay.addEventListener('click', (e)=>{
-  if(e.target === billSelectOverlay) billSelectOverlay.classList.remove('show');
+if(e.target === billSelectOverlay) billSelectOverlay.classList.remove('show');
 });
 billSelectList.addEventListener('click', (e)=>{
-  const row = e.target.closest('.bill-select-row');
-  if(!row) return;
-  if(billSelectMode === 'previous') loadSavedBill(row.dataset.shopkey, row.dataset.key);
-  else selectBillByIndex(parseInt(row.dataset.idx, 10));
+const row = e.target.closest('.bill-select-row');
+if(!row) return;
+if(billSelectMode === 'previous') loadSavedBill(row.dataset.shopkey, row.dataset.key);
+else selectBillByIndex(parseInt(row.dataset.idx, 10));
 });
 
 async function fetchBillList(){
-  billSelectList.innerHTML = '';
-  billSelectStatus.textContent = 'Checking session…';
+billSelectList.innerHTML = '';
+billSelectStatus.textContent = 'Checking session…';
 
-  const cookie = await getCookieForRequests(); // reuses a valid cookie, or silently logs in if needed
-  if(!isValidSessionCookie(cookie)){
-    billSelectStatus.textContent = authStatus || 'No valid session yet. Hold the key button on the Scan tab to log in, then try again.';
-    return;
-  }
+const cookie = await getCookieForRequests(); // reuses a valid cookie, or silently logs in if needed
+if(!isValidSessionCookie(cookie)){
+billSelectStatus.textContent = authStatus || 'No valid session yet. Hold the key button on the Scan tab to log in, then try again.';
+return;
+}
 
-  billSelectStatus.textContent = 'Loading bills…';
-  try{
-    // A custom header like X-Auth-Cookie forces a CORS preflight, which this worker's
-    // Access-Control-Allow-Headers doesn't permit. Query params never trigger preflight,
-    // so the cookie is passed that way instead.
-    const url = new URL('https://getbill-id.mattoteo96.workers.dev/');
-    url.searchParams.set('cookie', cookie);
-    const res = await fetch(url.toString(), { method: 'GET' });
-    if(!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-    fetchedBills = Array.isArray(data) ? data : [];
-    if(fetchedBills.length === 0){
-      billSelectStatus.textContent = 'No bills found. The session may have expired — try refreshing the cookie (hold the key button on the Scan tab).';
-      return;
-    }
-    billSelectStatus.textContent = `${fetchedBills.length} bill(s) found — tap one to select`;
-    billSelectList.innerHTML = fetchedBills.map((b, i) => `
-      <div class="bill-select-row" data-idx="${i}">
-        <div>
-          <div class="bill-select-supplier">${escapeHtml(b.supplier || '')}</div>
-          <div class="bill-select-meta">#${escapeHtml(String(b.id ?? ''))}${b.opr_time ? ' · ' + escapeHtml(b.opr_time) : ''}</div>
-        </div>
-        <div class="bill-select-price">${b.bill_price !== undefined ? fmtMoney(b.bill_price) : ''}</div>
-      </div>
-    `).join('');
-  } catch(err){
-    billSelectStatus.textContent = 'Could not load bills — check your connection or refresh the cookie.';
-  }
+billSelectStatus.textContent = 'Loading bills…';
+try{
+// A custom header like X-Auth-Cookie forces a CORS preflight, which this worker's
+// Access-Control-Allow-Headers doesn't permit. Query params never trigger preflight,
+// so the cookie is passed that way instead.
+const url = new URL('https://getbill-id.mattoteo96.workers.dev/');
+url.searchParams.set('cookie', cookie);
+const res = await fetch(url.toString(), { method: 'GET' });
+if(!res.ok) throw new Error('HTTP ' + res.status);
+const data = await res.json();
+fetchedBills = Array.isArray(data) ? data : [];
+if(fetchedBills.length === 0){
+billSelectStatus.textContent = 'No bills found. The session may have expired — try refreshing the cookie (hold the key button on the Scan tab).';
+return;
+}
+billSelectStatus.textContent = `${fetchedBills.length} bill(s) found — tap one to select`;
+billSelectList.innerHTML = fetchedBills.map((b, i) => `
+<div class="bill-select-row" data-idx="${i}">
+<div>
+<div class="bill-select-supplier">${escapeHtml(b.supplier || '')}</div>
+<div class="bill-select-meta">#${escapeHtml(String(b.id ?? ''))}${b.opr_time ? ' · ' + escapeHtml(b.opr_time) : ''}</div>
+</div>
+<div class="bill-select-price">${b.bill_price !== undefined ? fmtMoney(b.bill_price) : ''}</div>
+</div>
+`).join('');
+} catch(err){
+billSelectStatus.textContent = 'Could not load bills — check your connection or refresh the cookie.';
+}
 }
 
 async function selectBillByIndex(idx){
-  const b = fetchedBills[idx];
-  if(!b) return;
-  selectedBillMeta = b;
-  renderSelectedBillMeta();
-  billSelectStatus.textContent = `Loading products for bill #${b.id}…`;
-  try{
-    const rows = await fetchBillProducts(b.id);
-    const saved = await loadBillFromGoods(rows, b);
-    if(saved) billSelectOverlay.classList.remove('show');
-  } catch(err){
-    billSelectStatus.textContent = 'Could not load products: ' + (err.message || 'unknown error');
-    showToast('Failed to load bill products', 'red');
-  }
+const b = fetchedBills[idx];
+if(!b) return;
+selectedBillMeta = b;
+renderSelectedBillMeta();
+billSelectStatus.textContent = `Loading products for bill #${b.id}…`;
+try{
+const rows = await fetchBillProducts(b.id);
+const saved = await loadBillFromGoods(rows, b);
+if(saved) billSelectOverlay.classList.remove('show');
+} catch(err){
+billSelectStatus.textContent = 'Could not load products: ' + (err.message || 'unknown error');
+showToast('Failed to load bill products', 'red');
+}
 }
 
 function renderSelectedBillMeta(){
-  const el = document.getElementById('selectedBillMeta');
-  if(!selectedBillMeta){ el.style.display = 'none'; return; }
-  el.style.display = 'block';
-  el.innerHTML = `Bill <span class="mono">#${escapeHtml(String(selectedBillMeta.id ?? ''))}</span>${selectedBillMeta.supplier ? ' · ' + escapeHtml(selectedBillMeta.supplier) : ''}${selectedBillMeta.bill_price !== undefined ? ' · ' + fmtMoney(selectedBillMeta.bill_price) : ''}${selectedBillMeta.opr_time ? ' · ' + escapeHtml(selectedBillMeta.opr_time) : ''}`;
+const el = document.getElementById('selectedBillMeta');
+if(!selectedBillMeta){ el.style.display = 'none'; return; }
+el.style.display = 'block';
+el.innerHTML = `Bill <span class="mono">#${escapeHtml(String(selectedBillMeta.id ?? ''))}</span>${selectedBillMeta.supplier ? ' · ' + escapeHtml(selectedBillMeta.supplier) : ''}${selectedBillMeta.bill_price !== undefined ? ' · ' + fmtMoney(selectedBillMeta.bill_price) : ''}${selectedBillMeta.opr_time ? ' · ' + escapeHtml(selectedBillMeta.opr_time) : ''}`;
 }
 
 // Fetches the product lines for a chosen bill from the goods/findByBillId proxy.
 // Field names come straight from that proxy: goods_code, italian_name, p_price, quantity.
 async function fetchBillProducts(billId){
-  const cookie = await getCookieForRequests();
-  if(!isValidSessionCookie(cookie)){
-    throw new Error(authStatus || 'No valid session — hold the key button on the Scan tab to log in.');
-  }
-  const url = new URL('https://lgkillergetbillproducts.mattoteo96.workers.dev/');
-  url.searchParams.set('cookie', cookie);
-  url.searchParams.set('billId', String(billId));
+const cookie = await getCookieForRequests();
+if(!isValidSessionCookie(cookie)){
+throw new Error(authStatus || 'No valid session — hold the key button on the Scan tab to log in.');
+}
+const url = new URL('https://lgkillergetbillproducts.mattoteo96.workers.dev/');
+url.searchParams.set('cookie', cookie);
+url.searchParams.set('billId', String(billId));
 
-  const res = await fetch(url.toString(), { method: 'GET' });
-  let data = null;
-  try{ data = await res.json(); } catch(e){ /* leave null */ }
+const res = await fetch(url.toString(), { method: 'GET' });
+let data = null;
+try{ data = await res.json(); } catch(e){ /* leave null */ }
 
-  if(!res.ok){
-    const msg = (data && data.error) ? data.error : `HTTP ${res.status}`;
-    throw new Error(msg);
-  }
-  if(!Array.isArray(data)){
-    throw new Error('Unexpected response from products proxy');
-  }
-  return data;
+if(!res.ok){
+const msg = (data && data.error) ? data.error : `HTTP ${res.status}`;
+throw new Error(msg);
+}
+if(!Array.isArray(data)){
+throw new Error('Unexpected response from products proxy');
+}
+return data;
 }
 
 // Maps the proxy's goods rows (goods_code / italian_name / p_price / s_price / quantity)
 // into this app's bill schema (barcode / name / cost / qty) and swaps it in as
 // the current comparison bill for Tab 3.
 async function loadBillFromGoods(rows, meta){
-  const newBill = {};
-  let count = 0;
-  rows.forEach(row=>{
-    const barcode = row.goods_code ? String(row.goods_code).trim() : '';
-    if(!barcode) return;
-    newBill[barcode] = {
-      qty: Number(row.quantity) || 0,
-      cost: (row.p_price !== undefined && row.p_price !== null && row.p_price !== '') ? row.p_price : '',
-      price: (row.s_price !== undefined && row.s_price !== null && row.s_price !== '') ? row.s_price : '',
-      name: row.italian_name || '',
-      ...Object.fromEntries(Object.entries(row).filter(([key]) => /^p_discount\d*$/i.test(key)))
-    };
-    count++;
-  });
+const newBill = {};
+let count = 0;
+rows.forEach(row=>{
+const barcode = row.goods_code ? String(row.goods_code).trim() : '';
+if(!barcode) return;
+newBill[barcode] = {
+qty: Number(row.quantity) || 0,
+cost: (row.p_price !== undefined && row.p_price !== null && row.p_price !== '') ? row.p_price : '',
+price: (row.s_price !== undefined && row.s_price !== null && row.s_price !== '') ? row.s_price : '',
+name: row.italian_name || '',
+...Object.fromEntries(Object.entries(row).filter(([key]) => /^p_discount\d*$/i.test(key)))
+};
+count++;
+});
 
-  if(count === 0){
-    showToast('No products found for this bill', 'red');
-    return false;
-  }
-  const key = firebaseBillKey(meta);
-  try{
-    // Keep quantities when a previously uploaded bill is selected again.
-    const existing = await firebaseBillRef(key).once('value');
-    const existingCounts = (existing.val() && existing.val().counted) || {};
-    // Save the full bill before showing it as the active comparison table.
-    await saveBillToFirebase(key, meta, newBill, existingCounts);
-    counted = existingCounts;
-  } catch(err){
-    showToast('Could not save bill to Firebase: ' + (err.message || 'unknown error'), 'red');
-    return false;
-  }
+if(count === 0){
+showToast('No products found for this bill', 'red');
+return false;
+}
+const key = firebaseBillKey(meta);
+try{
+// Keep quantities when a previously uploaded bill is selected again.
+const existing = await firebaseBillRef(key).once('value');
+const existingCounts = (existing.val() && existing.val().counted) || {};
+// Save the full bill before showing it as the active comparison table.
+await saveBillToFirebase(key, meta, newBill, existingCounts);
+counted = existingCounts;
+} catch(err){
+showToast('Could not save bill to Firebase: ' + (err.message || 'unknown error'), 'red');
+return false;
+}
 
-  bill = newBill;
-  currentBillKey = key;
-  currentBillShopKey = firebaseShopKey();
-  selectedBillMeta = meta || null;
-  renderSelectedBillMeta();
-  showToast(`Loaded ${count} product(s)${meta ? ' for bill #' + meta.id : ''}`, 'green');
-  renderBill();
-  if(currentBarcode) lookupProduct(currentBarcode);
-  return true;
+bill = newBill;
+currentBillKey = key;
+currentBillShopKey = firebaseShopKey();
+selectedBillMeta = meta || null;
+renderSelectedBillMeta();
+showToast(`Loaded ${count} product(s)${meta ? ' for bill #' + meta.id : ''}`, 'green');
+renderBill();
+if(currentBarcode) lookupProduct(currentBarcode);
+return true;
 }
 
 document.getElementById('prevBillBtn').addEventListener('click', ()=>{
-  billSelectMode = 'previous';
-  document.getElementById('billSelectTitle').textContent = 'Previously uploaded bills';
-  billSelectOverlay.classList.add('show');
-  fetchSavedBills();
+billSelectMode = 'previous';
+document.getElementById('billSelectTitle').textContent = 'Previously uploaded bills';
+billSelectOverlay.classList.add('show');
+fetchSavedBills();
 });
 
 async function fetchSavedBills(){
-  billSelectList.innerHTML = '';
-  billSelectStatus.textContent = 'Loading saved bills…';
-  try{
-    // Previous shows every saved shop/bill record, not just the active shop.
-    const snapshot = await firebaseDb.ref().once('value');
-    const allShops = snapshot.val() || {};
-    const rows = Object.entries(allShops).flatMap(([shopkey, bills]) =>
-      Object.entries(bills || {})
-        .filter(([, value]) => value && value.meta && value.items)
-        .map(([key, value]) => ({ key, shopkey, ...value }))
-    )
-      .sort((a,b)=> ((b.meta && b.meta.savedAt) || 0) - ((a.meta && a.meta.savedAt) || 0));
-    if(rows.length === 0){
-      billSelectStatus.textContent = 'No bills have been uploaded to Firebase yet.';
-      return;
-    }
-    billSelectStatus.textContent = `${rows.length} saved bill(s) — tap one to load`;
-    billSelectList.innerHTML = rows.map(row=>{
-      const meta = row.meta || {};
-      return `<div class="bill-select-row" data-shopkey="${escapeHtml(row.shopkey)}" data-key="${escapeHtml(row.key)}">
-        <div><div class="bill-select-supplier">${escapeHtml(meta.supplier || 'Unknown supplier')}</div>
-        <div class="bill-select-meta">Shop: ${escapeHtml(row.shopkey)} · #${escapeHtml(String(meta.id || ''))}${meta.opr_time ? ' · ' + escapeHtml(meta.opr_time) : ''}</div></div>
-        <div class="bill-select-price">${meta.bill_price !== undefined ? fmtMoney(meta.bill_price) : ''}</div>
-      </div>`;
-    }).join('');
-  } catch(err){
-    billSelectStatus.textContent = 'Could not load saved bills from Firebase: ' + (err.message || 'Permission denied');
-  }
+billSelectList.innerHTML = '';
+billSelectStatus.textContent = 'Loading saved bills…';
+try{
+// Previous shows every saved shop/bill record, not just the active shop.
+const snapshot = await firebaseDb.ref().once('value');
+const allShops = snapshot.val() || {};
+const rows = Object.entries(allShops).flatMap(([shopkey, bills]) =>
+Object.entries(bills || {})
+.filter(([, value]) => value && value.meta && value.items)
+.map(([key, value]) => ({ key, shopkey, ...value }))
+)
+.sort((a,b)=> ((b.meta && b.meta.savedAt) || 0) - ((a.meta && a.meta.savedAt) || 0));
+if(rows.length === 0){
+billSelectStatus.textContent = 'No bills have been uploaded to Firebase yet.';
+return;
+}
+billSelectStatus.textContent = `${rows.length} saved bill(s) — tap one to load`;
+billSelectList.innerHTML = rows.map(row=>{
+const meta = row.meta || {};
+return `<div class="bill-select-row" data-shopkey="${escapeHtml(row.shopkey)}" data-key="${escapeHtml(row.key)}">
+<div><div class="bill-select-supplier">${escapeHtml(meta.supplier || 'Unknown supplier')}</div>
+<div class="bill-select-meta">Shop: ${escapeHtml(row.shopkey)} · #${escapeHtml(String(meta.id || ''))}${meta.opr_time ? ' · ' + escapeHtml(meta.opr_time) : ''}</div></div>
+<div class="bill-select-price">${meta.bill_price !== undefined ? fmtMoney(meta.bill_price) : ''}</div>
+</div>`;
+}).join('');
+} catch(err){
+billSelectStatus.textContent = 'Could not load saved bills from Firebase: ' + (err.message || 'Permission denied');
+}
 }
 
 async function loadSavedBill(shopkey, key){
-  if(!shopkey || !key) return;
-  billSelectStatus.textContent = 'Loading saved bill…';
-  try{
-    const snapshot = await firebaseBillRef(key, shopkey).once('value');
-    const saved = snapshot.val();
-    if(!saved || !saved.items) throw new Error('Bill no longer exists');
-    bill = saved.items;
-    counted = saved.counted || {};
-    selectedBillMeta = saved.meta || null;
-    currentBillKey = key;
-    currentBillShopKey = shopkey;
-    renderSelectedBillMeta();
-    billSelectOverlay.classList.remove('show');
-    renderBill();
-    if(currentBarcode) lookupProduct(currentBarcode);
-    showToast('Loaded saved bill', 'green');
-  } catch(err){
-    billSelectStatus.textContent = 'Could not load this saved bill.';
-  }
+if(!shopkey || !key) return;
+billSelectStatus.textContent = 'Loading saved bill…';
+try{
+const snapshot = await firebaseBillRef(key, shopkey).once('value');
+const saved = snapshot.val();
+if(!saved || !saved.items) throw new Error('Bill no longer exists');
+bill = saved.items;
+counted = saved.counted || {};
+selectedBillMeta = saved.meta || null;
+currentBillKey = key;
+currentBillShopKey = shopkey;
+renderSelectedBillMeta();
+billSelectOverlay.classList.remove('show');
+renderBill();
+if(currentBarcode) lookupProduct(currentBarcode);
+showToast('Loaded saved bill', 'green');
+} catch(err){
+billSelectStatus.textContent = 'Could not load this saved bill.';
+}
 }
 document.getElementById('billSearch').addEventListener('input', (e)=>{
-  billSearchTerm = e.target.value.trim().toLowerCase();
-  renderBill();
+billSearchTerm = e.target.value.trim().toLowerCase();
+renderBill();
 });
 [['chkGreen','green','lblGreen'], ['chkYellow','yellow','lblYellow'], ['chkRed','red','lblRed']].forEach(([id, cls, lblId])=>{
-  document.getElementById(id).addEventListener('change', e=>{
-    statusFilter[cls] = e.target.checked;
-    document.getElementById(lblId).classList.toggle('off', !e.target.checked);
-    renderBill();
-  });
+document.getElementById(id).addEventListener('change', e=>{
+statusFilter[cls] = e.target.checked;
+document.getElementById(lblId).classList.toggle('off', !e.target.checked);
+renderBill();
+});
 });
 
 function renderBill(){
-  const wrap = document.getElementById('billListWrap');
-  const codes = new Set([...Object.keys(bill), ...Object.keys(counted)]);
+const wrap = document.getElementById('billListWrap');
+const codes = new Set([...Object.keys(bill), ...Object.keys(counted)]);
 
-  if(codes.size === 0){
-    wrap.innerHTML = '<div class="empty-state">No bill loaded yet.<br>Tap Upload above to add one.</div>';
-    document.getElementById('sumGreen').textContent = 0;
-    document.getElementById('sumYellow').textContent = 0;
-    document.getElementById('sumRed').textContent = 0;
-    document.getElementById('sumNetCost').textContent = '€0.00';
-    document.getElementById('sumCostWithVat').textContent = '€0.00';
-    return;
-  }
+if(codes.size === 0){
+wrap.innerHTML = '<div class="empty-state">No bill loaded yet.<br>Tap Upload above to add one.</div>';
+document.getElementById('sumGreen').textContent = 0;
+document.getElementById('sumYellow').textContent = 0;
+document.getElementById('sumRed').textContent = 0;
+document.getElementById('sumNetCost').textContent = '€0.00';
+document.getElementById('sumCostWithVat').textContent = '€0.00';
+return;
+}
 
-  let g=0,y=0,r=0, netTotal=0;
-  [...codes].forEach(code=>{
-    const info = getInfo(code);
-    const s = statusOf(info.myQty, info.billQty);
-    if(s.cls === 'green') g++; else if(s.cls === 'yellow') y++; else r++;
-    if(info.net !== '') netTotal += Number(info.net) * (Number(info.myQty) || 0);
-  });
-  document.getElementById('sumGreen').textContent = g;
-  document.getElementById('sumYellow').textContent = y;
-  document.getElementById('sumRed').textContent = r;
-  document.getElementById('sumNetCost').textContent = '€' + netTotal.toFixed(2);
-  document.getElementById('sumCostWithVat').textContent = '€' + (netTotal * 1.22).toFixed(2);
+let g=0,y=0,r=0, netTotal=0;
+[...codes].forEach(code=>{
+const info = getInfo(code);
+const s = statusOf(info.myQty, info.billQty);
+if(s.cls === 'green') g++; else if(s.cls === 'yellow') y++; else r++;
+if(info.net !== '') netTotal += Number(info.net) * (Number(info.myQty) || 0);
+});
+document.getElementById('sumGreen').textContent = g;
+document.getElementById('sumYellow').textContent = y;
+document.getElementById('sumRed').textContent = r;
+document.getElementById('sumNetCost').textContent = '€' + netTotal.toFixed(2);
+document.getElementById('sumCostWithVat').textContent = '€' + (netTotal * 1.22).toFixed(2);
 
-  const filtered = [...codes].sort().filter(code=>{
-    const info = getInfo(code);
-    const s = statusOf(info.myQty, info.billQty);
-    if(!statusFilter[s.cls]) return false;
-    if(!billSearchTerm) return true;
-    return code.toLowerCase().includes(billSearchTerm) || info.name.toLowerCase().includes(billSearchTerm);
-  });
+const filtered = [...codes].sort().filter(code=>{
+const info = getInfo(code);
+const s = statusOf(info.myQty, info.billQty);
+if(!statusFilter[s.cls]) return false;
+if(!billSearchTerm) return true;
+return code.toLowerCase().includes(billSearchTerm) || info.name.toLowerCase().includes(billSearchTerm);
+});
 
-  wrap.innerHTML = filtered.length
-    ? filtered.map(recordCardHtml).join('')
-    : '<div class="empty-state">No matches for the current filters.</div>';
+wrap.innerHTML = filtered.length
+? filtered.map(recordCardHtml).join('')
+: '<div class="empty-state">No matches for the current filters.</div>';
 }
 document.getElementById('exportBillBtn').addEventListener('click', ()=>{
-  const codes = new Set([...Object.keys(bill), ...Object.keys(counted)]);
+const codes = new Set([...Object.keys(bill), ...Object.keys(counted)]);
   if(codes.size === 0){ showToast('Nothing to export', 'red'); return; }
-  
-  const rows = [];
+  const rows = [['barcode','name','bill_qty','my_qty','cost','price','status']];
   [...codes].sort().forEach(code=>{
     const info = getInfo(code);
-    const c = counted[code];
-    const discounts = info.discounts || [];
-    const modPrice = (c && c.modPrice !== undefined && c.modPrice !== '') ? c.modPrice : '';
-    const spValue = modPrice !== '' ? fmtMoney(modPrice) : (info.price !== '' ? fmtMoney(info.price) : '');
-
-    const hasDisc = (index) => {
-      const val = discounts[index];
-      return (val !== undefined && val !== null && val !== '') ? fmtMoney(val) : 0;
-    };
-
-    rows.push({
-      bc: code,
-      in: info.name || '',
-      qt: info.myQty,
-      pp: info.cost !== '' ? fmtMoney(info.cost) : '0',
-      sd1: hasDisc(0),
-      sd2: hasDisc(1),
-      sd3: hasDisc(2),
-      sd4: hasDisc(3),
-      sp: spValue
-    });
+    const s = statusOf(info.myQty, info.billQty);
+    rows.push([code, info.name, info.billQty, info.myQty, fmtMoney(info.cost), fmtMoney(info.price), s.status]);
   });
-
-  const worksheet = XLSX.utils.json_to_sheet(rows, {
-    header: ['bc', 'in', 'qt', 'pp', 'sd1', 'sd2', 'sd3', 'sd4', 'sp']
-  });
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'StockCheck');
-  XLSX.writeFile(workbook, 'stockcheck_export.xlsx');
-  showToast('XLSX exported successfully', 'green');
+  downloadCsv(rows, 'stockcheck_comparison.csv');
 });
 
 /* ===================== CSV export util ===================== */
@@ -1413,3 +1476,4 @@ renderBill();
 </script>
 </body>
 </html>
+  if(codes.size === 0){ showToast('Nothing 
