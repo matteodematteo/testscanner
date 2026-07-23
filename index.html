@@ -58,8 +58,8 @@
   #tab-scan > #productInfo { flex:1 1 0; min-height:0; overflow-y:auto; }
   #cameraWrap { max-height:34%; overflow-y:auto; }
   .scan-bottom-controls { flex:0 0 calc(50% - 5px); min-height:0; display:flex; flex-direction:column; gap:8px; }
-  .scan-bottom-controls .qty-display { flex:1; min-height:44px; }
-  .scan-bottom-controls .keypad { flex:3; }
+  .scan-bottom-controls .qty-display { flex:.65; min-height:38px; font-size:clamp(24px, 6vh, 44px); }
+  .scan-bottom-controls .keypad { flex:3.35; }
   .scan-bottom-controls .add-btn { flex-shrink:0; }
   .barcode-input-row { display:flex; gap:8px; flex-shrink:0; }
   input[type="text"], textarea {
@@ -428,6 +428,7 @@ let nextHistoryId = 1;
 let bill = {};         // barcode -> {qty, cost, price, name}
 let billHistory = [];  // stack of previous bill snapshots
 let currentBillKey = '';
+let currentBillShopKey = '';
 let currentBarcode = '';
 let html5QrCode = null;
 let billSearchTerm = '';
@@ -456,17 +457,17 @@ function firebaseBillKey(meta){
   const id = meta && meta.id !== undefined ? String(meta.id) : String(Date.now());
   return id.replace(/[.#$\\/\\[\\]]/g, '_');
 }
-function firebaseShopKey(){
-  const shopkey = (credentials.shopkey || '').trim();
+function firebaseShopKey(shopkey = credentials.shopkey){
+  shopkey = (shopkey || '').trim();
   if(!shopkey) throw new Error('Set your shopkey before saving bills');
   return shopkey.replace(/[.#$\\/\\[\\]]/g, '_');
 }
-function firebaseBillsRef(){
+function firebaseBillsRef(shopkey){
   // Firebase path: {shopkey}/{billId}
-  return firebaseDb.ref(firebaseShopKey());
+  return firebaseDb.ref(firebaseShopKey(shopkey));
 }
-function firebaseBillRef(key){
-  return firebaseBillsRef().child(key);
+function firebaseBillRef(key, shopkey){
+  return firebaseBillsRef(shopkey).child(key);
 }
 async function saveBillToFirebase(key, meta, items, counts){
   const safeMeta = {
@@ -482,7 +483,7 @@ async function saveBillToFirebase(key, meta, items, counts){
 async function syncCountToFirebase(code){
   if(!currentBillKey) return;
   try{
-    await firebaseBillRef(currentBillKey).child('counted').child(code).set(counted[code]);
+    await firebaseBillRef(currentBillKey, currentBillShopKey).child('counted').child(code).set(counted[code]);
   } catch(err){
     showToast('Count saved locally; Firebase sync failed', 'red');
   }
@@ -1117,7 +1118,7 @@ billSelectOverlay.addEventListener('click', (e)=>{
 billSelectList.addEventListener('click', (e)=>{
   const row = e.target.closest('.bill-select-row');
   if(!row) return;
-  if(billSelectMode === 'previous') loadSavedBill(row.dataset.key);
+  if(billSelectMode === 'previous') loadSavedBill(row.dataset.shopkey, row.dataset.key);
   else selectBillByIndex(parseInt(row.dataset.idx, 10));
 });
 
@@ -1247,6 +1248,7 @@ async function loadBillFromGoods(rows, meta){
 
   bill = newBill;
   currentBillKey = key;
+  currentBillShopKey = firebaseShopKey();
   selectedBillMeta = meta || null;
   renderSelectedBillMeta();
   showToast(`Loaded ${count} product(s)${meta ? ' for bill #' + meta.id : ''}`, 'green');
@@ -1266,9 +1268,14 @@ async function fetchSavedBills(){
   billSelectList.innerHTML = '';
   billSelectStatus.textContent = 'Loading saved bills…';
   try{
-    const snapshot = await firebaseBillsRef().once('value');
-    const saved = snapshot.val() || {};
-    const rows = Object.entries(saved).map(([key, value])=> ({ key, ...(value || {}) }))
+    // Previous shows every saved shop/bill record, not just the active shop.
+    const snapshot = await firebaseDb.ref().once('value');
+    const allShops = snapshot.val() || {};
+    const rows = Object.entries(allShops).flatMap(([shopkey, bills]) =>
+      Object.entries(bills || {})
+        .filter(([, value]) => value && value.meta && value.items)
+        .map(([key, value]) => ({ key, shopkey, ...value }))
+    )
       .sort((a,b)=> ((b.meta && b.meta.savedAt) || 0) - ((a.meta && a.meta.savedAt) || 0));
     if(rows.length === 0){
       billSelectStatus.textContent = 'No bills have been uploaded to Firebase yet.';
@@ -1277,9 +1284,9 @@ async function fetchSavedBills(){
     billSelectStatus.textContent = `${rows.length} saved bill(s) — tap one to load`;
     billSelectList.innerHTML = rows.map(row=>{
       const meta = row.meta || {};
-      return `<div class="bill-select-row" data-key="${escapeHtml(row.key)}">
+      return `<div class="bill-select-row" data-shopkey="${escapeHtml(row.shopkey)}" data-key="${escapeHtml(row.key)}">
         <div><div class="bill-select-supplier">${escapeHtml(meta.supplier || 'Unknown supplier')}</div>
-        <div class="bill-select-meta">#${escapeHtml(String(meta.id || ''))}${meta.opr_time ? ' · ' + escapeHtml(meta.opr_time) : ''}</div></div>
+        <div class="bill-select-meta">Shop: ${escapeHtml(row.shopkey)} · #${escapeHtml(String(meta.id || ''))}${meta.opr_time ? ' · ' + escapeHtml(meta.opr_time) : ''}</div></div>
         <div class="bill-select-price">${meta.bill_price !== undefined ? fmtMoney(meta.bill_price) : ''}</div>
       </div>`;
     }).join('');
@@ -1288,17 +1295,18 @@ async function fetchSavedBills(){
   }
 }
 
-async function loadSavedBill(key){
-  if(!key) return;
+async function loadSavedBill(shopkey, key){
+  if(!shopkey || !key) return;
   billSelectStatus.textContent = 'Loading saved bill…';
   try{
-    const snapshot = await firebaseBillRef(key).once('value');
+    const snapshot = await firebaseBillRef(key, shopkey).once('value');
     const saved = snapshot.val();
     if(!saved || !saved.items) throw new Error('Bill no longer exists');
     bill = saved.items;
     counted = saved.counted || {};
     selectedBillMeta = saved.meta || null;
     currentBillKey = key;
+    currentBillShopKey = shopkey;
     renderSelectedBillMeta();
     billSelectOverlay.classList.remove('show');
     renderBill();
