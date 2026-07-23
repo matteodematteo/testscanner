@@ -1061,7 +1061,7 @@ document.getElementById('clearLogBtn').addEventListener('click', ()=>{
 function formatSessionId() {
   const d = new Date();
   const pad = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+  return `session_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
 }
 
 function buildHistoryPayloadItem(entry) {
@@ -1338,7 +1338,7 @@ async function fetchSavedBills(){
       </div>`;
     }).join('');
   } catch(err){
-    billSelectStatus.textContent = 'Could not load saved bills from Firebase.';
+    billSelectStatus.textContent = 'Could not load saved bills from Firebase: ' + (err.message || 'Permission denied');
   }
 }
 
