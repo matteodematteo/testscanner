@@ -54,251 +54,65 @@
   .tab-panel.active { display: flex; }
   .tab-panel.scroll { overflow-y: auto; padding: 14px 16px 18px 16px; }
 
-  /* ---------- Scan tab: fills the whole screen, no scroll ---------- */
-  #tab-scan { padding: 14px 16px 16px 16px; gap: 10px; height:100%; overflow:hidden; }
-  #tab-scan > #productInfo { flex:1 1 0; min-height:0; overflow-y:auto; }
-  #cameraWrap { max-height:34%; overflow-y:auto; }
-  .scan-bottom-controls { flex:0 0 calc(50% - 5px); min-height:0; display:flex; flex-direction:column; gap:8px; }
-  .scan-bottom-controls .qty-display { flex:.65; min-height:38px; font-size:clamp(24px, 6vh, 44px); }
-  .scan-bottom-controls .keypad { flex:3.35; }
-  .scan-bottom-controls .add-btn { flex-shrink:0; }
-  .barcode-input-row { display:flex; gap:8px; flex-shrink:0; }
-  input[type="text"], textarea {
-    background: var(--surface-alt); border: 1px solid var(--line); color: var(--ink);
-    border-radius: 10px; padding: 12px 14px; font-family: var(--font-mono); font-size: 15px;
-    width: 100%; outline: none;
-  }
-  input[type="text"]:focus, textarea:focus, button:focus-visible {
-    border-color: var(--amber); box-shadow: 0 0 0 3px rgba(242,169,59,0.25);
-  }
-  .btn {
-    border: none; border-radius: 10px; font-family: var(--font-ui); font-weight: 600;
-    cursor: pointer; padding: 12px 16px; font-size: 14px; white-space: nowrap;
-    display: inline-flex; align-items: center; gap: 6px; justify-content:center;
-  }
-  .btn-amber { background: var(--amber); color: #1A1204; }
-  .btn-ghost { background: var(--surface-raised); color: var(--ink); border: 1px solid var(--line); }
-  .btn-danger { background: rgba(229,89,94,0.15); color: var(--red); border: 1px solid rgba(229,89,94,0.4); }
-  .btn:active { transform: scale(0.97); }
-  .btn-block { width: 100%; }
+  /* ---------- Scan tab: mobile 50/50 split ---------- */
+  #tab-scan { padding: 10px 12px; gap: 8px; height:100%; overflow:hidden; display:flex; flex-direction:column; }
+  .scan-left-column { flex: 0 0 50%; max-height: 50%; min-height: 0; display:flex; flex-direction:column; gap:8px; overflow-y:auto; }
+  #productInfo { flex:1 1 0; min-height:0; overflow-y:auto; }
+  #cameraWrap { max-height:140px; overflow-y:auto; }
+  .scan-bottom-controls { flex: 0 0 50%; height: 50%; min-height:0; display:flex; flex-direction:column; gap:6px; }
+  .scan-bottom-controls .qty-display { flex:1; min-height:36px; font-size:clamp(24px, 5.5vh, 40px); }
+  .scan-bottom-controls .keypad { flex:4; }
+  .scan-bottom-controls .add-btn { flex-shrink:0; padding:12px; }
 
-  .icon-square { padding: 12px; flex-shrink:0; }
-  .icon-square svg { width:18px; height:18px; }
-  #loginBtn.logged-in { border-color: var(--green); color: var(--green); }
-  #loginBtn.logging-in { border-color: var(--amber); color: var(--amber); }
-  #loginBtn.login-error { border-color: var(--red); color: var(--red); }
-
-  .dialog-overlay {
-    position: absolute; inset: 0; background: rgba(5,7,10,0.72);
-    display:none; align-items:center; justify-content:center; z-index: 100; padding: 24px;
-  }
-  .dialog-overlay.show { display:flex; }
-  .dialog-card {
-    width: 100%; max-width: 320px; background: var(--surface-alt); border: 1px solid var(--line);
-    border-radius: var(--radius); padding: 18px; display:flex; flex-direction:column; gap:10px;
-  }
-  .dialog-title { font-size: 13px; font-weight:700; letter-spacing:0.4px; color: var(--ink); margin-bottom: 2px; }
-  .dialog-field input { padding: 10px 12px; font-size: 14px; }
-  .dialog-actions { display:flex; gap:8px; margin-top: 6px; }
-  .dialog-actions .btn { flex:1; }
-
-  .bill-select-row {
-    display:flex; justify-content:space-between; align-items:center; gap:10px;
-    background: var(--surface-raised); border:1px solid var(--line); border-radius:10px;
-    padding:10px 12px; cursor:pointer;
-  }
-  .bill-select-row:active { background: var(--amber-dim); }
-  .bill-select-supplier { font-size:14.5px; font-weight:700; color: var(--ink); }
-  .bill-select-meta { font-size:11px; color: var(--muted); margin-top:2px; font-family: var(--font-mono); }
-  .bill-select-price { font-family: var(--font-mono); color: var(--teal); font-weight:600; font-size:13.5px; white-space:nowrap; }
-
-  .bill-meta-label {
-    font-size: 12px; color: var(--muted); margin-bottom: 10px;
-    background: var(--surface-alt); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
-  }
-  .bill-meta-label .mono { color: var(--teal); font-family: var(--font-mono); }
-
-  #cameraWrap { position: relative; border-radius: var(--radius); overflow: hidden; display:none; flex-shrink:0; }
-  #reader { width: 100%; }
-  .scan-line {
-    position: absolute; left: 6%; right: 6%; height: 2px; top: 10%;
-    background: var(--amber); box-shadow: 0 0 8px var(--amber);
-    animation: sweep 1.8s ease-in-out infinite;
-    pointer-events: none;
-  }
-  @keyframes sweep { 0% { top: 12%; } 50% { top: 82%; } 100% { top: 12%; } }
-
-  .product-card {
-    background: var(--surface-alt); border: 1px solid var(--line);
-    border-radius: var(--radius); padding: 12px 16px; flex-shrink: 0;
-  }
-  .product-card.empty { display:flex; align-items:center; justify-content:center; min-height: 56px; }
-  .muted { color: var(--muted); font-style: normal; }
-  .info-row { display:flex; justify-content: space-between; align-items:center; padding: 5px 0; border-bottom: 1px solid var(--line); }
-  .info-row:last-child { border-bottom: none; }
-  .info-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
-  .info-value { font-size: 15px; font-weight: 500; text-align: right; }
-  .info-value.mono { font-family: var(--font-mono); color: var(--teal); }
-  .cost-boxes { display:flex; gap:8px; margin-top:8px; }
-  .cost-box { flex:1; background:var(--surface-raised); border:1px solid var(--line); border-radius:8px; padding:7px 9px; }
-  .cost-box .label { display:block; color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.4px; }
-  .cost-box .value { display:block; color:var(--teal); font-family:var(--font-mono); font-size:14px; font-weight:600; margin-top:2px; }
-  .new-item-form { display:flex; flex-direction:column; gap:8px; }
-  .new-item-title { font-size: 12px; color: var(--amber); text-transform:uppercase; letter-spacing:0.5px; font-weight:700; margin-bottom:2px; }
-  .field-row { display:flex; gap:8px; }
-  .field-row input { padding: 10px 12px; font-size: 14px; }
-  .field-label { font-size: 10.5px; color: var(--muted); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:3px; display:block; }
-
-  .qty-display {
-    flex: 1; min-height: 0; display:flex; align-items:center; justify-content:center;
-    text-align:center; font-family: var(--font-mono);
-    font-size: clamp(30px, 9vh, 64px); font-weight: 600; letter-spacing: 2px;
-    background: var(--surface-alt); border: 1px solid var(--line); border-radius: var(--radius);
-    color: var(--amber);
-  }
-  .keypad { display:grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(4, 1fr); gap: 8px; flex: 2.2; min-height: 0; }
-  .key {
-    background: var(--surface-raised); border: 1px solid var(--line); color: var(--ink);
-    border-radius: 12px; font-family: var(--font-mono); font-weight: 600;
-    font-size: clamp(18px, 4.2vh, 28px);
-    cursor: pointer; width:100%; height:100%;
-  }
-  .key:active { background: var(--amber-dim); transform: scale(0.96); }
-  .key.func { color: var(--muted); font-family: var(--font-ui); font-size: clamp(11px, 2vh, 14px); text-transform: uppercase; letter-spacing: 0.5px; }
-  .add-btn { padding: 16px; font-size: 16px; flex-shrink:0; }
-
-  /* ---------- Log & Bill tabs (scrollable) ---------- */
-  .summary-bar { display:flex; gap: 8px; margin-bottom: 12px; }
-  .summary-chip {
-    flex:1; background: var(--surface-alt); border:1px solid var(--line); border-radius: 10px;
-    padding: 8px 10px; text-align:center;
-  }
-  .summary-chip .num { font-family: var(--font-mono); font-size: 18px; font-weight: 700; color: var(--teal); }
-  .summary-chip .lbl { font-size: 9.5px; text-transform:uppercase; letter-spacing:0.5px; color: var(--muted); margin-top:2px; }
-
-  .toolbar-row { display:flex; justify-content:flex-end; gap:8px; margin-bottom: 12px; }
-  .bill-toolbar-totals { margin-right:auto; display:flex; gap:6px; min-width:0; }
-  .bill-toolbar-total { background:var(--surface-alt); border:1px solid var(--line); border-radius:8px; padding:5px 7px; min-width:0; }
-  .bill-toolbar-total .value { display:block; color:var(--teal); font-family:var(--font-mono); font-size:12px; font-weight:700; white-space:nowrap; }
-  .bill-toolbar-total .label { display:block; color:var(--muted); font-size:8px; text-transform:uppercase; white-space:nowrap; }
-  .icon-btn-lg {
-    background: var(--surface-raised); border: 1px solid var(--line); color: var(--ink);
-    border-radius: 10px; padding: 9px 12px; font-size: 12.5px; font-weight:600;
-    display:flex; align-items:center; gap:6px; cursor:pointer;
-  }
-  .icon-btn-lg svg { width:15px; height:15px; }
-  .icon-btn-lg:active { background: var(--amber-dim); }
-
-  .search-row { position: relative; margin-bottom: 10px; }
-  .search-row input { padding-left: 34px; font-family: var(--font-ui); font-size: 13.5px; padding-top:10px; padding-bottom:10px; }
-  .search-row svg {
-    position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
-    width: 15px; height: 15px; color: var(--muted); pointer-events:none;
-  }
-
-  .filter-row { display:flex; gap:8px; margin-bottom: 12px; }
-  .filter-chk {
-    flex:1; display:flex; align-items:center; justify-content:center; gap:6px;
-    border:1px solid var(--line); border-radius: 10px; padding: 7px 6px; font-size: 12px; font-weight:600;
-    cursor:pointer; background: var(--surface-alt); user-select:none;
-  }
-  .filter-chk input { accent-color: var(--amber); width:14px; height:14px; margin:0; }
-  .filter-chk.green { color: var(--green); }
-  .filter-chk.yellow { color: var(--yellow); }
-  .filter-chk.red { color: var(--red); }
-  /* Record cards */
+  /* Record cards: compact & simple */
   .record-card {
-    background: var(--surface-alt); border: 1px solid var(--line); border-left: 4px solid var(--line);
-    border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;
+    background: var(--surface-alt); border: 1px solid var(--line); border-left: 3px solid var(--line);
+    border-radius: 8px; padding: 7px 10px; margin-bottom: 6px; display:flex; flex-direction:column; gap:3px;
   }
-  .record-card.green { border-left-color: var(--green); background: var(--green-bg); }
-  .record-card.yellow { border-left-color: var(--yellow); background: var(--yellow-bg); }
-  .record-card.red { border-left-color: var(--red); background: var(--red-bg); }
+  .record-card.green { border-left-color: var(--green); }
+  .record-card.yellow { border-left-color: var(--yellow); }
+  .record-card.red { border-left-color: var(--red); }
   .record-card.is-unlisted {
-    border-style: dashed;
-    border-width: 1px 1px 1px 4px;
-    background: rgba(167, 139, 250, 0.04);
+    border-style: dashed; border-width: 1px 1px 1px 3px; background: rgba(167, 139, 250, 0.03);
   }
   .tag-unlisted {
-    display: inline-flex; align-items: center; gap: 3px;
-    background: rgba(167, 139, 250, 0.16); color: #C4B5FD;
-    border: 1px solid rgba(167, 139, 250, 0.4);
-    font-size: 9px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.5px; padding: 2px 6px; border-radius: 6px;
-    margin-left: 6px; vertical-align: middle;
+    display: inline-flex; align-items: center;
+    background: rgba(167, 139, 250, 0.16); color: #C4B5FD; border: 1px solid rgba(167, 139, 250, 0.35);
+    font-size: 8.5px; font-weight: 700; text-transform: uppercase; padding: 1px 5px; border-radius: 4px;
   }
   .tag-proxy {
-    display: inline-flex; align-items: center; gap: 3px;
-    background: rgba(111, 214, 210, 0.12); color: var(--teal);
-    border: 1px solid rgba(111, 214, 210, 0.3);
-    font-size: 9px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.5px; padding: 2px 6px; border-radius: 6px;
-    margin-left: 6px; vertical-align: middle;
+    display: inline-flex; align-items: center;
+    background: rgba(111, 214, 210, 0.12); color: var(--teal); border: 1px solid rgba(111, 214, 210, 0.3);
+    font-size: 8.5px; font-weight: 700; text-transform: uppercase; padding: 1px 5px; border-radius: 4px;
   }
-  .record-top { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
-  .record-barcode { font-family: var(--font-mono); font-weight:700; font-size:15.5px; color: var(--ink); }
-  .record-time { font-size:10.5px; color: var(--muted); margin-top:1px; }
-  .record-qtys { font-family: var(--font-mono); font-size:15px; font-weight:700; text-align:right; white-space:nowrap; }
+  .record-top { display:flex; justify-content:space-between; align-items:center; gap:6px; }
+  .record-barcode-wrap { display:flex; align-items:center; gap:6px; min-width:0; }
+  .record-barcode { font-family: var(--font-mono); font-weight:700; font-size:14px; color: var(--ink); }
+  .record-top-right { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+  .record-qtys { font-family: var(--font-mono); font-size:13.5px; font-weight:700; }
   .record-qtys .mine { color: var(--teal); }
-  .record-qtys .sep { color: var(--muted); font-weight:400; margin:0 2px; }
+  .record-qtys .sep { color: var(--muted); margin:0 1px; }
   .record-qtys .bill { color: var(--muted); }
-  .record-status { font-size:9.5px; text-transform:uppercase; letter-spacing:0.5px; font-weight:700; text-align:right; margin-top:1px; }
-  .record-status.green { color: var(--green); } .record-status.yellow { color: var(--yellow); } .record-status.red { color: var(--red); }
-  .record-name { font-size:14px; margin-top:6px; font-weight:500; line-height:1.3; }
-  .record-sub { display:flex; gap:16px; margin-top:5px; font-size:12px; color: var(--muted); }
-  .record-sub .val { color: var(--ink); font-family: var(--font-mono); margin-left:4px; }
-  .cost-chain { color:var(--muted); font-family:var(--font-mono); font-size:10.5px; margin-left:4px; white-space:nowrap; }
-  .record-discounts { color:var(--amber); font-family:var(--font-mono); font-size:10.5px; text-align:right; margin-top:5px; }
-  .record-actions { display:flex; gap:6px; margin-top:8px; justify-content:flex-end; }
-  .icon-btn {
-    background: transparent; border: 1px solid var(--line); color: var(--muted);
-    border-radius: 8px; padding: 4px 9px; font-size: 11px; cursor:pointer;
-  }
-  .icon-btn:active { background: var(--surface-raised); }
-  .empty-state { text-align:center; color: var(--muted); padding: 26px 10px; font-size: 13.5px; }
+  .record-status { font-size:8.5px; text-transform:uppercase; letter-spacing:0.4px; font-weight:700; padding:1px 5px; border-radius:4px; }
+  .record-status.green { color: var(--green); background: rgba(63,182,122,0.12); }
+  .record-status.yellow { color: var(--yellow); background: rgba(242,201,76,0.12); }
+  .record-status.red { color: var(--red); background: rgba(229,89,94,0.12); }
 
-  /* ---------- Bottom nav ---------- */
-  nav.tabbar {
-    flex-shrink: 0; width: 100%; background: var(--surface);
-    border-top: 1px solid var(--line); display:flex;
-    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px)) 8px;
-  }
-  .tab-btn {
-    flex:1; background:none; border:none; color: var(--muted); display:flex; flex-direction:column;
-    align-items:center; gap:3px; padding: 6px 0; cursor:pointer; font-family: var(--font-ui);
-    font-size: 10.5px; font-weight: 600; letter-spacing: 0.3px; border-radius: 10px;
-  }
-  .tab-btn svg { width:19px; height:19px; }
-  .tab-btn.active { color: var(--amber); }
-  .tab-btn.active svg { filter: drop-shadow(0 0 4px rgba(242,169,59,0.5)); }
-
-  /* ---------- Toast ---------- */
-  #toast {
-    position: absolute; left: 50%; bottom: 66px; transform: translateX(-50%) translateY(20px);
-    background: var(--surface-raised); border: 1px solid var(--line); color: var(--ink);
-    padding: 9px 16px; border-radius: 999px; font-size: 12.5px; font-weight:600;
-    opacity: 0; pointer-events:none; transition: all 0.25s ease; z-index: 50;
-    max-width: 90%; white-space: nowrap; overflow:hidden; text-overflow:ellipsis;
-  }
-  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-  #toast.green { border-color: var(--green); color: var(--green); }
-  #toast.red { border-color: var(--red); color: var(--red); }
-
-  /* Inline Modify Price & Scratch Delete */
-  .mod-price-row {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line);
-    font-size: 12px; color: var(--muted);
-  }
-  .mod-price-row input {
-    width: 100px; padding: 4px 8px; font-size: 13px; font-family: var(--font-mono);
+  .record-name-compact { font-size:12.5px; font-weight:600; color: var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .record-details-compact { display:flex; align-items:center; flex-wrap:wrap; gap:8px; font-size:11px; color: var(--muted); }
+  .record-details-compact .val { color: var(--ink); font-family: var(--font-mono); }
+  .record-details-compact .disc { color: var(--amber); font-family: var(--font-mono); font-size:10.5px; }
+  .mod-price-inline { display:inline-flex; align-items:center; gap:3px; margin-left:auto; font-size:10.5px; }
+  .mod-price-inline input {
+    width: 68px; padding: 2px 6px; font-size: 11.5px; font-family: var(--font-mono);
     text-align: right; background: var(--surface-raised); border: 1px solid var(--line);
-    border-radius: 6px; color: var(--teal); outline: none;
+    border-radius: 5px; color: var(--teal); outline: none;
   }
-  .mod-price-row input:focus { border-color: var(--amber); box-shadow: 0 0 0 2px rgba(242,169,59,0.2); }
+  .mod-price-inline input:focus { border-color: var(--amber); }
+
   .btn-danger-sm {
     background: rgba(229,89,94,0.15); color: var(--red); border: 1px solid rgba(229,89,94,0.4);
-    padding: 3px 8px; font-size: 11px; font-weight: 600; border-radius: 6px; cursor: pointer;
+    padding: 1px 5px; font-size: 10px; font-weight: 700; border-radius: 4px; cursor: pointer; line-height: 1.2;
   }
   .btn-danger-sm:active { background: rgba(229,89,94,0.3); }
 
@@ -404,6 +218,10 @@
           <div class="bill-toolbar-total"><span class="value" id="sumNetCost">€0.00</span><span class="label">Cost</span></div>
           <div class="bill-toolbar-total"><span class="value" id="sumCostWithVat">€0.00</span><span class="label">+ IVA</span></div>
         </div>
+        <button class="icon-btn-lg" id="exportBillBtn" title="Export XLSX">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg>
+          Export XLSX
+        </button>
         <button class="icon-btn-lg" id="prevBillBtn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 3"/></svg>
           Previous
@@ -431,7 +249,6 @@
         <label class="filter-chk red" id="lblRed"><input type="checkbox" id="chkRed" checked> Over</label>
       </div>
       <div id="billListWrap"></div>
-      <button class="btn btn-ghost btn-block" id="exportBillBtn" style="margin-top:6px;">Export comparison XLSX</button>
     </section>
 
   </main>
@@ -1201,41 +1018,37 @@ function recordCardHtml(code){
   const info = getInfo(code);
   const s = statusOf(info.myQty, info.billQty);
   const isFromProxy = !!bill[code];
-  const costChain = info.net === '' ? '' : (info.discounts.length
-    ? ` &gt; disc. €${fmtMoney(info.net)} &gt; +IVA €${fmtMoney(info.withVat)} /`
-    : ` &gt; +IVA €${fmtMoney(info.withVat)} /`);
   const sourceTag = isFromProxy
     ? `<span class="tag-proxy">Bill</span>`
-    : `<span class="tag-unlisted">✦ Scratch</span>`;
+    : `<span class="tag-unlisted">Scratch</span>`;
 
   const deleteBtn = !isFromProxy
-    ? `<button class="btn-danger-sm" onclick="deleteScratchItem('${escapeHtml(code)}')">Delete</button>`
+    ? `<button class="btn-danger-sm" onclick="deleteScratchItem('${escapeHtml(code)}')">✕</button>`
     : '';
-
-  const displayPrice = info.modPrice !== '' ? info.modPrice : info.price;
 
   return `
     <div class="record-card ${s.cls} ${isFromProxy ? 'is-proxy' : 'is-unlisted'}">
       <div class="record-top">
-        <div>
-          <div class="record-barcode">${escapeHtml(code)}${sourceTag}</div>
+        <div class="record-barcode-wrap">
+          <span class="record-barcode">${escapeHtml(code)}</span>
+          ${sourceTag}
         </div>
-        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
-          <div class="record-qtys"><span class="mine">${info.myQty}</span><span class="sep">/</span><span class="bill">${info.billQty}</span></div>
-          <div class="record-status ${s.cls}">${s.status}</div>
+        <div class="record-top-right">
+          <span class="record-qtys"><span class="mine">${info.myQty}</span><span class="sep">/</span><span class="bill">${info.billQty}</span></span>
+          <span class="record-status ${s.cls}">${s.status}</span>
           ${deleteBtn}
         </div>
       </div>
-      <div class="record-name">${info.name ? escapeHtml(info.name) : '<span class="muted">Unlisted item</span>'}</div>
-      <div class="record-sub">
-        <span>Cost<span class="val">${info.cost !== '' ? '€' + fmtMoney(info.cost) : '—'}</span><span class="cost-chain">${costChain}</span></span>
-        <span>Price<span class="val">${displayPrice !== '' ? '€' + fmtMoney(displayPrice) : '—'}</span></span>
+      <div class="record-name-compact">${info.name ? escapeHtml(info.name) : '<span class="muted">Unlisted item</span>'}</div>
+      <div class="record-details-compact">
+        <span>C: <strong class="val">${info.cost !== '' ? '€' + fmtMoney(info.cost) : '—'}</strong></span>
+        <span>P: <strong class="val">${info.price !== '' ? '€' + fmtMoney(info.price) : '—'}</strong></span>
+        ${info.discounts.length ? `<span class="disc">${discountsText(info.discounts)}</span>` : ''}
+        <div class="mod-price-inline">
+          <span>Mod: €</span>
+          <input type="text" inputmode="decimal" placeholder="0.00" value="${info.modPrice !== '' ? fmtMoney(info.modPrice) : ''}" onchange="updateModPrice('${escapeHtml(code)}', this.value)">
+        </div>
       </div>
-      <div class="mod-price-row">
-        <span>Modify Price</span>
-        <input type="text" inputmode="decimal" placeholder="New price" value="${info.modPrice !== '' ? fmtMoney(info.modPrice) : ''}" onchange="updateModPrice('${escapeHtml(code)}', this.value)">
-      </div>
-      ${info.discounts.length ? `<div class="record-discounts">${discountsText(info.discounts)}</div>` : ''}
     </div>
   `;
 }
@@ -1553,15 +1366,20 @@ document.getElementById('exportBillBtn').addEventListener('click', ()=>{
     const modPrice = (c && c.modPrice !== undefined && c.modPrice !== '') ? c.modPrice : '';
     const spValue = modPrice !== '' ? fmtMoney(modPrice) : (info.price !== '' ? fmtMoney(info.price) : '');
 
+    const hasDisc = (index) => {
+      const val = discounts[index];
+      return (val !== undefined && val !== null && val !== '') ? fmtMoney(val) : 0;
+    };
+
     rows.push({
       bc: code,
       in: info.name || '',
       qt: info.myQty,
-      pp: info.cost !== '' ? fmtMoney(info.cost) : '',
-      sd1: discounts[0] !== undefined && discounts[0] !== null ? fmtMoney(discounts[0]) : '',
-      sd2: discounts[1] !== undefined && discounts[1] !== null ? fmtMoney(discounts[1]) : '',
-      sd3: discounts[2] !== undefined && discounts[2] !== null ? fmtMoney(discounts[2]) : '',
-      sd4: discounts[3] !== undefined && discounts[3] !== null ? fmtMoney(discounts[3]) : '',
+      pp: info.cost !== '' ? fmtMoney(info.cost) : '0',
+      sd1: hasDisc(0),
+      sd2: hasDisc(1),
+      sd3: hasDisc(2),
+      sd4: hasDisc(3),
       sp: spValue
     });
   });
