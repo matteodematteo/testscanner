@@ -580,6 +580,17 @@ document.getElementById('addBtn').addEventListener('click', ()=>{
 });
 
 /* ===================== Login / cookie refresh ===================== */
+/* Mirrors the working reference app's method: credentials + cookie persisted in
+   localStorage, cookie extracted by scanning the proxy response for SESSION=/
+   rememberMe= tokens (ignoring the rememberMe=deleteMe placeholder), and a lazy
+   getCookieForRequests() that auto-refreshes the cookie only when needed. */
+
+const STORAGE_KEYS = {
+  credentials: 'stockcheck_credentials',
+  cookie: 'stockcheck_auth_cookie',
+  cookieStatus: 'stockcheck_auth_cookie_status'
+};
+
 const loginBtn = document.getElementById('loginBtn');
 const loginDialogOverlay = document.getElementById('loginDialogOverlay');
 const dlgShopkey = document.getElementById('dlgShopkey');
@@ -588,6 +599,95 @@ const dlgPassword = document.getElementById('dlgPassword');
 
 let pressTimer = null;
 let longPressFired = false;
+let authStatus = '';
+
+function loadCredentials(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEYS.credentials);
+    if(raw) credentials = JSON.parse(raw);
+  } catch(e){ /* ignore malformed/blocked storage */ }
+}
+function saveCredentials(){
+  try{ localStorage.setItem(STORAGE_KEYS.credentials, JSON.stringify(credentials)); }
+  catch(e){ /* ignore blocked storage (e.g. private browsing) */ }
+}
+function loadCookieState(){
+  try{
+    authCookie = localStorage.getItem(STORAGE_KEYS.cookie) || null;
+    authStatus = localStorage.getItem(STORAGE_KEYS.cookieStatus) || 'No cookie saved yet.';
+  } catch(e){ authCookie = null; authStatus = 'No cookie saved yet.'; }
+}
+function saveCookieState(cookie, status){
+  authCookie = cookie || null;
+  authStatus = status || '';
+  try{
+    localStorage.setItem(STORAGE_KEYS.cookie, authCookie || '');
+    localStorage.setItem(STORAGE_KEYS.cookieStatus, authStatus);
+  } catch(e){ /* ignore blocked storage */ }
+  updateLoginButtonVisual();
+}
+function updateLoginButtonVisual(){
+  loginBtn.classList.remove('logged-in','login-error','logging-in');
+  if(isValidSessionCookie(authCookie)) loginBtn.classList.add('logged-in');
+}
+
+function isValidSessionCookie(c){
+  return typeof c === 'string' && c.trim().length > 0 && /SESSION=/i.test(c);
+}
+
+// Digs through whatever shape the proxy responds with and pulls out a clean
+// "SESSION=...; rememberMe=..." cookie string, skipping the deleteMe placeholder.
+function extractCookieFromResponse(payload){
+  if(!payload) return '';
+  let rawCookie = '';
+
+  if(typeof payload === 'string'){
+    rawCookie = payload;
+  } else if(typeof payload === 'object'){
+    rawCookie =
+      payload.fullCookie ||
+      (payload.data && payload.data.fullCookie) ||
+      payload.cookieString ||
+      (payload.data && payload.data.cookieString) ||
+      payload.cookie ||
+      (payload.data && payload.data.cookie) ||
+      '';
+
+    if(!rawCookie){
+      const queue = [payload];
+      while(queue.length > 0 && !rawCookie){
+        const item = queue.shift();
+        const values = Object.values(item);
+        for(let i = 0; i < values.length; i++){
+          const value = values[i];
+          if(typeof value === 'string' && /SESSION=|rememberMe=/i.test(value)){
+            rawCookie = value;
+            break;
+          }
+          if(value && typeof value === 'object'){
+            queue.push(value);
+          }
+        }
+      }
+    }
+  }
+
+  const sessionMatch = rawCookie.match(/SESSION=([^;,\r\n]+)/i);
+  const rememberMatches = [...rawCookie.matchAll(/rememberMe=([^;,\r\n]+)/gi)];
+  let rememberValue = '';
+  for(let i = 0; i < rememberMatches.length; i++){
+    const candidate = (rememberMatches[i] && rememberMatches[i][1]) || '';
+    if(candidate && candidate.toLowerCase() !== 'deleteme'){
+      rememberValue = candidate;
+    }
+  }
+
+  const cookieParts = [];
+  if(sessionMatch && sessionMatch[1]) cookieParts.push('SESSION=' + sessionMatch[1]);
+  if(rememberValue) cookieParts.push('rememberMe=' + rememberValue);
+
+  return cookieParts.join('; ');
+}
 
 function openLoginDialog(){
   dlgShopkey.value = credentials.shopkey;
@@ -612,7 +712,7 @@ loginBtn.addEventListener('pointerdown', ()=>{
 });
 loginBtn.addEventListener('click', (e)=>{
   if(longPressFired){ e.preventDefault(); longPressFired = false; return; }
-  performLogin();
+  performLogin(false);
 });
 loginBtn.addEventListener('contextmenu', e=> e.preventDefault()); // avoid long-press context menu on mobile
 
@@ -634,65 +734,75 @@ document.getElementById('dlgSaveBtn').addEventListener('click', ()=>{
   const password = dlgPassword.value;
   if(!shopkey || !loginName || !password){ showToast('Fill in all 3 fields', 'red'); return; }
   credentials = { shopkey, login_name: loginName, password };
+  saveCredentials();
   closeLoginDialog();
-  performLogin();
+  performLogin(false);
 });
 
-function isValidSessionCookie(c){
-  if(!c || typeof c !== 'string') return false;
-  const v = c.trim().toLowerCase();
-  if(v === '') return false;
-  if(v.includes('deleteme')) return false;   // common "clear this cookie" placeholder value
-  if(v.includes('expires=thu, 01 jan 1970')) return false; // explicit deletion via expiry
-  return true;
-}
-
-async function performLogin(){
+// silent=true is used by getCookieForRequests() for a lazy, background refresh
+// (no toast/dialog noise) — silent=false is the explicit button-tap flow.
+async function performLogin(silent){
   if(!credentials.shopkey || !credentials.login_name || !credentials.password){
-    showToast('Hold the button to set credentials', 'red');
-    openLoginDialog();
-    return;
+    if(!silent){
+      showToast('Hold the button to set credentials', 'red');
+      openLoginDialog();
+    }
+    return '';
   }
-  loginBtn.classList.remove('logged-in','login-error');
-  loginBtn.classList.add('logging-in');
-  showToast('Refreshing cookie…');
+  if(!silent){
+    loginBtn.classList.remove('logged-in','login-error');
+    loginBtn.classList.add('logging-in');
+    showToast('Refreshing cookie…');
+  }
   try{
     const params = new URLSearchParams();
-    params.append('shopkey', credentials.shopkey);
-    params.append('login_name', credentials.login_name);
-    params.append('password', credentials.password);
+    params.set('shopkey', credentials.shopkey);
+    params.set('login_name', credentials.login_name);
+    params.set('password', credentials.password);
 
     const res = await fetch('https://lgkiller.mattoteo96.workers.dev/', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: {
+        Accept: 'application/json, text/plain, */*',
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
       body: params.toString()
     });
-    if(!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
+    if(!res.ok) throw new Error(`Proxy request failed with status ${res.status}`);
 
-    loginBtn.classList.remove('logging-in');
-    const candidateCookie = data.cookie || data.fullCookie || null;
-    if(data.success && isValidSessionCookie(candidateCookie)){
-      authCookie = candidateCookie;
-      loginBtn.classList.add('logged-in');
-      showToast('Cookie refreshed', 'green');
-    } else if(data.success){
-      // Worker said success, but the cookie it returned is an empty/placeholder value —
-      // this is the "rememberMe=deleteMe" case, i.e. no real session was created.
-      authCookie = null;
-      loginBtn.classList.add('login-error');
-      showToast('Login accepted but no valid session returned — check the worker', 'red');
-    } else {
-      authCookie = null;
-      loginBtn.classList.add('login-error');
-      showToast('Login failed: ' + (data.error || 'check credentials'), 'red');
+    const responseText = await res.text();
+    let parsed = responseText;
+    try{ parsed = JSON.parse(responseText); } catch(e){ /* keep plain text fallback */ }
+
+    const cookie = extractCookieFromResponse(parsed);
+    if(!cookie){
+      saveCookieState('', 'Proxy answered, but no usable cookie was returned.');
+      if(!silent) showToast('No usable session returned — check credentials', 'red');
+      return '';
     }
+
+    saveCookieState(cookie, `Cookie refreshed successfully for ${credentials.login_name}.`);
+    if(!silent) showToast('Cookie refreshed', 'green');
+    return cookie;
+
   } catch(err){
-    loginBtn.classList.remove('logging-in');
-    loginBtn.classList.add('login-error');
-    showToast('Could not reach login service', 'red');
+    const message = err.message || 'Login request failed.';
+    saveCookieState('', `Login failed: ${message}`);
+    if(!silent) showToast(message, 'red');
+    return '';
   }
 }
+
+// Lazily ensures a usable cookie before a request that needs one: reuses the
+// stored cookie if it's still valid, otherwise triggers a silent re-login.
+async function getCookieForRequests(){
+  if(isValidSessionCookie(authCookie)) return authCookie;
+  return await performLogin(true);
+}
+
+loadCredentials();
+loadCookieState();
+updateLoginButtonVisual();
 
 /* ===================== Camera scanning ===================== */
 const startBtn = document.getElementById('startScanBtn');
@@ -851,9 +961,11 @@ billSelectList.addEventListener('click', (e)=>{
 
 async function fetchBillList(){
   billSelectList.innerHTML = '';
+  billSelectStatus.textContent = 'Checking session…';
 
-  if(!isValidSessionCookie(authCookie)){
-    billSelectStatus.textContent = 'No valid session yet. Hold the key button on the Scan tab to log in, then try again.';
+  const cookie = await getCookieForRequests(); // reuses a valid cookie, or silently logs in if needed
+  if(!isValidSessionCookie(cookie)){
+    billSelectStatus.textContent = authStatus || 'No valid session yet. Hold the key button on the Scan tab to log in, then try again.';
     return;
   }
 
@@ -863,7 +975,7 @@ async function fetchBillList(){
     // Access-Control-Allow-Headers doesn't permit. Query params never trigger preflight,
     // so the cookie is passed that way instead.
     const url = new URL('https://getbill-id.mattoteo96.workers.dev/');
-    url.searchParams.set('cookie', authCookie);
+    url.searchParams.set('cookie', cookie);
     const res = await fetch(url.toString(), { method: 'GET' });
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
