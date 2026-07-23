@@ -1046,7 +1046,7 @@ async function fetchBillProducts(billId){
   return data;
 }
 
-// Maps the proxy's goods rows (goods_code / italian_name / p_price / quantity)
+// Maps the proxy's goods rows (goods_code / italian_name / p_price / s_price / quantity)
 // into this app's bill schema (barcode / name / cost / qty) and swaps it in as
 // the current comparison bill for Tab 3.
 function loadBillFromGoods(rows, meta){
@@ -1058,7 +1058,7 @@ function loadBillFromGoods(rows, meta){
     newBill[barcode] = {
       qty: Number(row.quantity) || 0,
       cost: (row.p_price !== undefined && row.p_price !== null && row.p_price !== '') ? row.p_price : '',
-      price: '', // the products proxy doesn't return a sell price yet
+      price: (row.s_price !== undefined && row.s_price !== null && row.s_price !== '') ? row.s_price : '',
       name: row.italian_name || ''
     };
     count++;
