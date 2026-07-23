@@ -638,6 +638,15 @@ document.getElementById('dlgSaveBtn').addEventListener('click', ()=>{
   performLogin();
 });
 
+function isValidSessionCookie(c){
+  if(!c || typeof c !== 'string') return false;
+  const v = c.trim().toLowerCase();
+  if(v === '') return false;
+  if(v.includes('deleteme')) return false;   // common "clear this cookie" placeholder value
+  if(v.includes('expires=thu, 01 jan 1970')) return false; // explicit deletion via expiry
+  return true;
+}
+
 async function performLogin(){
   if(!credentials.shopkey || !credentials.login_name || !credentials.password){
     showToast('Hold the button to set credentials', 'red');
@@ -662,11 +671,19 @@ async function performLogin(){
     const data = await res.json();
 
     loginBtn.classList.remove('logging-in');
-    if(data.success){
-      authCookie = data.cookie || data.fullCookie || null;
+    const candidateCookie = data.cookie || data.fullCookie || null;
+    if(data.success && isValidSessionCookie(candidateCookie)){
+      authCookie = candidateCookie;
       loginBtn.classList.add('logged-in');
       showToast('Cookie refreshed', 'green');
+    } else if(data.success){
+      // Worker said success, but the cookie it returned is an empty/placeholder value —
+      // this is the "rememberMe=deleteMe" case, i.e. no real session was created.
+      authCookie = null;
+      loginBtn.classList.add('login-error');
+      showToast('Login accepted but no valid session returned — check the worker', 'red');
     } else {
+      authCookie = null;
       loginBtn.classList.add('login-error');
       showToast('Login failed: ' + (data.error || 'check credentials'), 'red');
     }
@@ -834,11 +851,20 @@ billSelectList.addEventListener('click', (e)=>{
 
 async function fetchBillList(){
   billSelectList.innerHTML = '';
+
+  if(!isValidSessionCookie(authCookie)){
+    billSelectStatus.textContent = 'No valid session yet. Hold the key button on the Scan tab to log in, then try again.';
+    return;
+  }
+
   billSelectStatus.textContent = 'Loading bills…';
   try{
-    const headers = { 'Accept': 'application/json' };
-    if(authCookie) headers['X-Auth-Cookie'] = authCookie;
-    const res = await fetch('https://getbill-id.mattoteo96.workers.dev/', { method: 'GET', headers });
+    // A custom header like X-Auth-Cookie forces a CORS preflight, which this worker's
+    // Access-Control-Allow-Headers doesn't permit. Query params never trigger preflight,
+    // so the cookie is passed that way instead.
+    const url = new URL('https://getbill-id.mattoteo96.workers.dev/');
+    url.searchParams.set('cookie', authCookie);
+    const res = await fetch(url.toString(), { method: 'GET' });
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     fetchedBills = Array.isArray(data) ? data : [];
