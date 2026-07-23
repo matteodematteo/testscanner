@@ -336,6 +336,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
         <input type="text" id="billSearch" placeholder="Search barcode or name">
       </div>
+      <div class="summary-bar" aria-label="Counted stock value totals">
+        <div class="summary-chip" style="text-align:left;"><div class="num" id="sumNetCost" style="font-size:16px;">€0.00</div><div class="lbl" style="text-align:left;">Counted cost</div></div>
+        <div class="summary-chip" style="text-align:left;"><div class="num" id="sumCostWithVat" style="font-size:16px;">€0.00</div><div class="lbl" style="text-align:left;">Counted cost + IVA</div></div>
+      </div>
       <div class="summary-bar">
         <div class="summary-chip"><div class="num" id="sumGreen" style="color:var(--green);">0</div><div class="lbl">Match</div></div>
         <div class="summary-chip"><div class="num" id="sumYellow" style="color:var(--yellow);">0</div><div class="lbl">Short</div></div>
@@ -487,8 +491,12 @@ function discountsText(discounts){
 function costBreakdown(cost, discounts){
   const base = Number(String(cost).replace(',', '.'));
   if(!Number.isFinite(base)) return { net:'', withVat:'' };
-  const totalDiscount = discounts.reduce((sum, value) => sum + value, 0);
-  const net = Math.max(0, base * (1 - totalDiscount / 100));
+  // p_discount is the percentage of the price to keep: 50 means × 0.50.
+  // Multiple supplied percentages are applied one after another.
+  const multiplier = discounts.length
+    ? discounts.reduce((product, value) => product * (value / 100), 1)
+    : 1;
+  const net = Math.max(0, base * multiplier);
   return { net, withVat: net * 1.22 };
 }
 function fmtTime(ts){
@@ -1258,18 +1266,23 @@ function renderBill(){
     document.getElementById('sumGreen').textContent = 0;
     document.getElementById('sumYellow').textContent = 0;
     document.getElementById('sumRed').textContent = 0;
+    document.getElementById('sumNetCost').textContent = '€0.00';
+    document.getElementById('sumCostWithVat').textContent = '€0.00';
     return;
   }
 
-  let g=0,y=0,r=0;
+  let g=0,y=0,r=0, netTotal=0;
   [...codes].forEach(code=>{
     const info = getInfo(code);
     const s = statusOf(info.myQty, info.billQty);
     if(s.cls === 'green') g++; else if(s.cls === 'yellow') y++; else r++;
+    if(info.net !== '') netTotal += Number(info.net) * (Number(info.myQty) || 0);
   });
   document.getElementById('sumGreen').textContent = g;
   document.getElementById('sumYellow').textContent = y;
   document.getElementById('sumRed').textContent = r;
+  document.getElementById('sumNetCost').textContent = '€' + netTotal.toFixed(2);
+  document.getElementById('sumCostWithVat').textContent = '€' + (netTotal * 1.22).toFixed(2);
 
   const filtered = [...codes].sort().filter(code=>{
     const info = getInfo(code);
