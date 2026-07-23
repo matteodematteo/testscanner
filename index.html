@@ -132,6 +132,10 @@
   .info-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
   .info-value { font-size: 15px; font-weight: 500; text-align: right; }
   .info-value.mono { font-family: var(--font-mono); color: var(--teal); }
+  .cost-boxes { display:flex; gap:8px; margin-top:8px; }
+  .cost-box { flex:1; background:var(--surface-raised); border:1px solid var(--line); border-radius:8px; padding:7px 9px; }
+  .cost-box .label { display:block; color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.4px; }
+  .cost-box .value { display:block; color:var(--teal); font-family:var(--font-mono); font-size:14px; font-weight:600; margin-top:2px; }
   .new-item-form { display:flex; flex-direction:column; gap:8px; }
   .new-item-title { font-size: 12px; color: var(--amber); text-transform:uppercase; letter-spacing:0.5px; font-weight:700; margin-bottom:2px; }
   .field-row { display:flex; gap:8px; }
@@ -213,6 +217,8 @@
   .record-name { font-size:14px; margin-top:6px; font-weight:500; line-height:1.3; }
   .record-sub { display:flex; gap:16px; margin-top:5px; font-size:12px; color: var(--muted); }
   .record-sub .val { color: var(--ink); font-family: var(--font-mono); margin-left:4px; }
+  .cost-chain { color:var(--muted); font-family:var(--font-mono); font-size:10.5px; margin-left:4px; white-space:nowrap; }
+  .record-discounts { color:var(--amber); font-family:var(--font-mono); font-size:10.5px; text-align:right; margin-top:5px; }
   .record-actions { display:flex; gap:6px; margin-top:8px; justify-content:flex-end; }
   .icon-btn {
     background: transparent; border: 1px solid var(--line); color: var(--muted);
@@ -462,8 +468,28 @@ function escapeHtml(str){
   return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 function fmtMoney(n){
-  if(n === undefined || n === null || n === '' || isNaN(n)) return '';
-  return Number(n).toFixed(2);
+  const value = typeof n === 'string' ? n.replace(',', '.') : n;
+  if(value === undefined || value === null || value === '' || isNaN(value)) return '';
+  return Number(value).toFixed(2);
+}
+function discountValues(item){
+  if(!item) return [];
+  // Supports p_discount, p_discount2, p_discount3, etc. returned by the bill API.
+  return Object.keys(item)
+    .filter(key => /^p_discount\d*$/i.test(key))
+    .sort((a,b) => a.localeCompare(b, undefined, { numeric:true }))
+    .map(key => Number(String(item[key]).replace(',', '.')) || 0)
+    .filter(value => value > 0);
+}
+function discountsText(discounts){
+  return discounts.map(value => fmtMoney(value).replace(/\.00$/, '') + '%').join(', ');
+}
+function costBreakdown(cost, discounts){
+  const base = Number(String(cost).replace(',', '.'));
+  if(!Number.isFinite(base)) return { net:'', withVat:'' };
+  const totalDiscount = discounts.reduce((sum, value) => sum + value, 0);
+  const net = Math.max(0, base * (1 - totalDiscount / 100));
+  return { net, withVat: net * 1.22 };
 }
 function fmtTime(ts){
   const d = new Date(ts);
@@ -479,10 +505,14 @@ function showToast(msg, kind){
 function getInfo(code){
   const b = bill[code];
   const c = counted[code];
+  const discounts = discountValues(b);
+  const cost = (b && b.cost !== '' && b.cost !== undefined) ? b.cost : ((c && c.cost !== undefined) ? c.cost : '');
   return {
     name: (b && b.name) || (c && c.name) || '',
-    cost: (b && b.cost !== '' && b.cost !== undefined) ? b.cost : ((c && c.cost !== undefined) ? c.cost : ''),
+    cost,
     price: (b && b.price !== '' && b.price !== undefined) ? b.price : ((c && c.price !== undefined) ? c.price : ''),
+    discounts,
+    ...costBreakdown(cost, discounts),
     billQty: b ? b.qty : 0,
     myQty: c ? c.qty : 0
   };
@@ -560,6 +590,11 @@ function lookupProduct(raw){
       <div class="info-row"><span class="info-label">Counted</span><span class="info-value mono">${info.myQty}</span></div>
       ${info.cost !== '' ? `<div class="info-row"><span class="info-label">Cost</span><span class="info-value mono">${fmtMoney(info.cost)}</span></div>` : ''}
       ${info.price !== '' ? `<div class="info-row"><span class="info-label">Price</span><span class="info-value mono">${fmtMoney(info.price)}</span></div>` : ''}
+      ${info.discounts.length ? `<div class="info-row"><span class="info-label">Discounts</span><span class="info-value mono">${discountsText(info.discounts)}</span></div>` : ''}
+      ${info.net !== '' ? `<div class="cost-boxes">
+        <div class="cost-box"><span class="label">Cost after discount</span><span class="value">€${fmtMoney(info.net)}</span></div>
+        <div class="cost-box"><span class="label">Cost + IVA (22%)</span><span class="value">€${fmtMoney(info.withVat)}</span></div>
+      </div>` : ''}
     `;
   }
 }
@@ -600,21 +635,22 @@ document.getElementById('addBtn').addEventListener('click', ()=>{
   if(nameInput && !nameInput.value.trim()){ showToast('Enter the item name first', 'red'); nameInput.focus(); return; }
 
   if(!counted[currentBarcode]){
-    counted[currentBarcode] = { qty: 0, name: '', cost: '', price: '', ts: Date.now() };
+    const billInfo = getInfo(currentBarcode);
+    counted[currentBarcode] = { qty: 0, name: billInfo.name, cost: billInfo.cost, price: billInfo.price, ts: Date.now() };
   }
   const rec = counted[currentBarcode];
   rec.qty = qty;               // substitutes the previous quantity, does not sum
   rec.ts = Date.now();
-  let entryName = rec.name, entryCost = rec.cost, entryPrice = rec.price;
+  let entryName = rec.name, entryPrice = rec.price;
   if(nameInput){
     rec.name = nameInput.value.trim();
     const c = parseFloat(costInput.value); rec.cost = isNaN(c) ? '' : c;
     const p = parseFloat(priceInput.value); rec.price = isNaN(p) ? '' : p;
-    entryName = rec.name; entryCost = rec.cost; entryPrice = rec.price;
+    entryName = rec.name; entryPrice = rec.price;
   }
 
   // Log this add action into the chronological history (independent of `counted`)
-  history.push({ id: nextHistoryId++, code: currentBarcode, qty, name: entryName, cost: entryCost, price: entryPrice, ts: Date.now() });
+  history.push({ id: nextHistoryId++, code: currentBarcode, qty, name: entryName, price: entryPrice, ts: Date.now() });
 
   // Each active bill keeps its own counted quantities in Firebase.
   syncCountToFirebase(currentBarcode);
@@ -920,8 +956,7 @@ function historyCardHtml(entry){
       </div>
       <div class="record-name">${entry.name ? escapeHtml(entry.name) : '<span class="muted">Unlisted item</span>'}</div>
       <div class="record-sub">
-        <span>Cost<span class="val">${entry.cost !== '' ? fmtMoney(entry.cost) : '—'}</span></span>
-        <span>Price<span class="val">${entry.price !== '' ? fmtMoney(entry.price) : '—'}</span></span>
+        <span>Selling price<span class="val">${entry.price !== '' && entry.price !== undefined ? fmtMoney(entry.price) : '—'}</span></span>
       </div>
       <div class="record-actions">
         <button class="icon-btn" onclick="deleteHistoryEntry(${entry.id})">Delete</button>
@@ -952,9 +987,9 @@ document.getElementById('clearLogBtn').addEventListener('click', ()=>{
   renderLog();
 });
 document.getElementById('exportLogBtn').addEventListener('click', ()=>{
-  const rows = [['timestamp','barcode','qty_added','name','cost','price']];
+  const rows = [['timestamp','barcode','qty_added','name','s_price']];
   [...history].sort((a,b)=> a.ts - b.ts).forEach(e=>{
-    rows.push([new Date(e.ts).toISOString(), e.code, e.qty, e.name, fmtMoney(e.cost), fmtMoney(e.price)]);
+    rows.push([new Date(e.ts).toISOString(), e.code, e.qty, e.name, fmtMoney(e.price)]);
   });
   downloadCsv(rows, 'stockcheck_history.csv');
 });
@@ -963,6 +998,9 @@ document.getElementById('exportLogBtn').addEventListener('click', ()=>{
 function recordCardHtml(code){
   const info = getInfo(code);
   const s = statusOf(info.myQty, info.billQty);
+  const costChain = info.net === '' ? '' : (info.discounts.length
+    ? ` &gt; disc. €${fmtMoney(info.net)} &gt; +IVA €${fmtMoney(info.withVat)} /`
+    : ` &gt; +IVA €${fmtMoney(info.withVat)} /`);
   return `
     <div class="record-card ${s.cls}">
       <div class="record-top">
@@ -974,9 +1012,10 @@ function recordCardHtml(code){
       </div>
       <div class="record-name">${info.name ? escapeHtml(info.name) : '<span class="muted">Unlisted item</span>'}</div>
       <div class="record-sub">
-        <span>Cost<span class="val">${info.cost !== '' ? fmtMoney(info.cost) : '—'}</span></span>
-        <span>Price<span class="val">${info.price !== '' ? fmtMoney(info.price) : '—'}</span></span>
+        <span>Cost<span class="val">${info.cost !== '' ? '€' + fmtMoney(info.cost) : '—'}</span><span class="cost-chain">${costChain}</span></span>
+        <span>Price<span class="val">${info.price !== '' ? '€' + fmtMoney(info.price) : '—'}</span></span>
       </div>
+      ${info.discounts.length ? `<div class="record-discounts">${discountsText(info.discounts)}</div>` : ''}
     </div>
   `;
 }
@@ -1112,7 +1151,8 @@ async function loadBillFromGoods(rows, meta){
       qty: Number(row.quantity) || 0,
       cost: (row.p_price !== undefined && row.p_price !== null && row.p_price !== '') ? row.p_price : '',
       price: (row.s_price !== undefined && row.s_price !== null && row.s_price !== '') ? row.s_price : '',
-      name: row.italian_name || ''
+      name: row.italian_name || '',
+      ...Object.fromEntries(Object.entries(row).filter(([key]) => /^p_discount\d*$/i.test(key)))
     };
     count++;
   });
