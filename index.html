@@ -205,8 +205,6 @@
   .filter-chk.green { color: var(--green); }
   .filter-chk.yellow { color: var(--yellow); }
   .filter-chk.red { color: var(--red); }
-  .filter-chk.off { opacity: 0.35; }
-
   /* Record cards */
   .record-card {
     background: var(--surface-alt); border: 1px solid var(--line); border-left: 4px solid var(--line);
@@ -215,6 +213,27 @@
   .record-card.green { border-left-color: var(--green); background: var(--green-bg); }
   .record-card.yellow { border-left-color: var(--yellow); background: var(--yellow-bg); }
   .record-card.red { border-left-color: var(--red); background: var(--red-bg); }
+  .record-card.is-unlisted {
+    border-style: dashed;
+    border-width: 1px 1px 1px 4px;
+    background: rgba(167, 139, 250, 0.04);
+  }
+  .tag-unlisted {
+    display: inline-flex; align-items: center; gap: 3px;
+    background: rgba(167, 139, 250, 0.16); color: #C4B5FD;
+    border: 1px solid rgba(167, 139, 250, 0.4);
+    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; padding: 2px 6px; border-radius: 6px;
+    margin-left: 6px; vertical-align: middle;
+  }
+  .tag-proxy {
+    display: inline-flex; align-items: center; gap: 3px;
+    background: rgba(111, 214, 210, 0.12); color: var(--teal);
+    border: 1px solid rgba(111, 214, 210, 0.3);
+    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; padding: 2px 6px; border-radius: 6px;
+    margin-left: 6px; vertical-align: middle;
+  }
   .record-top { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
   .record-barcode { font-family: var(--font-mono); font-weight:700; font-size:15.5px; color: var(--ink); }
   .record-time { font-size:10.5px; color: var(--muted); margin-top:1px; }
@@ -1117,13 +1136,20 @@ document.getElementById('exportLogBtn').addEventListener('click', async ()=>{
 function recordCardHtml(code){
   const info = getInfo(code);
   const s = statusOf(info.myQty, info.billQty);
+  const isFromProxy = !!bill[code];
   const costChain = info.net === '' ? '' : (info.discounts.length
     ? ` &gt; disc. €${fmtMoney(info.net)} &gt; +IVA €${fmtMoney(info.withVat)} /`
     : ` &gt; +IVA €${fmtMoney(info.withVat)} /`);
+  const sourceTag = isFromProxy
+    ? `<span class="tag-proxy">Bill</span>`
+    : `<span class="tag-unlisted">✦ Scratch</span>`;
+
   return `
-    <div class="record-card ${s.cls}">
+    <div class="record-card ${s.cls} ${isFromProxy ? 'is-proxy' : 'is-unlisted'}">
       <div class="record-top">
-        <div class="record-barcode">${escapeHtml(code)}</div>
+        <div>
+          <div class="record-barcode">${escapeHtml(code)}${sourceTag}</div>
+        </div>
         <div>
           <div class="record-qtys"><span class="mine">${info.myQty}</span><span class="sep">/</span><span class="bill">${info.billQty}</span></div>
           <div class="record-status ${s.cls}">${s.status}</div>
@@ -1416,33 +1442,4 @@ function renderBill(){
 }
 document.getElementById('exportBillBtn').addEventListener('click', ()=>{
   const codes = new Set([...Object.keys(bill), ...Object.keys(counted)]);
-  if(codes.size === 0){ showToast('Nothing to export', 'red'); return; }
-  const rows = [['barcode','name','bill_qty','my_qty','cost','price','status']];
-  [...codes].sort().forEach(code=>{
-    const info = getInfo(code);
-    const s = statusOf(info.myQty, info.billQty);
-    rows.push([code, info.name, info.billQty, info.myQty, fmtMoney(info.cost), fmtMoney(info.price), s.status]);
-  });
-  downloadCsv(rows, 'stockcheck_comparison.csv');
-});
-
-/* ===================== CSV export util ===================== */
-function downloadCsv(rows, filename){
-  const csv = rows.map(r => r.map(cell => {
-    const s = String(cell);
-    return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
-  }).join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-/* ===================== Init ===================== */
-renderLog();
-renderBill();
-</script>
-</body>
-</html>
+  if(codes.size === 0){ showToast('Nothing 
