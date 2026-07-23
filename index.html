@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>StockCheck</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <style>
@@ -39,7 +40,7 @@
     height: 100%;
     overflow: hidden;
   }
-  body { display: flex; justify-content: center; }
+  body { display: flex; justify-content: center; align-items: center; }
   #app {
     width: 100%; max-width: 480px; height: 100vh; height: 100dvh;
     background: var(--bg);
@@ -49,10 +50,13 @@
     overflow: hidden;
   }
 
-  main { flex: 1; min-height: 0; display:flex; flex-direction:column; overflow: hidden; }
+  main { flex: 1; min-height: 0; display:flex; flex-direction:column; overflow: hidden; position: relative; }
   .tab-panel { display: none; flex-direction: column; min-height: 0; }
   .tab-panel.active { display: flex; }
   .tab-panel.scroll { overflow-y: auto; overflow-x: hidden; padding: 14px 16px 18px 16px; }
+
+  /* Extra bottom padding for Tab 3 so list isn't hidden behind FABs */
+  #tab-bill.scroll { padding-bottom: 80px; }
 
   /* ---------- Scan tab: fills the whole screen, no scroll ---------- */
   #tab-scan { padding: 14px 16px 16px 16px; gap: 10px; height:100%; overflow:hidden; }
@@ -63,12 +67,12 @@
   .scan-bottom-controls .keypad { flex:3.35; }
   .scan-bottom-controls .add-btn { flex-shrink:0; }
   .barcode-input-row { display:flex; gap:8px; flex-shrink:0; }
-  input[type="text"], textarea {
+  input[type="text"], input[type="password"], textarea {
     background: var(--surface-alt); border: 1px solid var(--line); color: var(--ink);
     border-radius: 10px; padding: 12px 14px; font-family: var(--font-mono); font-size: 15px;
     width: 100%; outline: none;
   }
-  input[type="text"]:focus, textarea:focus, button:focus-visible {
+  input[type="text"]:focus, input[type="password"]:focus, textarea:focus, button:focus-visible {
     border-color: var(--amber); box-shadow: 0 0 0 3px rgba(242,169,59,0.25);
   }
   .btn {
@@ -112,10 +116,12 @@
   .bill-select-meta { font-size:11px; color: var(--muted); margin-top:2px; font-family: var(--font-mono); }
   .bill-select-price { font-family: var(--font-mono); color: var(--teal); font-weight:600; font-size:13.5px; white-space:nowrap; }
 
+  /* Meta label inline in toolbar */
   .bill-meta-label {
-    font-size: 12px; color: var(--muted); margin-bottom: 10px;
-    background: var(--surface-alt); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
-    word-break: break-word;
+    font-size: 11px; color: var(--muted);
+    background: var(--surface-alt); border: 1px solid var(--line); border-radius: 8px;
+    padding: 5px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    min-width: 0; flex: 1; align-self: center;
   }
   .bill-meta-label .mono { color: var(--teal); font-family: var(--font-mono); }
 
@@ -177,11 +183,12 @@
   .summary-chip .num { font-family: var(--font-mono); font-size: 18px; font-weight: 700; color: var(--teal); }
   .summary-chip .lbl { font-size: 9.5px; text-transform:uppercase; letter-spacing:0.5px; color: var(--muted); margin-top:2px; }
 
-  .toolbar-row { display:flex; justify-content:flex-end; align-items:center; gap:8px; margin-bottom: 12px; flex-wrap: wrap; }
-  .bill-toolbar-totals { margin-right:auto; display:flex; gap:6px; min-width:0; }
-  .bill-toolbar-total { background:var(--surface-alt); border:1px solid var(--line); border-radius:8px; padding:5px 8px; min-width:0; }
+  .toolbar-row { display:flex; justify-content:flex-end; align-items:center; gap:8px; margin-bottom: 12px; flex-wrap: nowrap; }
+  .bill-toolbar-totals { margin-right:auto; display:flex; align-items:center; gap:6px; min-width:0; flex:1; }
+  .bill-toolbar-total { background:var(--surface-alt); border:1px solid var(--line); border-radius:8px; padding:5px 8px; flex-shrink:0; }
   .bill-toolbar-total .value { display:block; color:var(--teal); font-family:var(--font-mono); font-size:12px; font-weight:700; white-space:nowrap; }
   .bill-toolbar-total .label { display:block; color:var(--muted); font-size:8px; text-transform:uppercase; white-space:nowrap; }
+
   .icon-btn-lg {
     background: var(--surface-raised); border: 1px solid var(--line); color: var(--ink);
     border-radius: 10px; padding: 9px 12px; font-size: 12.5px; font-weight:600;
@@ -189,6 +196,33 @@
   }
   .icon-btn-lg svg { width:15px; height:15px; }
   .icon-btn-lg:active { background: var(--amber-dim); }
+
+  /* Floating Action Button (FAB) Container - Bottom Right */
+  .fab-container {
+    position: absolute;
+    bottom: 20px;
+    right: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-end;
+    z-index: 40;
+    pointer-events: none;
+  }
+  .fab-container .icon-btn-lg {
+    pointer-events: auto;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+    border-radius: 30px;
+    padding: 10px 16px;
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    color: var(--ink);
+  }
+  .fab-container .fab-btn-primary {
+    background: var(--amber);
+    color: #1A1204;
+    border-color: var(--amber);
+  }
 
   .search-row { position: relative; margin-bottom: 10px; }
   .search-row input { padding-left: 34px; font-family: var(--font-ui); font-size: 13.5px; padding-top:10px; padding-bottom:10px; }
@@ -259,10 +293,14 @@
   .record-sub .val { color: var(--ink); font-family: var(--font-mono); font-weight:600; margin-left:4px; }
   .cost-chain { color:var(--muted); font-family:var(--font-mono); font-size:11px; margin-left:4px; display:inline-block; word-break:break-word; }
   .record-discounts { color:var(--amber); font-family:var(--font-mono); font-size:11px; margin-top:2px; }
-  .record-actions { display:flex; gap:6px; margin-top:6px; justify-content:flex-end; }
+  .record-actions { display:flex; gap:6px; margin-top:8px; justify-content:space-between; align-items:center; border-top:1px dashed var(--line); padding-top:8px; }
+  
+  .mod-price-wrap { display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--amber); font-weight:600; }
+  .mod-price-wrap input { width: 85px; padding: 4px 8px; font-size: 12.5px; border-radius: 6px; }
+
   .icon-btn {
     background: transparent; border: 1px solid var(--line); color: var(--muted);
-    border-radius: 8px; padding: 4px 9px; font-size: 11px; cursor:pointer;
+    border-radius: 8px; padding: 5px 10px; font-size: 11.5px; cursor:pointer; font-weight:600;
   }
   .icon-btn:active { background: var(--surface-raised); }
   .empty-state { text-align:center; color: var(--muted); padding: 26px 10px; font-size: 13.5px; }
@@ -272,6 +310,7 @@
     flex-shrink: 0; width: 100%; background: var(--surface);
     border-top: 1px solid var(--line); display:flex;
     padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px)) 8px;
+    z-index: 50;
   }
   .tab-btn {
     flex:1; background:none; border:none; color: var(--muted); display:flex; flex-direction:column;
@@ -287,14 +326,58 @@
     position: absolute; left: 50%; bottom: 66px; transform: translateX(-50%) translateY(20px);
     background: var(--surface-raised); border: 1px solid var(--line); color: var(--ink);
     padding: 9px 16px; border-radius: 999px; font-size: 12.5px; font-weight:600;
-    opacity: 0; pointer-events:none; transition: all 0.25s ease; z-index: 50;
+    opacity: 0; pointer-events:none; transition: all 0.25s ease; z-index: 60;
     max-width: 90%; white-space: nowrap; overflow:hidden; text-overflow:ellipsis;
   }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   #toast.green { border-color: var(--green); color: var(--green); }
   #toast.red { border-color: var(--red); color: var(--red); }
 
-  ::-webkit-scrollbar { width:0; height:0; }
+  ::-webkit-scrollbar { width:6px; height:6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+
+  /* ==================== DESKTOP & WIDE SCREEN LAYOUT ==================== */
+  @media (min-width: 800px) {
+    #app {
+      max-width: 1360px;
+      height: 94vh;
+      margin: 3vh auto;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+    }
+    
+    /* Tab 1 Desktop: 2-Column Split View */
+    #tab-scan {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: auto 1fr;
+      gap: 16px;
+      padding: 20px;
+    }
+    .barcode-input-row { grid-column: 1 / -1; }
+    #cameraWrap { max-height: none; height: auto; }
+    #productInfo { height: 100%; overflow-y: auto; }
+    .scan-bottom-controls {
+      grid-column: 2;
+      grid-row: 2;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .scan-bottom-controls .qty-display { font-size: 48px; min-height: 70px; }
+    
+    /* Tab 2 & 3 Desktop: Responsive Card Grids */
+    #billListWrap, #logListWrap {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 14px;
+      align-items: start;
+    }
+    .tab-panel.scroll { padding: 20px 24px 30px 24px; }
+    #tab-bill.scroll { padding-bottom: 90px; }
+  }
 </style>
 </head>
 <body>
@@ -365,18 +448,9 @@
         <div class="bill-toolbar-totals" aria-label="Counted stock value totals">
           <div class="bill-toolbar-total"><span class="value" id="sumNetCost">€0.00</span><span class="label">Cost</span></div>
           <div class="bill-toolbar-total"><span class="value" id="sumCostWithVat">€0.00</span><span class="label">+ IVA</span></div>
+          <div class="bill-meta-label" id="selectedBillMeta" style="display:none;"></div>
         </div>
-        <button class="icon-btn-lg" id="prevBillBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 3"/></svg>
-          Previous
-        </button>
-        <button class="icon-btn-lg" id="uploadBillBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M5 21h14"/></svg>
-          Upload
-        </button>
       </div>
-
-      <div class="bill-meta-label" id="selectedBillMeta" style="display:none;"></div>
 
       <div class="search-row">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
@@ -393,7 +467,22 @@
         <label class="filter-chk red" id="lblRed"><input type="checkbox" id="chkRed" checked> Over</label>
       </div>
       <div id="billListWrap"></div>
-      <button class="btn btn-ghost btn-block" id="exportBillBtn" style="margin-top:10px;">Export comparison CSV</button>
+
+      <!-- Floating Action Buttons Container (Bottom-Right) -->
+      <div class="fab-container">
+        <button class="icon-btn-lg fab-btn-primary" id="uploadBillBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M5 21h14"/></svg>
+          Upload Bill
+        </button>
+        <button class="icon-btn-lg" id="prevBillBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 3"/></svg>
+          Previous
+        </button>
+        <button class="icon-btn-lg" id="exportBillBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg>
+          Export XLSX
+        </button>
+      </div>
     </section>
 
   </main>
@@ -561,10 +650,12 @@ function getInfo(code){
   const c = counted[code];
   const discounts = discountValues(b || c);
   const cost = (b && b.cost !== '' && b.cost !== undefined) ? b.cost : ((c && c.cost !== undefined) ? c.cost : '');
+  const modPrice = (c && c.mod_price !== undefined && c.mod_price !== '') ? c.mod_price : ((b && b.mod_price !== undefined && b.mod_price !== '') ? b.mod_price : '');
   return {
     name: (b && b.name) || (c && c.name) || '',
     cost,
     price: (b && b.price !== '' && b.price !== undefined) ? b.price : ((c && c.price !== undefined) ? c.price : ''),
+    modPrice,
     discounts,
     ...costBreakdown(cost, discounts),
     billQty: b ? b.qty : 0,
@@ -650,6 +741,10 @@ function lookupProduct(raw){
             <input type="text" id="newPrice" inputmode="decimal" placeholder="0.00">
           </div>
         </div>
+        <div>
+          <span class="field-label" style="color:var(--amber);">Modify Price (Optional override)</span>
+          <input type="text" id="modPriceInput" inputmode="decimal" placeholder="New price override">
+        </div>
         <div class="field-row" id="newDiscountFields">${newDiscountInput(1)}${newDiscountInput(2)}</div>
         <button type="button" class="icon-btn" id="addDiscountBtn" style="align-self:flex-start;">+ Discount</button>
         <div class="cost-boxes">
@@ -666,6 +761,10 @@ function lookupProduct(raw){
       ${info.cost !== '' ? `<div class="info-row"><span class="info-label">Cost</span><span class="info-value mono">${fmtMoney(info.cost)}</span></div>` : ''}
       ${info.price !== '' ? `<div class="info-row"><span class="info-label">Price</span><span class="info-value mono">${fmtMoney(info.price)}</span></div>` : ''}
       ${info.discounts.length ? `<div class="info-row"><span class="info-label">Discounts</span><span class="info-value mono">${discountsText(info.discounts)}</span></div>` : ''}
+      <div class="info-row" style="padding-top:8px;">
+        <span class="info-label" style="color:var(--amber); font-weight:700;">Modify Price</span>
+        <input type="text" id="modPriceInput" style="width: 120px; padding: 6px 10px; font-size: 14px;" inputmode="decimal" placeholder="New price" value="${info.modPrice !== '' ? fmtMoney(info.modPrice) : ''}">
+      </div>
       ${info.net !== '' ? `<div class="cost-boxes">
         <div class="cost-box"><span class="label">Cost after discount</span><span class="value">€${fmtMoney(info.net)}</span></div>
         <div class="cost-box"><span class="label">Cost + IVA (22%)</span><span class="value">€${fmtMoney(info.withVat)}</span></div>
@@ -678,7 +777,7 @@ document.getElementById('productInfo').addEventListener('keydown', e=>{
   if(e.key !== 'Enter') return;
   if(e.target.id === 'newName'){ e.preventDefault(); document.getElementById('newCost').focus(); }
   else if(e.target.id === 'newCost'){ e.preventDefault(); document.getElementById('newPrice').focus(); }
-  else if(e.target.id === 'newPrice'){ e.preventDefault(); document.getElementById('addBtn').click(); }
+  else if(e.target.id === 'newPrice' || e.target.id === 'modPriceInput'){ e.preventDefault(); document.getElementById('addBtn').click(); }
 });
 document.getElementById('productInfo').addEventListener('input', e=>{
   if(e.target.id === 'newCost' || e.target.classList.contains('newDiscount')) updateNewItemCostPreview();
@@ -715,6 +814,7 @@ document.getElementById('addBtn').addEventListener('click', ()=>{
   const nameInput = document.getElementById('newName');
   const costInput = document.getElementById('newCost');
   const priceInput = document.getElementById('newPrice');
+  const modPriceInput = document.getElementById('modPriceInput');
   if(nameInput && !nameInput.value.trim()){ showToast('Enter the item name first', 'red'); nameInput.focus(); return; }
 
   if(!counted[currentBarcode]){
@@ -737,11 +837,19 @@ document.getElementById('addBtn').addEventListener('click', ()=>{
     entryName = rec.name; entryPrice = rec.price;
   }
 
+  // Handle Modify Price input
+  if(modPriceInput && modPriceInput.value.trim() !== '') {
+    const mp = parseFloat(modPriceInput.value.replace(',', '.'));
+    if(!isNaN(mp)) rec.mod_price = mp;
+  } else if(modPriceInput && modPriceInput.value.trim() === '') {
+    delete rec.mod_price;
+  }
+
   const activeBillInfo = getInfo(currentBarcode);
   history.push({
     id: nextHistoryId++, code: currentBarcode, qty,
     name: activeBillInfo.name || entryName,
-    price: activeBillInfo.price !== '' ? activeBillInfo.price : entryPrice,
+    price: activeBillInfo.modPrice !== '' ? activeBillInfo.modPrice : (activeBillInfo.price !== '' ? activeBillInfo.price : entryPrice),
     ts: Date.now()
   });
 
@@ -1039,7 +1147,7 @@ function historyCardHtml(entry){
       <div class="record-sub">
         <span>Selling price<span class="val">${entry.price !== '' && entry.price !== undefined ? fmtMoney(entry.price) : '—'}</span></span>
       </div>
-      <div class="record-actions">
+      <div class="record-actions" style="justify-content:flex-end;">
         <button class="icon-btn" onclick="deleteHistoryEntry(${entry.id})">Delete</button>
       </div>
     </div>
@@ -1151,8 +1259,45 @@ function recordCardHtml(code){
         <div>Price: <span class="val">${info.price !== '' ? '€' + fmtMoney(info.price) : '—'}</span></div>
       </div>
       ${info.discounts.length ? `<div class="record-discounts">Discounts: ${discountsText(info.discounts)}</div>` : ''}
+      <div class="record-actions">
+        <label class="mod-price-wrap">
+          Mod. Price:
+          <input type="text" inputmode="decimal" placeholder="New sp" value="${info.modPrice !== '' ? fmtMoney(info.modPrice) : ''}" onchange="saveModPrice('${escapeHtml(code)}', this.value)">
+        </label>
+        ${!isFromProxy ? `<button class="icon-btn btn-danger" onclick="deleteScratchItem('${escapeHtml(code)}')">Delete</button>` : ''}
+      </div>
     </div>
   `;
+}
+
+function saveModPrice(code, val) {
+  if (!counted[code]) {
+    const billInfo = getInfo(code);
+    counted[code] = { qty: 0, name: billInfo.name, cost: billInfo.cost, price: billInfo.price, ts: Date.now() };
+  }
+  const cleanVal = String(val).trim().replace(',', '.');
+  if (cleanVal === '') {
+    delete counted[code].mod_price;
+  } else {
+    const num = parseFloat(cleanVal);
+    if (!isNaN(num)) counted[code].mod_price = num;
+  }
+  syncCountToFirebase(code);
+  showToast(`Modified price saved for ${code}`, 'green');
+  renderBill();
+}
+
+function deleteScratchItem(code) {
+  if (!confirm(`Delete newly added item "${code}"?`)) return;
+  delete counted[code];
+  history = history.filter(e => e.code !== code);
+  if (currentBillKey) {
+    firebaseBillRef(currentBillKey, currentBillShopKey).child('counted').child(code).remove()
+      .catch(() => showToast('Deleted locally; Firebase sync failed', 'red'));
+  }
+  showToast(`Deleted ${code}`, 'green');
+  renderBill();
+  renderLog();
 }
 
 /* ===================== Tab 3: bill selector ===================== */
@@ -1241,7 +1386,7 @@ async function selectBillByIndex(idx){
 function renderSelectedBillMeta(){
   const el = document.getElementById('selectedBillMeta');
   if(!selectedBillMeta){ el.style.display = 'none'; return; }
-  el.style.display = 'block';
+  el.style.display = 'inline-block';
   el.innerHTML = `Bill <span class="mono">#${escapeHtml(String(selectedBillMeta.id ?? ''))}</span>${selectedBillMeta.supplier ? ' · ' + escapeHtml(selectedBillMeta.supplier) : ''}${selectedBillMeta.bill_price !== undefined ? ' · ' + fmtMoney(selectedBillMeta.bill_price) : ''}${selectedBillMeta.opr_time ? ' · ' + escapeHtml(selectedBillMeta.opr_time) : ''}`;
 }
 
@@ -1385,7 +1530,7 @@ function renderBill(){
   const codes = new Set([...Object.keys(bill), ...Object.keys(counted)]);
 
   if(codes.size === 0){
-    wrap.innerHTML = '<div class="empty-state">No bill loaded yet.<br>Tap Upload above to add one.</div>';
+    wrap.innerHTML = '<div class="empty-state">No bill loaded yet.<br>Tap Upload Bill floating button to add one.</div>';
     document.getElementById('sumGreen').textContent = 0;
     document.getElementById('sumYellow').textContent = 0;
     document.getElementById('sumRed').textContent = 0;
@@ -1419,30 +1564,56 @@ function renderBill(){
     ? filtered.map(recordCardHtml).join('')
     : '<div class="empty-state">No matches for the current filters.</div>';
 }
+
+/* ===================== Export XLSX ===================== */
 document.getElementById('exportBillBtn').addEventListener('click', ()=>{
   const codes = new Set([...Object.keys(bill), ...Object.keys(counted)]);
   if(codes.size === 0){ showToast('Nothing to export', 'red'); return; }
-  const rows = [['barcode','name','bill_qty','my_qty','cost','price','status']];
+  
+  // Custom headers: barcode>bc, name>in, my_qty>qt, cost>pp, discounts>sd1-4, price>sp
+  // Note: bill_qty and status are excluded as requested.
+  const rows = [['bc', 'in', 'qt', 'pp', 'sd1', 'sd2', 'sd3', 'sd4', 'sp']];
+  
   [...codes].sort().forEach(code=>{
     const info = getInfo(code);
-    const s = statusOf(info.myQty, info.billQty);
-    rows.push([code, info.name, info.billQty, info.myQty, fmtMoney(info.cost), fmtMoney(info.price), s.status]);
+    const sp = (info.modPrice !== undefined && info.modPrice !== null && info.modPrice !== '') 
+      ? fmtMoney(info.modPrice) 
+      : fmtMoney(info.price);
+      
+    const sd1 = info.discounts[0] !== undefined ? info.discounts[0] : '';
+    const sd2 = info.discounts[1] !== undefined ? info.discounts[1] : '';
+    const sd3 = info.discounts[2] !== undefined ? info.discounts[2] : '';
+    const sd4 = info.discounts[3] !== undefined ? info.discounts[3] : '';
+
+    rows.push([
+      code,
+      info.name,
+      info.myQty,
+      fmtMoney(info.cost),
+      sd1,
+      sd2,
+      sd3,
+      sd4,
+      sp
+    ]);
   });
-  downloadCsv(rows, 'stockcheck_comparison.csv');
+  downloadXlsx(rows, 'stockcheck_export.xlsx');
 });
 
-/* ===================== CSV export util ===================== */
-function downloadCsv(rows, filename){
-  const csv = rows.map(r => r.map(cell => {
-    const s = String(cell);
-    return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
-  }).join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+function downloadXlsx(rows, filename){
+  if(typeof XLSX === 'undefined'){
+    showToast('XLSX library not loaded', 'red');
+    return;
+  }
+  try {
+    const worksheet = XLSX.utils.aoa_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "StockCheck");
+    XLSX.writeFile(workbook, filename);
+    showToast('Exported XLSX successfully', 'green');
+  } catch (err) {
+    showToast('XLSX Export failed: ' + err.message, 'red');
+  }
 }
 
 /* ===================== Init ===================== */
