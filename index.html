@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>StockCheck</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <style>
   :root{
     --bg: #12181F;
@@ -385,7 +387,7 @@
 
   <div class="dialog-overlay" id="billSelectOverlay">
     <div class="dialog-card" style="max-width:340px; max-height:72vh;">
-      <div class="dialog-title">Select a bill</div>
+      <div class="dialog-title" id="billSelectTitle">Select a bill</div>
       <div id="billSelectStatus" class="muted" style="font-size:12.5px;"></div>
       <div id="billSelectList" style="overflow-y:auto; flex:1; min-height:0; display:flex; flex-direction:column; gap:6px; margin-top:2px;"></div>
       <div class="dialog-actions">
@@ -403,6 +405,7 @@ let history = [];      // [{id, code, qty, name, cost, price, ts}] chronological
 let nextHistoryId = 1;
 let bill = {};         // barcode -> {qty, cost, price, name}
 let billHistory = [];  // stack of previous bill snapshots
+let currentBillKey = '';
 let currentBarcode = '';
 let html5QrCode = null;
 let billSearchTerm = '';
@@ -411,6 +414,48 @@ let credentials = { shopkey: '', login_name: '', password: '' };
 let authCookie = null;
 
 const qtyDisplay = document.getElementById('qtyDisplay');
+
+/* ===================== Firebase bill storage ===================== */
+// Firebase client configuration is public by design. Protect the database itself
+// with Firebase Realtime Database rules before deploying this app publicly.
+const firebaseConfig = {
+  apiKey: 'AIzaSyA98q2-ZsnOV309O9YNH-xLflsCBmit1uY',
+  authDomain: 'database-2be93.firebaseapp.com',
+  databaseURL: 'https://database-2be93-default-rtdb.europe-west1.firebasedatabase.app',
+  projectId: 'database-2be93',
+  storageBucket: 'database-2be93.firebasestorage.app',
+  messagingSenderId: '111002760311',
+  appId: '1:111002760311:web:a34c1fbe4430af6ab10272'
+};
+firebase.initializeApp(firebaseConfig);
+const firebaseDb = firebase.database();
+
+function firebaseBillKey(meta){
+  const id = meta && meta.id !== undefined ? String(meta.id) : String(Date.now());
+  return 'bill_' + id.replace(/[.#$\\/\\[\\]]/g, '_');
+}
+function firebaseBillRef(key){
+  return firebaseDb.ref('stockcheck/bills/' + key);
+}
+async function saveBillToFirebase(key, meta, items, counts){
+  const safeMeta = {
+    id: meta && meta.id !== undefined ? String(meta.id) : '',
+    supplier: (meta && meta.supplier) || '',
+    bill_price: meta && meta.bill_price !== undefined ? meta.bill_price : '',
+    opr_time: (meta && meta.opr_time) || '',
+    savedAt: firebase.database.ServerValue.TIMESTAMP,
+    updatedAt: firebase.database.ServerValue.TIMESTAMP
+  };
+  await firebaseBillRef(key).update({ meta: safeMeta, items, counted: counts || {} });
+}
+async function syncCountToFirebase(code){
+  if(!currentBillKey) return;
+  try{
+    await firebaseBillRef(currentBillKey).child('counted').child(code).set(counted[code]);
+  } catch(err){
+    showToast('Count saved locally; Firebase sync failed', 'red');
+  }
+}
 
 /* ===================== Helpers ===================== */
 function escapeHtml(str){
@@ -570,6 +615,9 @@ document.getElementById('addBtn').addEventListener('click', ()=>{
 
   // Log this add action into the chronological history (independent of `counted`)
   history.push({ id: nextHistoryId++, code: currentBarcode, qty, name: entryName, cost: entryCost, price: entryPrice, ts: Date.now() });
+
+  // Each active bill keeps its own counted quantities in Firebase.
+  syncCountToFirebase(currentBarcode);
 
   showToast(`Added ${qty} × ${currentBarcode}`, 'green');
   resetKeypad();
@@ -939,23 +987,28 @@ const billSelectList = document.getElementById('billSelectList');
 const billSelectStatus = document.getElementById('billSelectStatus');
 let fetchedBills = [];
 let selectedBillMeta = null;
+let billSelectMode = 'upload';
 
 document.getElementById('uploadBillBtn').addEventListener('click', ()=>{
+  billSelectMode = 'upload';
+  document.getElementById('billSelectTitle').textContent = 'Select a bill to upload';
   billSelectOverlay.classList.add('show');
   fetchBillList();
 });
 document.getElementById('billSelectCancelBtn').addEventListener('click', ()=>{
   billSelectOverlay.classList.remove('show');
 });
-document.getElementById('billSelectRefreshBtn').addEventListener('click', fetchBillList);
+document.getElementById('billSelectRefreshBtn').addEventListener('click', ()=>{
+  if(billSelectMode === 'previous') fetchSavedBills(); else fetchBillList();
+});
 billSelectOverlay.addEventListener('click', (e)=>{
   if(e.target === billSelectOverlay) billSelectOverlay.classList.remove('show');
 });
 billSelectList.addEventListener('click', (e)=>{
   const row = e.target.closest('.bill-select-row');
   if(!row) return;
-  const idx = parseInt(row.dataset.idx, 10);
-  selectBillByIndex(idx);
+  if(billSelectMode === 'previous') loadSavedBill(row.dataset.key);
+  else selectBillByIndex(parseInt(row.dataset.idx, 10));
 });
 
 async function fetchBillList(){
@@ -1006,8 +1059,8 @@ async function selectBillByIndex(idx){
   billSelectStatus.textContent = `Loading products for bill #${b.id}…`;
   try{
     const rows = await fetchBillProducts(b.id);
-    billSelectOverlay.classList.remove('show');
-    loadBillFromGoods(rows, b);
+    const saved = await loadBillFromGoods(rows, b);
+    if(saved) billSelectOverlay.classList.remove('show');
   } catch(err){
     billSelectStatus.textContent = 'Could not load products: ' + (err.message || 'unknown error');
     showToast('Failed to load bill products', 'red');
@@ -1049,7 +1102,7 @@ async function fetchBillProducts(billId){
 // Maps the proxy's goods rows (goods_code / italian_name / p_price / s_price / quantity)
 // into this app's bill schema (barcode / name / cost / qty) and swaps it in as
 // the current comparison bill for Tab 3.
-function loadBillFromGoods(rows, meta){
+async function loadBillFromGoods(rows, meta){
   const newBill = {};
   let count = 0;
   rows.forEach(row=>{
@@ -1066,27 +1119,84 @@ function loadBillFromGoods(rows, meta){
 
   if(count === 0){
     showToast('No products found for this bill', 'red');
-    return;
+    return false;
   }
-  if(Object.keys(bill).length > 0){
-    billHistory.push(bill);
-    if(billHistory.length > 5) billHistory.shift();
+  const key = firebaseBillKey(meta);
+  try{
+    // Keep quantities when a previously uploaded bill is selected again.
+    const existing = await firebaseBillRef(key).once('value');
+    const existingCounts = (existing.val() && existing.val().counted) || {};
+    // Save the full bill before showing it as the active comparison table.
+    await saveBillToFirebase(key, meta, newBill, existingCounts);
+    counted = existingCounts;
+  } catch(err){
+    showToast('Could not save bill to Firebase: ' + (err.message || 'unknown error'), 'red');
+    return false;
   }
+
   bill = newBill;
+  currentBillKey = key;
+  selectedBillMeta = meta || null;
+  renderSelectedBillMeta();
   showToast(`Loaded ${count} product(s)${meta ? ' for bill #' + meta.id : ''}`, 'green');
   renderBill();
   if(currentBarcode) lookupProduct(currentBarcode);
+  return true;
 }
 
 document.getElementById('prevBillBtn').addEventListener('click', ()=>{
-  if(billHistory.length === 0){ showToast('No previous bill saved', 'red'); return; }
-  const prev = billHistory.pop();
-  billHistory.push(bill);
-  bill = prev;
-  renderBill();
-  showToast('Loaded previous bill', 'green');
-  if(currentBarcode) lookupProduct(currentBarcode);
+  billSelectMode = 'previous';
+  document.getElementById('billSelectTitle').textContent = 'Previously uploaded bills';
+  billSelectOverlay.classList.add('show');
+  fetchSavedBills();
 });
+
+async function fetchSavedBills(){
+  billSelectList.innerHTML = '';
+  billSelectStatus.textContent = 'Loading saved bills…';
+  try{
+    const snapshot = await firebaseDb.ref('stockcheck/bills').once('value');
+    const saved = snapshot.val() || {};
+    const rows = Object.entries(saved).map(([key, value])=> ({ key, ...(value || {}) }))
+      .sort((a,b)=> ((b.meta && b.meta.savedAt) || 0) - ((a.meta && a.meta.savedAt) || 0));
+    if(rows.length === 0){
+      billSelectStatus.textContent = 'No bills have been uploaded to Firebase yet.';
+      return;
+    }
+    billSelectStatus.textContent = `${rows.length} saved bill(s) — tap one to load`;
+    billSelectList.innerHTML = rows.map(row=>{
+      const meta = row.meta || {};
+      return `<div class="bill-select-row" data-key="${escapeHtml(row.key)}">
+        <div><div class="bill-select-supplier">${escapeHtml(meta.supplier || 'Unknown supplier')}</div>
+        <div class="bill-select-meta">#${escapeHtml(String(meta.id || ''))}${meta.opr_time ? ' · ' + escapeHtml(meta.opr_time) : ''}</div></div>
+        <div class="bill-select-price">${meta.bill_price !== undefined ? fmtMoney(meta.bill_price) : ''}</div>
+      </div>`;
+    }).join('');
+  } catch(err){
+    billSelectStatus.textContent = 'Could not load saved bills from Firebase.';
+  }
+}
+
+async function loadSavedBill(key){
+  if(!key) return;
+  billSelectStatus.textContent = 'Loading saved bill…';
+  try{
+    const snapshot = await firebaseBillRef(key).once('value');
+    const saved = snapshot.val();
+    if(!saved || !saved.items) throw new Error('Bill no longer exists');
+    bill = saved.items;
+    counted = saved.counted || {};
+    selectedBillMeta = saved.meta || null;
+    currentBillKey = key;
+    renderSelectedBillMeta();
+    billSelectOverlay.classList.remove('show');
+    renderBill();
+    if(currentBarcode) lookupProduct(currentBarcode);
+    showToast('Loaded saved bill', 'green');
+  } catch(err){
+    billSelectStatus.textContent = 'Could not load this saved bill.';
+  }
+}
 document.getElementById('billSearch').addEventListener('input', (e)=>{
   billSearchTerm = e.target.value.trim().toLowerCase();
   renderBill();
