@@ -99,8 +99,8 @@
     padding:10px 12px; cursor:pointer;
   }
   .bill-select-row:active { background: var(--amber-dim); }
-  .bill-select-id { font-family: var(--font-mono); font-weight:700; font-size:14px; }
-  .bill-select-meta { font-size:11.5px; color: var(--muted); margin-top:2px; }
+  .bill-select-supplier { font-size:14.5px; font-weight:700; color: var(--ink); }
+  .bill-select-meta { font-size:11px; color: var(--muted); margin-top:2px; font-family: var(--font-mono); }
   .bill-select-price { font-family: var(--font-mono); color: var(--teal); font-weight:600; font-size:13.5px; white-space:nowrap; }
 
   .bill-meta-label {
@@ -320,7 +320,6 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M5 21h14"/></svg>
           Upload
         </button>
-        <input type="file" id="billFile" accept=".csv,.txt" style="display:none">
       </div>
 
       <div class="bill-meta-label" id="selectedBillMeta" style="display:none;"></div>
@@ -988,8 +987,8 @@ async function fetchBillList(){
     billSelectList.innerHTML = fetchedBills.map((b, i) => `
       <div class="bill-select-row" data-idx="${i}">
         <div>
-          <div class="bill-select-id">#${escapeHtml(String(b.id ?? ''))}</div>
-          <div class="bill-select-meta">${escapeHtml(b.supplier || '')}${b.opr_time ? ' · ' + escapeHtml(b.opr_time) : ''}</div>
+          <div class="bill-select-supplier">${escapeHtml(b.supplier || '')}</div>
+          <div class="bill-select-meta">#${escapeHtml(String(b.id ?? ''))}${b.opr_time ? ' · ' + escapeHtml(b.opr_time) : ''}</div>
         </div>
         <div class="bill-select-price">${b.bill_price !== undefined ? fmtMoney(b.bill_price) : ''}</div>
       </div>
@@ -999,14 +998,20 @@ async function fetchBillList(){
   }
 }
 
-function selectBillByIndex(idx){
+async function selectBillByIndex(idx){
   const b = fetchedBills[idx];
   if(!b) return;
   selectedBillMeta = b;
-  billSelectOverlay.classList.remove('show');
   renderSelectedBillMeta();
-  showToast(`Selected bill #${b.id} — now pick its CSV file`, 'green');
-  document.getElementById('billFile').click();
+  billSelectStatus.textContent = `Loading products for bill #${b.id}…`;
+  try{
+    const rows = await fetchBillProducts(b.id);
+    billSelectOverlay.classList.remove('show');
+    loadBillFromGoods(rows, b);
+  } catch(err){
+    billSelectStatus.textContent = 'Could not load products: ' + (err.message || 'unknown error');
+    showToast('Failed to load bill products', 'red');
+  }
 }
 
 function renderSelectedBillMeta(){
@@ -1016,14 +1021,63 @@ function renderSelectedBillMeta(){
   el.innerHTML = `Bill <span class="mono">#${escapeHtml(String(selectedBillMeta.id ?? ''))}</span>${selectedBillMeta.supplier ? ' · ' + escapeHtml(selectedBillMeta.supplier) : ''}${selectedBillMeta.bill_price !== undefined ? ' · ' + fmtMoney(selectedBillMeta.bill_price) : ''}${selectedBillMeta.opr_time ? ' · ' + escapeHtml(selectedBillMeta.opr_time) : ''}`;
 }
 
-document.getElementById('billFile').addEventListener('change', (e)=>{
-  const file = e.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = () => loadBillFromText(reader.result);
-  reader.readAsText(file);
-  e.target.value = '';
-});
+// Fetches the product lines for a chosen bill from the goods/findByBillId proxy.
+// Field names come straight from that proxy: goods_code, italian_name, p_price, quantity.
+async function fetchBillProducts(billId){
+  const cookie = await getCookieForRequests();
+  if(!isValidSessionCookie(cookie)){
+    throw new Error(authStatus || 'No valid session — hold the key button on the Scan tab to log in.');
+  }
+  const url = new URL('https://lgkillergetbillproducts.mattoteo96.workers.dev/');
+  url.searchParams.set('cookie', cookie);
+  url.searchParams.set('billId', String(billId));
+
+  const res = await fetch(url.toString(), { method: 'GET' });
+  let data = null;
+  try{ data = await res.json(); } catch(e){ /* leave null */ }
+
+  if(!res.ok){
+    const msg = (data && data.error) ? data.error : `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  if(!Array.isArray(data)){
+    throw new Error('Unexpected response from products proxy');
+  }
+  return data;
+}
+
+// Maps the proxy's goods rows (goods_code / italian_name / p_price / quantity)
+// into this app's bill schema (barcode / name / cost / qty) and swaps it in as
+// the current comparison bill for Tab 3.
+function loadBillFromGoods(rows, meta){
+  const newBill = {};
+  let count = 0;
+  rows.forEach(row=>{
+    const barcode = row.goods_code ? String(row.goods_code).trim() : '';
+    if(!barcode) return;
+    newBill[barcode] = {
+      qty: Number(row.quantity) || 0,
+      cost: (row.p_price !== undefined && row.p_price !== null && row.p_price !== '') ? row.p_price : '',
+      price: '', // the products proxy doesn't return a sell price yet
+      name: row.italian_name || ''
+    };
+    count++;
+  });
+
+  if(count === 0){
+    showToast('No products found for this bill', 'red');
+    return;
+  }
+  if(Object.keys(bill).length > 0){
+    billHistory.push(bill);
+    if(billHistory.length > 5) billHistory.shift();
+  }
+  bill = newBill;
+  showToast(`Loaded ${count} product(s)${meta ? ' for bill #' + meta.id : ''}`, 'green');
+  renderBill();
+  if(currentBarcode) lookupProduct(currentBarcode);
+}
+
 document.getElementById('prevBillBtn').addEventListener('click', ()=>{
   if(billHistory.length === 0){ showToast('No previous bill saved', 'red'); return; }
   const prev = billHistory.pop();
@@ -1044,33 +1098,6 @@ document.getElementById('billSearch').addEventListener('input', (e)=>{
     renderBill();
   });
 });
-
-function loadBillFromText(text){
-  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
-  const newBill = {};
-  let count = 0;
-  lines.forEach(line=>{
-    const parts = line.split(',');
-    const code = (parts[0]||'').trim();
-    const qty = parseInt((parts[1]||'').trim(), 10);
-    const cost = parseFloat((parts[2]||'').trim());
-    const price = parseFloat((parts[3]||'').trim());
-    const name = (parts[4]||'').trim();
-    if(code && !isNaN(qty)){
-      newBill[code] = { qty, cost: isNaN(cost)?'':cost, price: isNaN(price)?'':price, name };
-      count++;
-    }
-  });
-  if(count === 0){ showToast('No valid bill lines found', 'red'); return; }
-  if(Object.keys(bill).length > 0){
-    billHistory.push(bill);
-    if(billHistory.length > 5) billHistory.shift();
-  }
-  bill = newBill;
-  showToast(`Loaded ${count} bill line(s)`, 'green');
-  renderBill();
-  if(currentBarcode) lookupProduct(currentBarcode);
-}
 
 function renderBill(){
   const wrap = document.getElementById('billListWrap');
