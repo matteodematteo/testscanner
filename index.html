@@ -7,6 +7,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
     --bg: #12181F;
@@ -283,6 +284,52 @@
   #toast.green { border-color: var(--green); color: var(--green); }
   #toast.red { border-color: var(--red); color: var(--red); }
 
+  /* Inline Modify Price & Scratch Delete */
+  .mod-price-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line);
+    font-size: 12px; color: var(--muted);
+  }
+  .mod-price-row input {
+    width: 100px; padding: 4px 8px; font-size: 13px; font-family: var(--font-mono);
+    text-align: right; background: var(--surface-raised); border: 1px solid var(--line);
+    border-radius: 6px; color: var(--teal); outline: none;
+  }
+  .mod-price-row input:focus { border-color: var(--amber); box-shadow: 0 0 0 2px rgba(242,169,59,0.2); }
+  .btn-danger-sm {
+    background: rgba(229,89,94,0.15); color: var(--red); border: 1px solid rgba(229,89,94,0.4);
+    padding: 3px 8px; font-size: 11px; font-weight: 600; border-radius: 6px; cursor: pointer;
+  }
+  .btn-danger-sm:active { background: rgba(229,89,94,0.3); }
+
+  /* ---------- Desktop layout ---------- */
+  @media (min-width: 768px) {
+    body { padding: 20px 0; background: #07090D; }
+    #app {
+      max-width: 1100px; height: calc(100vh - 40px); height: calc(100dvh - 40px);
+      border-radius: 16px; border: 1px solid var(--line);
+      box-shadow: 0 16px 60px rgba(0,0,0,0.75);
+    }
+    #tab-scan {
+      display: none;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px; height: 100%; overflow: hidden; padding: 20px;
+    }
+    #tab-scan.active { display: grid; }
+    .scan-left-column {
+      display: flex; flex-direction: column; gap: 12px; height: 100%; overflow-y: auto;
+    }
+    .scan-bottom-controls {
+      height: 100%; flex: 1; min-height: 0;
+    }
+    #logListWrap, #billListWrap {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 12px;
+    }
+    .record-card { margin-bottom: 0; }
+  }
+
   ::-webkit-scrollbar { width:0; height:0; }
 </style>
 </head>
@@ -293,21 +340,23 @@
 
     <!-- TAB 1: SCAN (fills the entire screen, no scroll) -->
     <section class="tab-panel active" id="tab-scan">
-      <div class="barcode-input-row">
-        <input type="text" id="barcodeInput" placeholder="Barcode" inputmode="numeric">
-        <button class="btn btn-amber" id="startScanBtn">Scan</button>
-        <button class="btn btn-ghost" id="stopScanBtn" style="display:none;">Stop</button>
-        <button class="btn btn-ghost icon-square" id="loginBtn" title="Tap: refresh cookie · Hold: set credentials">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-        </button>
-      </div>
-      <div id="cameraWrap">
-        <div id="reader"></div>
-        <div class="scan-line"></div>
-      </div>
+      <div class="scan-left-column">
+        <div class="barcode-input-row">
+          <input type="text" id="barcodeInput" placeholder="Barcode" inputmode="numeric">
+          <button class="btn btn-amber" id="startScanBtn">Scan</button>
+          <button class="btn btn-ghost" id="stopScanBtn" style="display:none;">Stop</button>
+          <button class="btn btn-ghost icon-square" id="loginBtn" title="Tap: refresh cookie · Hold: set credentials">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+          </button>
+        </div>
+        <div id="cameraWrap">
+          <div id="reader"></div>
+          <div class="scan-line"></div>
+        </div>
 
-      <div class="product-card empty" id="productInfo">
-        <p class="muted">Scan or enter a barcode.</p>
+        <div class="product-card empty" id="productInfo">
+          <p class="muted">Scan or enter a barcode.</p>
+        </div>
       </div>
 
       <div class="scan-bottom-controls">
@@ -382,7 +431,7 @@
         <label class="filter-chk red" id="lblRed"><input type="checkbox" id="chkRed" checked> Over</label>
       </div>
       <div id="billListWrap"></div>
-      <button class="btn btn-ghost btn-block" id="exportBillBtn" style="margin-top:6px;">Export comparison CSV</button>
+      <button class="btn btn-ghost btn-block" id="exportBillBtn" style="margin-top:6px;">Export comparison XLSX</button>
     </section>
 
   </main>
@@ -556,10 +605,12 @@ function getInfo(code){
   const c = counted[code];
   const discounts = discountValues(b || c);
   const cost = (b && b.cost !== '' && b.cost !== undefined) ? b.cost : ((c && c.cost !== undefined) ? c.cost : '');
+  const modPrice = (c && c.modPrice !== undefined) ? c.modPrice : '';
   return {
     name: (b && b.name) || (c && c.name) || '',
     cost,
     price: (b && b.price !== '' && b.price !== undefined) ? b.price : ((c && c.price !== undefined) ? c.price : ''),
+    modPrice,
     discounts,
     ...costBreakdown(cost, discounts),
     billQty: b ? b.qty : 0,
@@ -646,6 +697,12 @@ function lookupProduct(raw){
             <input type="text" id="newPrice" inputmode="decimal" placeholder="0.00">
           </div>
         </div>
+        <div class="field-row" style="margin-top:4px;">
+          <div style="flex:1;">
+            <span class="field-label">Modify Price</span>
+            <input type="text" id="tab1ModPrice" inputmode="decimal" placeholder="0.00" value="${info.modPrice !== '' ? fmtMoney(info.modPrice) : ''}">
+          </div>
+        </div>
         <div class="field-row" id="newDiscountFields">${newDiscountInput(1)}${newDiscountInput(2)}</div>
         <button type="button" class="icon-btn" id="addDiscountBtn" style="align-self:flex-start;">+ Discount</button>
         <div class="cost-boxes">
@@ -661,6 +718,7 @@ function lookupProduct(raw){
       <div class="info-row"><span class="info-label">Counted</span><span class="info-value mono">${info.myQty}</span></div>
       ${info.cost !== '' ? `<div class="info-row"><span class="info-label">Cost</span><span class="info-value mono">${fmtMoney(info.cost)}</span></div>` : ''}
       ${info.price !== '' ? `<div class="info-row"><span class="info-label">Price</span><span class="info-value mono">${fmtMoney(info.price)}</span></div>` : ''}
+      <div class="info-row"><span class="info-label">Modify Price</span><input type="text" id="tab1ModPrice" inputmode="decimal" placeholder="New price" value="${info.modPrice !== '' ? fmtMoney(info.modPrice) : ''}" style="width:100px; padding:4px 8px; font-size:13px; text-align:right; font-family:var(--font-mono); border-radius:6px; background:var(--surface-raised); border:1px solid var(--line); color:var(--teal);"></div>
       ${info.discounts.length ? `<div class="info-row"><span class="info-label">Discounts</span><span class="info-value mono">${discountsText(info.discounts)}</span></div>` : ''}
       ${info.net !== '' ? `<div class="cost-boxes">
         <div class="cost-box"><span class="label">Cost after discount</span><span class="value">€${fmtMoney(info.net)}</span></div>
@@ -721,6 +779,12 @@ document.getElementById('addBtn').addEventListener('click', ()=>{
   const rec = counted[currentBarcode];
   rec.qty = qty;               // substitutes the previous quantity, does not sum
   rec.ts = Date.now();
+  const modPriceEl = document.getElementById('tab1ModPrice');
+  if(modPriceEl){
+    const mpVal = modPriceEl.value.replace(',', '.').trim();
+    const mp = parseFloat(mpVal);
+    rec.modPrice = isNaN(mp) ? '' : mp;
+  }
   let entryName = rec.name, entryPrice = rec.price;
   if(nameInput){
     rec.name = nameInput.value.trim();
@@ -1144,25 +1208,62 @@ function recordCardHtml(code){
     ? `<span class="tag-proxy">Bill</span>`
     : `<span class="tag-unlisted">✦ Scratch</span>`;
 
+  const deleteBtn = !isFromProxy
+    ? `<button class="btn-danger-sm" onclick="deleteScratchItem('${escapeHtml(code)}')">Delete</button>`
+    : '';
+
+  const displayPrice = info.modPrice !== '' ? info.modPrice : info.price;
+
   return `
     <div class="record-card ${s.cls} ${isFromProxy ? 'is-proxy' : 'is-unlisted'}">
       <div class="record-top">
         <div>
           <div class="record-barcode">${escapeHtml(code)}${sourceTag}</div>
         </div>
-        <div>
+        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
           <div class="record-qtys"><span class="mine">${info.myQty}</span><span class="sep">/</span><span class="bill">${info.billQty}</span></div>
           <div class="record-status ${s.cls}">${s.status}</div>
+          ${deleteBtn}
         </div>
       </div>
       <div class="record-name">${info.name ? escapeHtml(info.name) : '<span class="muted">Unlisted item</span>'}</div>
       <div class="record-sub">
         <span>Cost<span class="val">${info.cost !== '' ? '€' + fmtMoney(info.cost) : '—'}</span><span class="cost-chain">${costChain}</span></span>
-        <span>Price<span class="val">${info.price !== '' ? '€' + fmtMoney(info.price) : '—'}</span></span>
+        <span>Price<span class="val">${displayPrice !== '' ? '€' + fmtMoney(displayPrice) : '—'}</span></span>
+      </div>
+      <div class="mod-price-row">
+        <span>Modify Price</span>
+        <input type="text" inputmode="decimal" placeholder="New price" value="${info.modPrice !== '' ? fmtMoney(info.modPrice) : ''}" onchange="updateModPrice('${escapeHtml(code)}', this.value)">
       </div>
       ${info.discounts.length ? `<div class="record-discounts">${discountsText(info.discounts)}</div>` : ''}
     </div>
   `;
+}
+
+function deleteScratchItem(code){
+  if(!confirm(`Delete scratch item ${code}?`)) return;
+  delete counted[code];
+  if(currentBillKey){
+    try{
+      firebaseBillRef(currentBillKey, currentBillShopKey).child('counted').child(code).remove();
+    } catch(e){}
+  }
+  renderBill();
+  if(currentBarcode === code) lookupProduct(code);
+  showToast(`Deleted ${code}`, 'green');
+}
+
+function updateModPrice(code, value){
+  if(!counted[code]){
+    const billInfo = getInfo(code);
+    counted[code] = { qty: 0, name: billInfo.name, cost: billInfo.cost, price: billInfo.price, ts: Date.now() };
+  }
+  const clean = String(value || '').replace(',', '.').trim();
+  const parsed = parseFloat(clean);
+  counted[code].modPrice = isNaN(parsed) ? '' : parsed;
+  syncCountToFirebase(code);
+  renderBill();
+  showToast(`Updated price for ${code}`, 'green');
 }
 
 /* ===================== Tab 3: bill selector (fetches list, then loads its CSV) ===================== */
@@ -1442,4 +1543,55 @@ function renderBill(){
 }
 document.getElementById('exportBillBtn').addEventListener('click', ()=>{
   const codes = new Set([...Object.keys(bill), ...Object.keys(counted)]);
-  if(codes.size === 0){ showToast('Nothing 
+  if(codes.size === 0){ showToast('Nothing to export', 'red'); return; }
+  
+  const rows = [];
+  [...codes].sort().forEach(code=>{
+    const info = getInfo(code);
+    const c = counted[code];
+    const discounts = info.discounts || [];
+    const modPrice = (c && c.modPrice !== undefined && c.modPrice !== '') ? c.modPrice : '';
+    const spValue = modPrice !== '' ? fmtMoney(modPrice) : (info.price !== '' ? fmtMoney(info.price) : '');
+
+    rows.push({
+      bc: code,
+      in: info.name || '',
+      qt: info.myQty,
+      pp: info.cost !== '' ? fmtMoney(info.cost) : '',
+      sd1: discounts[0] !== undefined && discounts[0] !== null ? fmtMoney(discounts[0]) : '',
+      sd2: discounts[1] !== undefined && discounts[1] !== null ? fmtMoney(discounts[1]) : '',
+      sd3: discounts[2] !== undefined && discounts[2] !== null ? fmtMoney(discounts[2]) : '',
+      sd4: discounts[3] !== undefined && discounts[3] !== null ? fmtMoney(discounts[3]) : '',
+      sp: spValue
+    });
+  });
+
+  const worksheet = XLSX.utils.json_to_sheet(rows, {
+    header: ['bc', 'in', 'qt', 'pp', 'sd1', 'sd2', 'sd3', 'sd4', 'sp']
+  });
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'StockCheck');
+  XLSX.writeFile(workbook, 'stockcheck_export.xlsx');
+  showToast('XLSX exported successfully', 'green');
+});
+
+/* ===================== CSV export util ===================== */
+function downloadCsv(rows, filename){
+  const csv = rows.map(r => r.map(cell => {
+    const s = String(cell);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+  }).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ===================== Init ===================== */
+renderLog();
+renderBill();
+</script>
+</body>
+</html>
