@@ -178,10 +178,13 @@
   .summary-bar { display:flex; gap: 8px; margin-bottom: 12px; }
   .summary-chip {
     flex:1; background: var(--surface-alt); border:1px solid var(--line); border-radius: 10px;
-    padding: 8px 10px; text-align:center;
+    padding: 8px 10px; text-align:center; cursor: pointer; user-select: none;
+    transition: background 0.15s, border-color 0.15s, opacity 0.15s;
   }
+  .summary-chip input[type="checkbox"] { display: none; }
   .summary-chip .num { font-family: var(--font-mono); font-size: 18px; font-weight: 700; color: var(--teal); }
   .summary-chip .lbl { font-size: 9.5px; text-transform:uppercase; letter-spacing:0.5px; color: var(--muted); margin-top:2px; }
+  .summary-chip.off { opacity: 0.35; }
 
   .toolbar-row { display:flex; justify-content:flex-end; align-items:center; gap:8px; margin-bottom: 12px; flex-wrap: nowrap; }
   .bill-toolbar-totals { margin-right:auto; display:flex; align-items:center; gap:6px; min-width:0; flex:1; }
@@ -231,17 +234,9 @@
     width: 15px; height: 15px; color: var(--muted); pointer-events:none;
   }
 
-  .filter-row { display:flex; gap:8px; margin-bottom: 12px; }
-  .filter-chk {
-    flex:1; display:flex; align-items:center; justify-content:center; gap:6px;
-    border:1px solid var(--line); border-radius: 10px; padding: 7px 6px; font-size: 12px; font-weight:600;
-    cursor:pointer; background: var(--surface-alt); user-select:none;
-  }
-  .filter-chk input { accent-color: var(--amber); width:14px; height:14px; margin:0; }
-  .filter-chk.green { color: var(--green); }
-  .filter-chk.yellow { color: var(--yellow); }
-  .filter-chk.red { color: var(--red); }
-  .filter-chk.off { opacity: 0.35; }
+  .summary-chip.green .num { color: var(--green); }
+  .summary-chip.yellow .num { color: var(--yellow); }
+  .summary-chip.red .num { color: var(--red); }
 
   /* Record Deck Cards (Tab 3 & Tab 2) */
   #billListWrap, #logListWrap { display:flex; flex-direction:column; gap:10px; width:100%; }
@@ -368,12 +363,11 @@
     }
     .scan-bottom-controls .qty-display { font-size: 48px; min-height: 70px; }
     
-    /* Tab 2 & 3 Desktop: Responsive Card Grids */
+    /* Tab 2 & 3 Desktop: Single Column */
     #billListWrap, #logListWrap {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      display: flex;
+      flex-direction: column;
       gap: 14px;
-      align-items: start;
     }
     .tab-panel.scroll { padding: 20px 24px 30px 24px; }
     #tab-bill.scroll { padding-bottom: 90px; }
@@ -457,14 +451,9 @@
         <input type="text" id="billSearch" placeholder="Search barcode or name">
       </div>
       <div class="summary-bar">
-        <div class="summary-chip"><div class="num" id="sumGreen" style="color:var(--green);">0</div><div class="lbl">Match</div></div>
-        <div class="summary-chip"><div class="num" id="sumYellow" style="color:var(--yellow);">0</div><div class="lbl">Short</div></div>
-        <div class="summary-chip"><div class="num" id="sumRed" style="color:var(--red);">0</div><div class="lbl">Over</div></div>
-      </div>
-      <div class="filter-row">
-        <label class="filter-chk green" id="lblGreen"><input type="checkbox" id="chkGreen" checked> Match</label>
-        <label class="filter-chk yellow" id="lblYellow"><input type="checkbox" id="chkYellow" checked> Short</label>
-        <label class="filter-chk red" id="lblRed"><input type="checkbox" id="chkRed" checked> Over</label>
+        <label class="summary-chip green" id="lblGreen"><input type="checkbox" id="chkGreen" checked><div class="num" id="sumGreen">0</div><div class="lbl">Match</div></label>
+        <label class="summary-chip yellow" id="lblYellow"><input type="checkbox" id="chkYellow" checked><div class="num" id="sumYellow">0</div><div class="lbl">Short</div></label>
+        <label class="summary-chip red" id="lblRed"><input type="checkbox" id="chkRed" checked><div class="num" id="sumRed">0</div><div class="lbl">Over</div></label>
       </div>
       <div id="billListWrap"></div>
 
@@ -1576,14 +1565,16 @@ document.getElementById('exportBillBtn').addEventListener('click', ()=>{
   
   [...codes].sort().forEach(code=>{
     const info = getInfo(code);
+    if(info.myQty === 0) return; // skip items with zero quantity
+
     const sp = (info.modPrice !== undefined && info.modPrice !== null && info.modPrice !== '') 
       ? fmtMoney(info.modPrice) 
       : fmtMoney(info.price);
       
-    const sd1 = info.discounts[0] !== undefined ? info.discounts[0] : '';
-    const sd2 = info.discounts[1] !== undefined ? info.discounts[1] : '';
-    const sd3 = info.discounts[2] !== undefined ? info.discounts[2] : '';
-    const sd4 = info.discounts[3] !== undefined ? info.discounts[3] : '';
+    const sd1 = info.discounts[0] !== undefined ? info.discounts[0] : 0;
+    const sd2 = info.discounts[1] !== undefined ? info.discounts[1] : 0;
+    const sd3 = info.discounts[2] !== undefined ? info.discounts[2] : 0;
+    const sd4 = info.discounts[3] !== undefined ? info.discounts[3] : 0;
 
     rows.push([
       code,
@@ -1616,9 +1607,4 @@ function downloadXlsx(rows, filename){
   }
 }
 
-/* ===================== Init ===================== */
-renderLog();
-renderBill();
-</script>
-</body>
-</html>
+/* ===================== Init ===============
