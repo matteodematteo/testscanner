@@ -37,6 +37,7 @@
     font-family: var(--font-ui);
     -webkit-tap-highlight-color: transparent;
     height: 100%;
+    overflow: hidden;
   }
   body { display: flex; justify-content: center; }
   #app {
@@ -48,10 +49,10 @@
     overflow: hidden;
   }
 
-  main { flex: 1; min-height: 0; display:flex; flex-direction:column; }
+  main { flex: 1; min-height: 0; display:flex; flex-direction:column; overflow: hidden; }
   .tab-panel { display: none; flex-direction: column; min-height: 0; }
   .tab-panel.active { display: flex; }
-  .tab-panel.scroll { overflow-y: auto; padding: 14px 16px 18px 16px; }
+  .tab-panel.scroll { overflow-y: auto; overflow-x: hidden; padding: 14px 16px 18px 16px; }
 
   /* ---------- Scan tab: fills the whole screen, no scroll ---------- */
   #tab-scan { padding: 14px 16px 16px 16px; gap: 10px; height:100%; overflow:hidden; }
@@ -114,6 +115,7 @@
   .bill-meta-label {
     font-size: 12px; color: var(--muted); margin-bottom: 10px;
     background: var(--surface-alt); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+    word-break: break-word;
   }
   .bill-meta-label .mono { color: var(--teal); font-family: var(--font-mono); }
 
@@ -166,7 +168,7 @@
   .key.func { color: var(--muted); font-family: var(--font-ui); font-size: clamp(11px, 2vh, 14px); text-transform: uppercase; letter-spacing: 0.5px; }
   .add-btn { padding: 16px; font-size: 16px; flex-shrink:0; }
 
-  /* ---------- Log & Bill tabs (scrollable) ---------- */
+  /* ---------- Log & Bill tabs ---------- */
   .summary-bar { display:flex; gap: 8px; margin-bottom: 12px; }
   .summary-chip {
     flex:1; background: var(--surface-alt); border:1px solid var(--line); border-radius: 10px;
@@ -175,15 +177,15 @@
   .summary-chip .num { font-family: var(--font-mono); font-size: 18px; font-weight: 700; color: var(--teal); }
   .summary-chip .lbl { font-size: 9.5px; text-transform:uppercase; letter-spacing:0.5px; color: var(--muted); margin-top:2px; }
 
-  .toolbar-row { display:flex; justify-content:flex-end; gap:8px; margin-bottom: 12px; }
+  .toolbar-row { display:flex; justify-content:flex-end; align-items:center; gap:8px; margin-bottom: 12px; flex-wrap: wrap; }
   .bill-toolbar-totals { margin-right:auto; display:flex; gap:6px; min-width:0; }
-  .bill-toolbar-total { background:var(--surface-alt); border:1px solid var(--line); border-radius:8px; padding:5px 7px; min-width:0; }
+  .bill-toolbar-total { background:var(--surface-alt); border:1px solid var(--line); border-radius:8px; padding:5px 8px; min-width:0; }
   .bill-toolbar-total .value { display:block; color:var(--teal); font-family:var(--font-mono); font-size:12px; font-weight:700; white-space:nowrap; }
   .bill-toolbar-total .label { display:block; color:var(--muted); font-size:8px; text-transform:uppercase; white-space:nowrap; }
   .icon-btn-lg {
     background: var(--surface-raised); border: 1px solid var(--line); color: var(--ink);
     border-radius: 10px; padding: 9px 12px; font-size: 12.5px; font-weight:600;
-    display:flex; align-items:center; gap:6px; cursor:pointer;
+    display:flex; align-items:center; gap:6px; cursor:pointer; flex-shrink:0;
   }
   .icon-btn-lg svg { width:15px; height:15px; }
   .icon-btn-lg:active { background: var(--amber-dim); }
@@ -207,10 +209,14 @@
   .filter-chk.red { color: var(--red); }
   .filter-chk.off { opacity: 0.35; }
 
-  /* Record cards */
+  /* Record Deck Cards (Tab 3 & Tab 2) */
+  #billListWrap, #logListWrap { display:flex; flex-direction:column; gap:10px; width:100%; }
+
   .record-card {
     background: var(--surface-alt); border: 1px solid var(--line); border-left: 4px solid var(--line);
-    border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;
+    border-radius: var(--radius); padding: 12px 14px; width: 100%; box-sizing: border-box;
+    display: flex; flex-direction: column; gap: 6px; overflow: hidden; word-break: break-word;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
   }
   .record-card.green { border-left-color: var(--green); background: var(--green-bg); }
   .record-card.yellow { border-left-color: var(--yellow); background: var(--yellow-bg); }
@@ -220,11 +226,12 @@
     border-width: 1px 1px 1px 4px;
     background: rgba(167, 139, 250, 0.04);
   }
+
   .tag-unlisted {
     display: inline-flex; align-items: center; gap: 3px;
     background: rgba(167, 139, 250, 0.16); color: #C4B5FD;
     border: 1px solid rgba(167, 139, 250, 0.4);
-    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    font-size: 9.5px; font-weight: 700; text-transform: uppercase;
     letter-spacing: 0.5px; padding: 2px 6px; border-radius: 6px;
     margin-left: 6px; vertical-align: middle;
   }
@@ -232,25 +239,27 @@
     display: inline-flex; align-items: center; gap: 3px;
     background: rgba(111, 214, 210, 0.12); color: var(--teal);
     border: 1px solid rgba(111, 214, 210, 0.3);
-    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    font-size: 9.5px; font-weight: 700; text-transform: uppercase;
     letter-spacing: 0.5px; padding: 2px 6px; border-radius: 6px;
     margin-left: 6px; vertical-align: middle;
   }
-  .record-top { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
-  .record-barcode { font-family: var(--font-mono); font-weight:700; font-size:15.5px; color: var(--ink); }
-  .record-time { font-size:10.5px; color: var(--muted); margin-top:1px; }
-  .record-qtys { font-family: var(--font-mono); font-size:15px; font-weight:700; text-align:right; white-space:nowrap; }
+
+  .record-top { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; width:100%; }
+  .record-barcode { font-family: var(--font-mono); font-weight:700; font-size:15px; color: var(--ink); word-break: break-all; }
+  .record-time { font-size:10.5px; color: var(--muted); margin-top:2px; }
+  .record-qtys { font-family: var(--font-mono); font-size:16px; font-weight:700; text-align:right; white-space:nowrap; }
   .record-qtys .mine { color: var(--teal); }
   .record-qtys .sep { color: var(--muted); font-weight:400; margin:0 2px; }
   .record-qtys .bill { color: var(--muted); }
-  .record-status { font-size:9.5px; text-transform:uppercase; letter-spacing:0.5px; font-weight:700; text-align:right; margin-top:1px; }
+  .record-status { font-size:10px; text-transform:uppercase; letter-spacing:0.5px; font-weight:700; text-align:right; margin-top:2px; }
   .record-status.green { color: var(--green); } .record-status.yellow { color: var(--yellow); } .record-status.red { color: var(--red); }
-  .record-name { font-size:14px; margin-top:6px; font-weight:500; line-height:1.3; }
-  .record-sub { display:flex; gap:16px; margin-top:5px; font-size:12px; color: var(--muted); }
-  .record-sub .val { color: var(--ink); font-family: var(--font-mono); margin-left:4px; }
-  .cost-chain { color:var(--muted); font-family:var(--font-mono); font-size:10.5px; margin-left:4px; white-space:nowrap; }
-  .record-discounts { color:var(--amber); font-family:var(--font-mono); font-size:10.5px; text-align:right; margin-top:5px; }
-  .record-actions { display:flex; gap:6px; margin-top:8px; justify-content:flex-end; }
+  
+  .record-name { font-size:13.5px; font-weight:500; line-height:1.35; color: var(--ink); margin-top:2px; }
+  .record-sub { display:flex; flex-wrap:wrap; gap:8px 16px; margin-top:4px; font-size:12px; color: var(--muted); }
+  .record-sub .val { color: var(--ink); font-family: var(--font-mono); font-weight:600; margin-left:4px; }
+  .cost-chain { color:var(--muted); font-family:var(--font-mono); font-size:11px; margin-left:4px; display:inline-block; word-break:break-word; }
+  .record-discounts { color:var(--amber); font-family:var(--font-mono); font-size:11px; margin-top:2px; }
+  .record-actions { display:flex; gap:6px; margin-top:6px; justify-content:flex-end; }
   .icon-btn {
     background: transparent; border: 1px solid var(--line); color: var(--muted);
     border-radius: 8px; padding: 4px 9px; font-size: 11px; cursor:pointer;
@@ -293,7 +302,7 @@
 
   <main>
 
-    <!-- TAB 1: SCAN (fills the entire screen, no scroll) -->
+    <!-- TAB 1: SCAN -->
     <section class="tab-panel active" id="tab-scan">
       <div class="barcode-input-row">
         <input type="text" id="barcodeInput" placeholder="Barcode" inputmode="numeric">
@@ -332,7 +341,7 @@
       </div>
     </section>
 
-    <!-- TAB 2: LOG (chronology of every add — independent from Tab 3) -->
+    <!-- TAB 2: LOG -->
     <section class="tab-panel scroll" id="tab-log">
       <div class="toolbar-row">
         <button class="icon-btn-lg" id="exportLogBtn">
@@ -350,7 +359,7 @@
       <div id="logListWrap"></div>
     </section>
 
-    <!-- TAB 3: BILL -->
+    <!-- TAB 3: BILL DECK VIEW -->
     <section class="tab-panel scroll" id="tab-bill">
       <div class="toolbar-row">
         <div class="bill-toolbar-totals" aria-label="Counted stock value totals">
@@ -384,7 +393,7 @@
         <label class="filter-chk red" id="lblRed"><input type="checkbox" id="chkRed" checked> Over</label>
       </div>
       <div id="billListWrap"></div>
-      <button class="btn btn-ghost btn-block" id="exportBillBtn" style="margin-top:6px;">Export comparison CSV</button>
+      <button class="btn btn-ghost btn-block" id="exportBillBtn" style="margin-top:10px;">Export comparison CSV</button>
     </section>
 
   </main>
@@ -443,11 +452,11 @@
 
 <script>
 /* ===================== State ===================== */
-let counted = {};      // barcode -> {qty, name, cost, price, ts}  (current qty per barcode — used for Tab 3 comparison)
-let history = [];      // [{id, code, qty, name, cost, price, ts}] chronological log of every "Add" action — Tab 2 only, independent of `counted`'s current-vs-bill comparison
+let counted = {};
+let history = [];
 let nextHistoryId = 1;
-let bill = {};         // barcode -> {qty, cost, price, name}
-let billHistory = [];  // stack of previous bill snapshots
+let bill = {};
+let billHistory = [];
 let currentBillKey = '';
 let currentBillShopKey = '';
 let currentBarcode = '';
@@ -460,8 +469,6 @@ let authCookie = null;
 const qtyDisplay = document.getElementById('qtyDisplay');
 
 /* ===================== Firebase bill storage ===================== */
-// Firebase client configuration is public by design. Protect the database itself
-// with Firebase Realtime Database rules before deploying this app publicly.
 const firebaseConfig = {
   apiKey: 'AIzaSyA98q2-ZsnOV309O9YNH-xLflsCBmit1uY',
   authDomain: 'database-2be93.firebaseapp.com',
@@ -484,7 +491,6 @@ function firebaseShopKey(shopkey = credentials.shopkey){
   return shopkey.replace(/[.#$\\/\\[\\]]/g, '_');
 }
 function firebaseBillsRef(shopkey){
-  // Firebase path: {shopkey}/{billId}
   return firebaseDb.ref(firebaseShopKey(shopkey));
 }
 function firebaseBillRef(key, shopkey){
@@ -521,7 +527,6 @@ function fmtMoney(n){
 }
 function discountValues(item){
   if(!item) return [];
-  // Supports p_discount, p_discount2, p_discount3, etc. returned by the bill API.
   return Object.keys(item)
     .filter(key => /^p_discount\d*$/i.test(key))
     .sort((a,b) => a.localeCompare(b, undefined, { numeric:true }))
@@ -534,8 +539,6 @@ function discountsText(discounts){
 function costBreakdown(cost, discounts){
   const base = Number(String(cost).replace(',', '.'));
   if(!Number.isFinite(base)) return { net:'', withVat:'' };
-  // Each p_discount reduces the running cost: 50 means × (1 - 50 / 100).
-  // Multiple supplied percentages are applied one after another.
   const multiplier = discounts.length
     ? discounts.reduce((product, value) => product * (1 - value / 100), 1)
     : 1;
@@ -630,7 +633,6 @@ function lookupProduct(raw){
   infoBox.classList.remove('empty');
 
   if(!info.name){
-    // Unlisted item: ask for name, cost and price
     infoBox.innerHTML = `
       <div class="new-item-form">
         <div class="new-item-title">New item — not on the bill</div>
@@ -672,7 +674,6 @@ function lookupProduct(raw){
   }
 }
 
-// Enter-to-next-field navigation inside the new-item form
 document.getElementById('productInfo').addEventListener('keydown', e=>{
   if(e.key !== 'Enter') return;
   if(e.target.id === 'newName'){ e.preventDefault(); document.getElementById('newCost').focus(); }
@@ -721,7 +722,7 @@ document.getElementById('addBtn').addEventListener('click', ()=>{
     counted[currentBarcode] = { qty: 0, name: billInfo.name, cost: billInfo.cost, price: billInfo.price, ts: Date.now() };
   }
   const rec = counted[currentBarcode];
-  rec.qty = qty;               // substitutes the previous quantity, does not sum
+  rec.qty = qty;
   rec.ts = Date.now();
   let entryName = rec.name, entryPrice = rec.price;
   if(nameInput){
@@ -736,7 +737,6 @@ document.getElementById('addBtn').addEventListener('click', ()=>{
     entryName = rec.name; entryPrice = rec.price;
   }
 
-  // Log this add action into the chronological history (independent of `counted`)
   const activeBillInfo = getInfo(currentBarcode);
   history.push({
     id: nextHistoryId++, code: currentBarcode, qty,
@@ -745,7 +745,6 @@ document.getElementById('addBtn').addEventListener('click', ()=>{
     ts: Date.now()
   });
 
-  // Each active bill keeps its own counted quantities in Firebase.
   syncCountToFirebase(currentBarcode);
 
   showToast(`Added ${qty} × ${currentBarcode}`, 'green');
@@ -756,11 +755,6 @@ document.getElementById('addBtn').addEventListener('click', ()=>{
 });
 
 /* ===================== Login / cookie refresh ===================== */
-/* Mirrors the working reference app's method: credentials + cookie persisted in
-   localStorage, cookie extracted by scanning the proxy response for SESSION=/
-   rememberMe= tokens (ignoring the rememberMe=deleteMe placeholder), and a lazy
-   getCookieForRequests() that auto-refreshes the cookie only when needed. */
-
 const STORAGE_KEYS = {
   credentials: 'stockcheck_credentials',
   cookie: 'stockcheck_auth_cookie',
@@ -781,11 +775,11 @@ function loadCredentials(){
   try{
     const raw = localStorage.getItem(STORAGE_KEYS.credentials);
     if(raw) credentials = JSON.parse(raw);
-  } catch(e){ /* ignore malformed/blocked storage */ }
+  } catch(e){}
 }
 function saveCredentials(){
   try{ localStorage.setItem(STORAGE_KEYS.credentials, JSON.stringify(credentials)); }
-  catch(e){ /* ignore blocked storage (e.g. private browsing) */ }
+  catch(e){}
 }
 function loadCookieState(){
   try{
@@ -799,7 +793,7 @@ function saveCookieState(cookie, status){
   try{
     localStorage.setItem(STORAGE_KEYS.cookie, authCookie || '');
     localStorage.setItem(STORAGE_KEYS.cookieStatus, authStatus);
-  } catch(e){ /* ignore blocked storage */ }
+  } catch(e){}
   updateLoginButtonVisual();
 }
 function updateLoginButtonVisual(){
@@ -811,8 +805,6 @@ function isValidSessionCookie(c){
   return typeof c === 'string' && c.trim().length > 0 && /SESSION=/i.test(c);
 }
 
-// Digs through whatever shape the proxy responds with and pulls out a clean
-// "SESSION=...; rememberMe=..." cookie string, skipping the deleteMe placeholder.
 function extractCookieFromResponse(payload){
   if(!payload) return '';
   let rawCookie = '';
@@ -890,7 +882,7 @@ loginBtn.addEventListener('click', (e)=>{
   if(longPressFired){ e.preventDefault(); longPressFired = false; return; }
   performLogin(false);
 });
-loginBtn.addEventListener('contextmenu', e=> e.preventDefault()); // avoid long-press context menu on mobile
+loginBtn.addEventListener('contextmenu', e=> e.preventDefault());
 
 document.getElementById('dlgCancelBtn').addEventListener('click', closeLoginDialog);
 loginDialogOverlay.addEventListener('click', (e)=>{ if(e.target === loginDialogOverlay) closeLoginDialog(); });
@@ -915,8 +907,6 @@ document.getElementById('dlgSaveBtn').addEventListener('click', ()=>{
   performLogin(false);
 });
 
-// silent=true is used by getCookieForRequests() for a lazy, background refresh
-// (no toast/dialog noise) — silent=false is the explicit button-tap flow.
 async function performLogin(silent){
   if(!credentials.shopkey || !credentials.login_name || !credentials.password){
     if(!silent){
@@ -948,7 +938,7 @@ async function performLogin(silent){
 
     const responseText = await res.text();
     let parsed = responseText;
-    try{ parsed = JSON.parse(responseText); } catch(e){ /* keep plain text fallback */ }
+    try{ parsed = JSON.parse(responseText); } catch(e){}
 
     const cookie = extractCookieFromResponse(parsed);
     if(!cookie){
@@ -969,8 +959,6 @@ async function performLogin(silent){
   }
 }
 
-// Lazily ensures a usable cookie before a request that needs one: reuses the
-// stored cookie if it's still valid, otherwise triggers a silent re-login.
 async function getCookieForRequests(){
   if(isValidSessionCookie(authCookie)) return authCookie;
   return await performLogin(true);
@@ -1014,7 +1002,7 @@ function startScanning(){
       showToast('Scanned ' + decodedText, 'green');
       stopScanning();
     },
-    () => { /* ignore per-frame decode errors */ }
+    () => {}
   ).catch(err => {
     showToast('Camera unavailable', 'red');
     resetCameraButtons();
@@ -1036,7 +1024,7 @@ function resetCameraButtons(){
   stopBtn.style.display = 'none';
 }
 
-/* ===================== Tab 2: chronological history (independent of Tab 3) ===================== */
+/* ===================== Tab 2: chronological history ===================== */
 function historyCardHtml(entry){
   return `
     <div class="record-card">
@@ -1134,23 +1122,21 @@ document.getElementById('exportLogBtn').addEventListener('click', async ()=>{
   }
 });
 
-/* ===================== Tab 3: Bill comparison (uses current `counted` qty, not history) ===================== */
+/* ===================== Tab 3: Bill Deck Card view ===================== */
 function recordCardHtml(code){
   const info = getInfo(code);
   const s = statusOf(info.myQty, info.billQty);
   const isFromProxy = !!bill[code];
   const costChain = info.net === '' ? '' : (info.discounts.length
-    ? ` &gt; disc. €${fmtMoney(info.net)} &gt; +IVA €${fmtMoney(info.withVat)} /`
-    : ` &gt; +IVA €${fmtMoney(info.withVat)} /`);
+    ? `(disc. €${fmtMoney(info.net)} → +IVA €${fmtMoney(info.withVat)})`
+    : `(+IVA €${fmtMoney(info.withVat)})`);
   const sourceTag = isFromProxy
     ? `<span class="tag-proxy">Bill</span>`
     : `<span class="tag-unlisted">✦ Scratch</span>`;
 
   return `
-    <div class="record-card ${s.cls}">
     <div class="record-card ${s.cls} ${isFromProxy ? 'is-proxy' : 'is-unlisted'}">
       <div class="record-top">
-        <div class="record-barcode">${escapeHtml(code)}</div>
         <div>
           <div class="record-barcode">${escapeHtml(code)}${sourceTag}</div>
         </div>
@@ -1161,15 +1147,15 @@ function recordCardHtml(code){
       </div>
       <div class="record-name">${info.name ? escapeHtml(info.name) : '<span class="muted">Unlisted item</span>'}</div>
       <div class="record-sub">
-        <span>Cost<span class="val">${info.cost !== '' ? '€' + fmtMoney(info.cost) : '—'}</span><span class="cost-chain">${costChain}</span></span>
-        <span>Price<span class="val">${info.price !== '' ? '€' + fmtMoney(info.price) : '—'}</span></span>
+        <div>Cost: <span class="val">${info.cost !== '' ? '€' + fmtMoney(info.cost) : '—'}</span><span class="cost-chain">${costChain}</span></div>
+        <div>Price: <span class="val">${info.price !== '' ? '€' + fmtMoney(info.price) : '—'}</span></div>
       </div>
-      ${info.discounts.length ? `<div class="record-discounts">${discountsText(info.discounts)}</div>` : ''}
+      ${info.discounts.length ? `<div class="record-discounts">Discounts: ${discountsText(info.discounts)}</div>` : ''}
     </div>
   `;
 }
 
-/* ===================== Tab 3: bill selector (fetches list, then loads its CSV) ===================== */
+/* ===================== Tab 3: bill selector ===================== */
 const billSelectOverlay = document.getElementById('billSelectOverlay');
 const billSelectList = document.getElementById('billSelectList');
 const billSelectStatus = document.getElementById('billSelectStatus');
@@ -1203,7 +1189,7 @@ async function fetchBillList(){
   billSelectList.innerHTML = '';
   billSelectStatus.textContent = 'Checking session…';
 
-  const cookie = await getCookieForRequests(); // reuses a valid cookie, or silently logs in if needed
+  const cookie = await getCookieForRequests();
   if(!isValidSessionCookie(cookie)){
     billSelectStatus.textContent = authStatus || 'No valid session yet. Hold the key button on the Scan tab to log in, then try again.';
     return;
@@ -1211,9 +1197,6 @@ async function fetchBillList(){
 
   billSelectStatus.textContent = 'Loading bills…';
   try{
-    // A custom header like X-Auth-Cookie forces a CORS preflight, which this worker's
-    // Access-Control-Allow-Headers doesn't permit. Query params never trigger preflight,
-    // so the cookie is passed that way instead.
     const url = new URL('https://getbill-id.mattoteo96.workers.dev/');
     url.searchParams.set('cookie', cookie);
     const res = await fetch(url.toString(), { method: 'GET' });
@@ -1262,8 +1245,6 @@ function renderSelectedBillMeta(){
   el.innerHTML = `Bill <span class="mono">#${escapeHtml(String(selectedBillMeta.id ?? ''))}</span>${selectedBillMeta.supplier ? ' · ' + escapeHtml(selectedBillMeta.supplier) : ''}${selectedBillMeta.bill_price !== undefined ? ' · ' + fmtMoney(selectedBillMeta.bill_price) : ''}${selectedBillMeta.opr_time ? ' · ' + escapeHtml(selectedBillMeta.opr_time) : ''}`;
 }
 
-// Fetches the product lines for a chosen bill from the goods/findByBillId proxy.
-// Field names come straight from that proxy: goods_code, italian_name, p_price, quantity.
 async function fetchBillProducts(billId){
   const cookie = await getCookieForRequests();
   if(!isValidSessionCookie(cookie)){
@@ -1275,7 +1256,7 @@ async function fetchBillProducts(billId){
 
   const res = await fetch(url.toString(), { method: 'GET' });
   let data = null;
-  try{ data = await res.json(); } catch(e){ /* leave null */ }
+  try{ data = await res.json(); } catch(e){}
 
   if(!res.ok){
     const msg = (data && data.error) ? data.error : `HTTP ${res.status}`;
@@ -1287,9 +1268,6 @@ async function fetchBillProducts(billId){
   return data;
 }
 
-// Maps the proxy's goods rows (goods_code / italian_name / p_price / s_price / quantity)
-// into this app's bill schema (barcode / name / cost / qty) and swaps it in as
-// the current comparison bill for Tab 3.
 async function loadBillFromGoods(rows, meta){
   const newBill = {};
   let count = 0;
@@ -1312,10 +1290,8 @@ async function loadBillFromGoods(rows, meta){
   }
   const key = firebaseBillKey(meta);
   try{
-    // Keep quantities when a previously uploaded bill is selected again.
     const existing = await firebaseBillRef(key).once('value');
     const existingCounts = (existing.val() && existing.val().counted) || {};
-    // Save the full bill before showing it as the active comparison table.
     await saveBillToFirebase(key, meta, newBill, existingCounts);
     counted = existingCounts;
   } catch(err){
@@ -1345,7 +1321,6 @@ async function fetchSavedBills(){
   billSelectList.innerHTML = '';
   billSelectStatus.textContent = 'Loading saved bills…';
   try{
-    // Previous shows every saved shop/bill record, not just the active shop.
     const snapshot = await firebaseDb.ref().once('value');
     const allShops = snapshot.val() || {};
     const rows = Object.entries(allShops).flatMap(([shopkey, bills]) =>
