@@ -367,7 +367,8 @@
     <!-- TAB 1: SCAN -->
     <section class="tab-panel active" id="tab-scan">
       <div class="barcode-input-row">
-        <input type="text" id="barcodeInput" placeholder="Barcode" inputmode="numeric" autocomplete="off">
+        <!-- Disabled autocompilazione / autocomplete attributes added here -->
+        <input type="text" id="barcodeInput" name="barcode_no_autofill" placeholder="Barcode" inputmode="numeric" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true">
         <button class="btn btn-amber" id="startScanBtn">Scan</button>
         <button class="btn btn-ghost" id="stopScanBtn" style="display:none;">Stop</button>
         <button class="btn btn-ghost icon-square" id="loginBtn" title="Tap: refresh cookie · Hold: set credentials">
@@ -711,6 +712,7 @@ function lookupProduct(raw){
   infoBox.classList.remove('empty');
 
   if(!info.name){
+    /* REMOVED Modify Price input from the new item creation form */
     infoBox.innerHTML = `
       <div class="new-item-form">
         <div class="new-item-title">New item — not on the bill</div>
@@ -728,10 +730,6 @@ function lookupProduct(raw){
             <input type="text" id="newPrice" inputmode="decimal" placeholder="0.00">
           </div>
         </div>
-        <div>
-          <span class="field-label" style="color:var(--amber);">Modify Price (Optional override)</span>
-          <input type="text" id="modPriceInput" inputmode="decimal" placeholder="New price override" value="${info.modPrice !== '' ? fmtMoney(info.modPrice) : ''}">
-        </div>
         <div class="field-row" id="newDiscountFields">${newDiscountInput(1)}${newDiscountInput(2)}</div>
         <button type="button" class="icon-btn" id="addDiscountBtn" style="align-self:flex-start;">+ Discount</button>
         <div class="cost-boxes">
@@ -741,6 +739,7 @@ function lookupProduct(raw){
       </div>
     `;
   } else {
+    /* Modify Price remains here only for existing/listed items */
     infoBox.innerHTML = `
       <div class="info-row"><span class="info-label">Item</span><span class="info-value">${escapeHtml(info.name)}</span></div>
       <div class="info-row"><span class="info-label">Bill qty</span><span class="info-value mono">${info.billQty}</span></div>
@@ -844,7 +843,12 @@ document.getElementById('addBtn').addEventListener('click', ()=>{
 
   showToast(`Added ${qty} × ${currentBarcode}`, 'green');
   resetKeypad();
-  lookupProduct(currentBarcode);
+  
+  /* Clear input value, reset screen, and focus barcodeInput */
+  barcodeInput.value = '';
+  lookupProduct('');
+  barcodeInput.focus();
+  
   renderLog();
   renderBill();
 });
@@ -1456,11 +1460,16 @@ async function selectBillByIndex(idx){
   }
 }
 
+/* HIDDEN Bill ID from metadata display as requested */
 function renderSelectedBillMeta(){
   const el = document.getElementById('selectedBillMeta');
   if(!selectedBillMeta){ el.style.display = 'none'; return; }
   el.style.display = 'inline-block';
-  el.innerHTML = `Bill <span class="mono">#${escapeHtml(String(selectedBillMeta.id ?? ''))}</span>${selectedBillMeta.supplier ? ' · ' + escapeHtml(selectedBillMeta.supplier) : ''}${selectedBillMeta.bill_price !== undefined ? ' · ' + fmtMoney(selectedBillMeta.bill_price) : ''}${selectedBillMeta.opr_time ? ' · ' + escapeHtml(selectedBillMeta.opr_time) : ''}`;
+  const parts = [];
+  if(selectedBillMeta.supplier) parts.push(escapeHtml(selectedBillMeta.supplier));
+  if(selectedBillMeta.bill_price !== undefined && selectedBillMeta.bill_price !== '') parts.push('€' + fmtMoney(selectedBillMeta.bill_price));
+  if(selectedBillMeta.opr_time) parts.push(escapeHtml(selectedBillMeta.opr_time));
+  el.innerHTML = parts.length ? parts.join(' · ') : 'Selected Bill';
 }
 
 async function fetchBillProducts(billId){
@@ -1625,7 +1634,15 @@ function renderBill(){
   document.getElementById('sumNetCost').textContent = '€' + netTotal.toFixed(2);
   document.getElementById('sumCostWithVat').textContent = '€' + (netTotal * 1.22).toFixed(2);
 
-  const filtered = [...codes].sort().filter(code=>{
+  /* Sorted so recently added/counted items always appear at the top of Tab 3 */
+  const filtered = [...codes].sort((a, b) => {
+    const tsA = (counted[a] && counted[a].ts) ? counted[a].ts : 0;
+    const tsB = (counted[b] && counted[b].ts) ? counted[b].ts : 0;
+    if (tsA !== tsB) {
+      return tsB - tsA;
+    }
+    return a.localeCompare(b);
+  }).filter(code=>{
     const info = getInfo(code);
     const s = statusOf(info.myQty, info.billQty);
     if(!statusFilter[s.cls]) return false;
@@ -1644,7 +1661,6 @@ document.getElementById('exportBillBtn').addEventListener('click', ()=>{
   if(codes.size === 0){ showToast('Nothing to export', 'red'); return; }
   
   // Custom headers: barcode>bc, name>in, my_qty>qt, cost>pp, discounts>sd1-4, price>sp
-  // Note: bill_qty and status are excluded as requested.
   const rows = [['bc', 'in', 'qt', 'pp', 'sd1', 'sd2', 'sd3', 'sd4', 'sp']];
   
   [...codes].sort().forEach(code=>{
