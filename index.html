@@ -250,27 +250,12 @@
   .record-card.green { border-left-color: var(--green); background: var(--green-bg); }
   .record-card.yellow { border-left-color: var(--yellow); background: var(--yellow-bg); }
   .record-card.red { border-left-color: var(--red); background: var(--red-bg); }
+  /* Unlisted/scratch items — vivid purple contrast vs bill items */
   .record-card.is-unlisted {
     border-style: dashed;
     border-width: 1px 1px 1px 4px;
-    background: rgba(167, 139, 250, 0.04);
-  }
-
-  .tag-unlisted {
-    display: inline-flex; align-items: center; gap: 3px;
-    background: rgba(167, 139, 250, 0.16); color: #C4B5FD;
-    border: 1px solid rgba(167, 139, 250, 0.4);
-    font-size: 9.5px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.5px; padding: 2px 6px; border-radius: 6px;
-    margin-left: 6px; vertical-align: middle;
-  }
-  .tag-proxy {
-    display: inline-flex; align-items: center; gap: 3px;
-    background: rgba(111, 214, 210, 0.12); color: var(--teal);
-    border: 1px solid rgba(111, 214, 210, 0.3);
-    font-size: 9.5px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.5px; padding: 2px 6px; border-radius: 6px;
-    margin-left: 6px; vertical-align: middle;
+    border-left-color: #A78BFA;
+    background: rgba(167, 139, 250, 0.14);
   }
 
   .record-top { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; width:100%; }
@@ -382,7 +367,7 @@
     <!-- TAB 1: SCAN -->
     <section class="tab-panel active" id="tab-scan">
       <div class="barcode-input-row">
-        <input type="text" id="barcodeInput" placeholder="Barcode" inputmode="numeric">
+        <input type="text" id="barcodeInput" placeholder="Barcode" inputmode="numeric" autocomplete="off">
         <button class="btn btn-amber" id="startScanBtn">Scan</button>
         <button class="btn btn-ghost" id="stopScanBtn" style="display:none;">Stop</button>
         <button class="btn btn-ghost icon-square" id="loginBtn" title="Tap: refresh cookie · Hold: set credentials">
@@ -526,6 +511,19 @@
       </div>
     </div>
   </div>
+
+  <!-- Edit Record Dialog -->
+  <div class="dialog-overlay" id="editRecordOverlay">
+    <div class="dialog-card" style="max-width:340px; max-height:80vh; overflow-y:auto;">
+      <div class="dialog-title" id="editRecordTitle">Edit Record</div>
+      <div id="editRecordFields" style="display:flex; flex-direction:column; gap:10px;"></div>
+      <div class="dialog-actions" style="margin-top:10px;">
+        <button class="btn btn-ghost" id="editRecordCancelBtn">Cancel</button>
+        <button class="btn btn-amber" id="editRecordSaveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -732,7 +730,7 @@ function lookupProduct(raw){
         </div>
         <div>
           <span class="field-label" style="color:var(--amber);">Modify Price (Optional override)</span>
-          <input type="text" id="modPriceInput" inputmode="decimal" placeholder="New price override">
+          <input type="text" id="modPriceInput" inputmode="decimal" placeholder="New price override" value="${info.modPrice !== '' ? fmtMoney(info.modPrice) : ''}">
         </div>
         <div class="field-row" id="newDiscountFields">${newDiscountInput(1)}${newDiscountInput(2)}</div>
         <button type="button" class="icon-btn" id="addDiscountBtn" style="align-self:flex-start;">+ Discount</button>
@@ -1210,7 +1208,6 @@ document.getElementById('exportLogBtn').addEventListener('click', async ()=>{
     if (!response.ok) {
       throw new Error(`Send TXT failed with status ${response.status}`);
     }
-
     history = [];
     renderLog();
     showToast('TXT sent successfully', 'green');
@@ -1227,15 +1224,12 @@ function recordCardHtml(code){
   const costChain = info.net === '' ? '' : (info.discounts.length
     ? `(disc. €${fmtMoney(info.net)} → +IVA €${fmtMoney(info.withVat)})`
     : `(+IVA €${fmtMoney(info.withVat)})`);
-  const sourceTag = isFromProxy
-    ? `<span class="tag-proxy">Bill</span>`
-    : `<span class="tag-unlisted">✦ Scratch</span>`;
 
   return `
     <div class="record-card ${s.cls} ${isFromProxy ? 'is-proxy' : 'is-unlisted'}">
       <div class="record-top">
         <div>
-          <div class="record-barcode">${escapeHtml(code)}${sourceTag}</div>
+          <div class="record-barcode">${escapeHtml(code)}</div>
         </div>
         <div>
           <div class="record-qtys"><span class="mine">${info.myQty}</span><span class="sep">/</span><span class="bill">${info.billQty}</span></div>
@@ -1246,35 +1240,125 @@ function recordCardHtml(code){
       <div class="record-sub">
         <div>Cost: <span class="val">${info.cost !== '' ? '€' + fmtMoney(info.cost) : '—'}</span><span class="cost-chain">${costChain}</span></div>
         <div>Price: <span class="val">${info.price !== '' ? '€' + fmtMoney(info.price) : '—'}</span></div>
+        ${info.modPrice !== '' ? `<div>Mod. Price: <span class="val" style="color:var(--amber);">€${fmtMoney(info.modPrice)}</span></div>` : ''}
       </div>
       ${info.discounts.length ? `<div class="record-discounts">Discounts: ${discountsText(info.discounts)}</div>` : ''}
       <div class="record-actions">
-        <label class="mod-price-wrap">
-          Mod. Price:
-          <input type="text" inputmode="decimal" placeholder="New sp" value="${info.modPrice !== '' ? fmtMoney(info.modPrice) : ''}" onchange="saveModPrice('${escapeHtml(code)}', this.value)">
-        </label>
+        <button class="icon-btn" onclick="openEditDialog('${escapeHtml(code)}')">✎ Edit</button>
         ${!isFromProxy ? `<button class="icon-btn btn-danger" onclick="deleteScratchItem('${escapeHtml(code)}')">Delete</button>` : ''}
       </div>
     </div>
   `;
 }
 
-function saveModPrice(code, val) {
-  if (!counted[code]) {
-    const billInfo = getInfo(code);
-    counted[code] = { qty: 0, name: billInfo.name, cost: billInfo.cost, price: billInfo.price, ts: Date.now() };
+/* ===================== Edit Record Dialog ===================== */
+let _editCode = null;
+
+function openEditDialog(code){
+  _editCode = code;
+  const info = getInfo(code);
+  const isUnlisted = !bill[code];
+  const c = counted[code] || {};
+  document.getElementById('editRecordTitle').textContent = (isUnlisted ? '✎ Edit Item — ' : '✎ Edit Count — ') + code;
+
+  let discountsHtml = '';
+  const existingDiscounts = discountValues(c);
+  const numDisc = Math.max(2, existingDiscounts.length);
+  for(let i = 0; i < numDisc; i++){
+    discountsHtml += `<div style="flex:1;"><span class="field-label">Discount ${i+1} %</span><input type="text" class="editDiscount" inputmode="decimal" placeholder="0" value="${existingDiscounts[i] || ''}"></div>`;
   }
-  const cleanVal = String(val).trim().replace(',', '.');
-  if (cleanVal === '') {
-    delete counted[code].mod_price;
-  } else {
-    const num = parseFloat(cleanVal);
-    if (!isNaN(num)) counted[code].mod_price = num;
+
+  const commonFields = `
+    <div class="dialog-field">
+      <span class="field-label">Quantity (count)</span>
+      <input type="text" id="editQty" inputmode="numeric" value="${info.myQty}">
+    </div>
+    <div class="dialog-field">
+      <span class="field-label" style="color:var(--amber);">Modified Price</span>
+      <input type="text" id="editModPrice" inputmode="decimal" placeholder="Leave blank to clear" value="${info.modPrice !== '' ? fmtMoney(info.modPrice) : ''}">
+    </div>
+  `;
+
+  const unlistedFields = !isUnlisted ? '' : `
+    <div class="dialog-field">
+      <span class="field-label">Name</span>
+      <input type="text" id="editName" value="${escapeHtml(info.name)}">
+    </div>
+    <div class="field-row">
+      <div style="flex:1;"><span class="field-label">Cost</span><input type="text" id="editCost" inputmode="decimal" placeholder="0.00" value="${info.cost !== '' ? fmtMoney(info.cost) : ''}"></div>
+      <div style="flex:1;"><span class="field-label">Price</span><input type="text" id="editPrice" inputmode="decimal" placeholder="0.00" value="${info.price !== '' ? fmtMoney(info.price) : ''}"></div>
+    </div>
+    <div class="field-row" id="editDiscountFields" style="flex-wrap:wrap;">${discountsHtml}</div>
+    <button type="button" class="icon-btn" id="editAddDiscountBtn" style="align-self:flex-start;">+ Discount</button>
+  `;
+
+  document.getElementById('editRecordFields').innerHTML = commonFields + unlistedFields;
+
+  if(isUnlisted){
+    document.getElementById('editAddDiscountBtn').addEventListener('click', ()=>{
+      const df = document.getElementById('editDiscountFields');
+      const next = df.querySelectorAll('.editDiscount').length + 1;
+      const div = document.createElement('div');
+      div.style.flex = '1';
+      div.innerHTML = `<span class="field-label">Discount ${next} %</span><input type="text" class="editDiscount" inputmode="decimal" placeholder="0">`;
+      df.appendChild(div);
+    });
   }
-  syncCountToFirebase(code);
-  showToast(`Modified price saved for ${code}`, 'green');
-  renderBill();
+
+  document.getElementById('editRecordOverlay').classList.add('show');
 }
+
+document.getElementById('editRecordCancelBtn').addEventListener('click', ()=>{
+  document.getElementById('editRecordOverlay').classList.remove('show');
+});
+document.getElementById('editRecordOverlay').addEventListener('click', e=>{
+  if(e.target === document.getElementById('editRecordOverlay'))
+    document.getElementById('editRecordOverlay').classList.remove('show');
+});
+
+document.getElementById('editRecordSaveBtn').addEventListener('click', ()=>{
+  const code = _editCode;
+  if(!code) return;
+
+  const qtyRaw = parseInt(document.getElementById('editQty').value, 10);
+  if(isNaN(qtyRaw) || qtyRaw < 0){ showToast('Enter a valid quantity', 'red'); return; }
+
+  if(!counted[code]){
+    const bi = getInfo(code);
+    counted[code] = { qty: 0, name: bi.name, cost: bi.cost, price: bi.price, ts: Date.now() };
+  }
+  const rec = counted[code];
+  rec.qty = qtyRaw;
+  rec.ts = Date.now();
+
+  const mpVal = (document.getElementById('editModPrice').value || '').trim().replace(',', '.');
+  if(mpVal === ''){
+    delete rec.mod_price;
+  } else {
+    const mp = parseFloat(mpVal);
+    if(!isNaN(mp)) rec.mod_price = mp;
+  }
+
+  if(!bill[code]){
+    const nameEl = document.getElementById('editName');
+    const costEl = document.getElementById('editCost');
+    const priceEl = document.getElementById('editPrice');
+    if(nameEl) rec.name = nameEl.value.trim();
+    if(costEl){ const v = parseFloat(costEl.value.replace(',','.')); rec.cost = isNaN(v) ? '' : v; }
+    if(priceEl){ const v = parseFloat(priceEl.value.replace(',','.')); rec.price = isNaN(v) ? '' : v; }
+    Object.keys(rec).filter(k => /^p_discount\d*$/i.test(k)).forEach(k => delete rec[k]);
+    [...document.querySelectorAll('.editDiscount')].forEach((inp, i) => {
+      const v = Number(inp.value.replace(',','.')) || 0;
+      if(v > 0) rec[i === 0 ? 'p_discount' : 'p_discount'+(i+1)] = v;
+    });
+  }
+
+  syncCountToFirebase(code);
+  showToast('Saved — ' + code, 'green');
+  document.getElementById('editRecordOverlay').classList.remove('show');
+  renderBill();
+  if(currentBarcode === code) lookupProduct(code);
+});
 
 function deleteScratchItem(code) {
   if (!confirm(`Delete newly added item "${code}"?`)) return;
