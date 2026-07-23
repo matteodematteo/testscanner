@@ -1058,12 +1058,59 @@ document.getElementById('clearLogBtn').addEventListener('click', ()=>{
   history = [];
   renderLog();
 });
-document.getElementById('exportLogBtn').addEventListener('click', ()=>{
-  const rows = [['timestamp','barcode','qty_added','name','s_price']];
-  [...history].sort((a,b)=> a.ts - b.ts).forEach(e=>{
-    rows.push([new Date(e.ts).toISOString(), e.code, e.qty, e.name, fmtMoney(e.price)]);
-  });
-  downloadCsv(rows, 'stockcheck_history.csv');
+function formatSessionId() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+}
+
+function buildHistoryPayloadItem(entry) {
+  const sPrice = (entry.price !== undefined && entry.price !== null && entry.price !== '') ? fmtMoney(entry.price) : '0.00';
+  return {
+    barcode: entry.code || entry.barcode || '',
+    italian_name: entry.name || entry.italian_name || '',
+    comparison_qty: Number(entry.qty || entry.comparison_qty) || 1,
+    s_price: sPrice
+  };
+}
+
+document.getElementById('exportLogBtn').addEventListener('click', async ()=>{
+  if (history.length === 0) {
+    showToast('Barcode list is empty', 'red');
+    return;
+  }
+
+  const payload = {
+    session_id: formatSessionId(),
+    session_cost: "$0.00",
+    data: [
+      {
+        stack: "full_tickets",
+        items: history.map(buildHistoryPayloadItem)
+      }
+    ]
+  };
+
+  showToast('Sending TXT...');
+  try {
+    const response = await fetch("https://withered-base-e090.mattoteo96.workers.dev/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/plain"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Send TXT failed with status ${response.status}`);
+    }
+
+    history = [];
+    renderLog();
+    showToast('TXT sent successfully', 'green');
+  } catch (err) {
+    showToast(err.message || 'Failed to send TXT', 'red');
+  }
 });
 
 /* ===================== Tab 3: Bill comparison (uses current `counted` qty, not history) ===================== */
