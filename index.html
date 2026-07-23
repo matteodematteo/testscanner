@@ -205,6 +205,8 @@
   .filter-chk.green { color: var(--green); }
   .filter-chk.yellow { color: var(--yellow); }
   .filter-chk.red { color: var(--red); }
+  .filter-chk.off { opacity: 0.35; }
+
   /* Record cards */
   .record-card {
     background: var(--surface-alt); border: 1px solid var(--line); border-left: 4px solid var(--line);
@@ -1145,8 +1147,10 @@ function recordCardHtml(code){
     : `<span class="tag-unlisted">✦ Scratch</span>`;
 
   return `
+    <div class="record-card ${s.cls}">
     <div class="record-card ${s.cls} ${isFromProxy ? 'is-proxy' : 'is-unlisted'}">
       <div class="record-top">
+        <div class="record-barcode">${escapeHtml(code)}</div>
         <div>
           <div class="record-barcode">${escapeHtml(code)}${sourceTag}</div>
         </div>
@@ -1442,4 +1446,33 @@ function renderBill(){
 }
 document.getElementById('exportBillBtn').addEventListener('click', ()=>{
   const codes = new Set([...Object.keys(bill), ...Object.keys(counted)]);
-  if(codes.size === 0){ showToast('Nothing 
+  if(codes.size === 0){ showToast('Nothing to export', 'red'); return; }
+  const rows = [['barcode','name','bill_qty','my_qty','cost','price','status']];
+  [...codes].sort().forEach(code=>{
+    const info = getInfo(code);
+    const s = statusOf(info.myQty, info.billQty);
+    rows.push([code, info.name, info.billQty, info.myQty, fmtMoney(info.cost), fmtMoney(info.price), s.status]);
+  });
+  downloadCsv(rows, 'stockcheck_comparison.csv');
+});
+
+/* ===================== CSV export util ===================== */
+function downloadCsv(rows, filename){
+  const csv = rows.map(r => r.map(cell => {
+    const s = String(cell);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+  }).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ===================== Init ===================== */
+renderLog();
+renderBill();
+</script>
+</body>
+</html>
