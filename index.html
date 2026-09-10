@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Barcode Scanner</title>
+<script src="https://unpkg.com/@zxing/browser@0.2.1"></script>
+<style>
+  :root{
+    --ink:#12181b;
+    --paper:#f6f4ef;
+    --line:#12181b;
+    --accent:#2f6f4f;
+    --accent-soft:#e4ede7;
+    --danger:#a23e3e;
+    --mono: "SF Mono", "IBM Plex Mono", Menlo, Consolas, monospace;
+    --sans: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;
+    padding:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    min-height:100vh;
+    min-height:100dvh;
+  }
+  body{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding: 24px 16px 40px;
+  }
+  .wrap{
+    width:100%;
+    max-width:480px;
+  }
+  header{
+    margin-bottom:18px;
+  }
+  h1{
+    font-size:22px;
+    font-weight:600;
+    letter-spacing:-0.01em;
+    margin:0 0 4px;
+  }
+  p.sub{
+    margin:0;
+    font-size:14px;
+    color:#5a615f;
+    line-height:1.4;
+  }
+
+  .scan-frame{
+    position:relative;
+    width:100%;
+    aspect-ratio: 3 / 4;
+    background:#0c0f0e;
+    border:2px solid var(--line);
+    overflow:hidden;
+    margin-top:18px;
+  }
+  video{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+  }
+  .scan-frame.idle video{ display:none; }
+  .idle-msg{
+    position:absolute;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    color:#cfd6d2;
+    text-align:center;
+    padding:24px;
+  }
+  .scan-frame:not(.idle) .idle-msg{ display:none; }
+  .idle-msg svg{ width:36px; height:36px; opacity:0.7; }
+  .idle-msg span{ font-size:13px; color:#9aa39e; }
+
+  .reticle{
+    position:absolute;
+    inset:14% 8%;
+    pointer-events:none;
+    display:none;
+  }
+  .scan-frame.active .reticle{ display:block; }
+  .reticle .corner{
+    position:absolute;
+    width:22px;
+    height:22px;
+    border-color:var(--accent);
+    border-style:solid;
+    border-width:0;
+  }
+  .reticle .tl{ top:0; left:0; border-top-width:3px; border-left-width:3px; }
+  .reticle .tr{ top:0; right:0; border-top-width:3px; border-right-width:3px; }
+  .reticle .bl{ bottom:0; left:0; border-bottom-width:3px; border-left-width:3px; }
+  .reticle .br{ bottom:0; right:0; border-bottom-width:3px; border-right-width:3px; }
+  .reticle .line{
+    position:absolute;
+    left:0; right:0;
+    height:2px;
+    background:var(--accent);
+    top:0;
+    box-shadow:0 0 8px rgba(47,111,79,0.8);
+    animation: sweep 2.2s ease-in-out infinite;
+  }
+  @keyframes sweep{
+    0%{ top:0; opacity:0.9;}
+    50%{ top:100%; opacity:0.4;}
+    100%{ top:0; opacity:0.9;}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .reticle .line{ animation:none; top:50%; }
+  }
+
+  .status-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-top:12px;
+    font-size:12px;
+    color:#5a615f;
+  }
+  .status-dot{
+    display:inline-block;
+    width:8px;
+    height:8px;
+    border-radius:50%;
+    background:#9aa39e;
+    margin-right:6px;
+  }
+  .status-dot.live{ background:var(--accent); }
+  .status-dot.error{ background:var(--danger); }
+
+  .controls{
+    display:flex;
+    gap:10px;
+    margin-top:16px;
+  }
+  button{
+    font-family:var(--sans);
+    font-size:14px;
+    font-weight:600;
+    padding:13px 16px;
+    border:2px solid var(--line);
+    background:var(--ink);
+    color:var(--paper);
+    cursor:pointer;
+    flex:1;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:active{ transform: translateY(1px); }
+  button.secondary{
+    background:transparent;
+    color:var(--ink);
+  }
+  button:disabled{
+    opacity:0.4;
+    cursor:not-allowed;
+  }
+  button.icon-btn{
+    flex:0 0 auto;
+    width:48px;
+    padding:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  button.icon-btn svg{ width:18px; height:18px; }
+
+  .result-block{
+    margin-top:22px;
+  }
+  label{
+    display:block;
+    font-size:12px;
+    color:#5a615f;
+    margin-bottom:6px;
+  }
+  .input-row{
+    display:flex;
+    gap:8px;
+  }
+  input[type="text"]{
+    flex:1;
+    font-family:var(--mono);
+    font-size:15px;
+    padding:12px 12px;
+    border:2px solid var(--line);
+    background:#fff;
+    color:var(--ink);
+    min-width:0;
+  }
+  input[type="text"]:focus{
+    outline:none;
+    border-color:var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .copy-btn{
+    flex:0 0 auto;
+    width:46px;
+    background:var(--paper);
+    color:var(--ink);
+  }
+
+  .meta{
+    margin-top:8px;
+    font-size:12px;
+    color:#5a615f;
+    min-height:16px;
+  }
+
+  .history{
+    margin-top:26px;
+  }
+  .history h2{
+    font-size:13px;
+    font-weight:600;
+    color:#5a615f;
+    margin:0 0 8px;
+    text-transform:none;
+  }
+  ul.history-list{
+    list-style:none;
+    margin:0;
+    padding:0;
+    border-top:1px solid #d8d4c9;
+  }
+  ul.history-list li{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    gap:10px;
+    padding:10px 2px;
+    border-bottom:1px solid #d8d4c9;
+    font-family:var(--mono);
+    font-size:13px;
+  }
+  ul.history-list li .val{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  ul.history-list li .fmt{
+    flex:0 0 auto;
+    color:#8b9188;
+    font-size:11px;
+  }
+  .empty-hist{
+    font-size:13px;
+    color:#8b9188;
+    padding:10px 2px;
+  }
+
+  .err-banner{
+    margin-top:14px;
+    border:2px solid var(--danger);
+    background:#f7e9e9;
+    color:#7a2f2f;
+    padding:10px 12px;
+    font-size:13px;
+    display:none;
+  }
+  .err-banner.show{ display:block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Barcode Scanner</h1>
+    <p class="sub">Point the camera at a barcode or QR code. Detected values land in the field below.</p>
+  </header>
+
+  <div class="scan-frame idle" id="scanFrame">
+    <video id="video" playsinline muted autoplay></video>
+    <div class="idle-msg">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="6" width="18" height="12" rx="1"></rect><path d="M7 6v12M11 6v12M15 6v12"></path></svg>
+      <span>Camera is off</span>
+    </div>
+    <div class="reticle">
+      <div class="corner tl"></div><div class="corner tr"></div>
+      <div class="corner bl"></div><div class="corner br"></div>
+      <div class="line"></div>
+    </div>
+  </div>
+
+  <div class="status-row">
+    <span><span class="status-dot" id="statusDot"></span><span id="statusText">Idle</span></span>
+    <span id="deviceLabel"></span>
+  </div>
+
+  <div class="controls">
+    <button id="startBtn">Start scanning</button>
+    <button id="stopBtn" class="secondary" disabled>Stop</button>
+    <button id="switchBtn" class="icon-btn secondary" title="Switch camera" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 2l4 4-4 4"></path><path d="M3 12v-2a4 4 0 0 1 4-4h14"></path><path d="M7 22l-4-4 4-4"></path><path d="M21 12v2a4 4 0 0 1-4 4H3"></path></svg>
+    </button>
+  </div>
+
+  <div class="err-banner" id="errBanner"></div>
+
+  <div class="result-block">
+    <label for="resultInput">Scanned value</label>
+    <div class="input-row">
+      <input type="text" id="resultInput" placeholder="Waiting for a scan…" inputmode="text">
+      <button class="copy-btn" id="copyBtn" title="Copy">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><rect x="9" y="9" width="12" height="12" rx="1"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg>
+      </button>
+    </div>
+    <div class="meta" id="resultMeta"></div>
+  </div>
+
+  <div class="history">
+    <h2>History</h2>
+    <ul class="history-list" id="historyList"></ul>
+  </div>
+</div>
+
+<script>
+(function(){
+  if (typeof ZXingBrowser === 'undefined'){
+    document.getElementById('errBanner').textContent = 'Scanner library failed to load. Check your internet connection and reload the page.';
+    document.getElementById('errBanner').classList.add('show');
+    document.getElementById('startBtn').disabled = true;
+    return;
+  }
+  const { BrowserMultiFormatReader, NotFoundException } = ZXingBrowser;
+
+  const video = document.getElementById('video');
+  const scanFrame = document.getElementById('scanFrame');
+  const startBtn = document.getElementById('startBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const switchBtn = document.getElementById('switchBtn');
+  const statusDot = document.getElementById('statusDot');
+  const statusText = document.getElementById('statusText');
+  const deviceLabel = document.getElementById('deviceLabel');
+  const resultInput = document.getElementById('resultInput');
+  const resultMeta = document.getElementById('resultMeta');
+  const copyBtn = document.getElementById('copyBtn');
+  const historyList = document.getElementById('historyList');
+  const errBanner = document.getElementById('errBanner');
+
+  const codeReader = new BrowserMultiFormatReader();
+  let videoInputDevices = [];
+  let currentDeviceIndex = 0;
+  let scanning = false;
+  let lastValue = '';
+  let lastTime = 0;
+  const history = [];
+
+  function setStatus(kind, text){
+    statusDot.className = 'status-dot' + (kind ? ' ' + kind : '');
+    statusText.textContent = text;
+  }
+
+  function showError(msg){
+    errBanner.textContent = msg;
+    errBanner.classList.add('show');
+  }
+  function clearError(){
+    errBanner.classList.remove('show');
+    errBanner.textContent = '';
+  }
+
+  function vibrate(){
+    if (navigator.vibrate) { try{ navigator.vibrate(80); }catch(e){} }
+  }
+
+  function addToHistory(text, format){
+    history.unshift({ text, format, time: new Date() });
+    if (history.length > 25) history.pop();
+    renderHistory();
+  }
+
+  function renderHistory(){
+    if (!history.length){
+      historyList.innerHTML = '<div class="empty-hist">No scans yet.</div>';
+      return;
+    }
+    historyList.innerHTML = history.map(h => {
+      const time = h.time.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+      const safe = h.text.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+      return `<li><span class="val" title="${safe}">${safe}</span><span class="fmt">${h.format} · ${time}</span></li>`;
+    }).join('');
+  }
+
+  function handleResult(result){
+    const text = result.getText();
+    const format = result.getBarcodeFormat ? String(result.getBarcodeFormat()) : (result.format || '');
+    const now = Date.now();
+    // debounce identical repeated reads within 1.5s
+    if (text === lastValue && (now - lastTime) < 1500) return;
+    lastValue = text;
+    lastTime = now;
+
+    resultInput.value = text;
+    resultMeta.textContent = format ? `Format: ${format}` : '';
+    vibrate();
+    addToHistory(text, format || 'UNKNOWN');
+  }
+
+  async function populateDevices(){
+    try{
+      videoInputDevices = await BrowserMultiFormatReader.listVideoInputDevices();
+    }catch(e){
+      videoInputDevices = [];
+    }
+    switchBtn.disabled = videoInputDevices.length < 2;
+  }
+
+  function pickBackCameraIndex(){
+    if (!videoInputDevices.length) return 0;
+    const idx = videoInputDevices.findIndex(d => /back|rear|environment/i.test(d.label));
+    return idx >= 0 ? idx : videoInputDevices.length - 1;
+  }
+
+  async function startScan(){
+    clearError();
+    setStatus('', 'Requesting camera…');
+    startBtn.disabled = true;
+
+    try{
+      await populateDevices();
+      if (!videoInputDevices.length){
+        currentDeviceIndex = 0;
+      } else {
+        currentDeviceIndex = pickBackCameraIndex();
+      }
+
+      const constraints = videoInputDevices.length
+        ? { deviceId: { exact: videoInputDevices[currentDeviceIndex].deviceId } }
+        : { facingMode: { ideal: 'environment' } };
+
+      scanFrame.classList.remove('idle');
+      scanFrame.classList.add('active');
+      scanning = true;
+      setStatus('live', 'Scanning…');
+      stopBtn.disabled = false;
+
+      await codeReader.decodeFromConstraints(
+        { video: constraints, audio: false },
+        video,
+        (result, err) => {
+          if (result) handleResult(result);
+          if (err && !(err instanceof NotFoundException)) {
+            // transient decode errors are normal between frames; ignore
+          }
+        }
+      );
+
+      // refresh device list now that labels are available (iOS Safari quirk)
+      populateDevices();
+      const track = video.srcObject && video.srcObject.getVideoTracks ? video.srcObject.getVideoTracks()[0] : null;
+      if (track && track.label) deviceLabel.textContent = track.label.length > 26 ? track.label.slice(0,24)+'…' : track.label;
+
+    }catch(e){
+      scanning = false;
+      scanFrame.classList.add('idle');
+      scanFrame.classList.remove('active');
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      setStatus('error', 'Camera unavailable');
+      if (e && e.name === 'NotAllowedError'){
+        showError('Camera access was denied. Allow camera permission in your browser settings and try again.');
+      } else if (e && e.name === 'NotFoundError'){
+        showError('No camera was found on this device.');
+      } else if (location.protocol !== 'https:' && location.hostname !== 'localhost'){
+        showError('Camera requires a secure connection (HTTPS). Open this page over HTTPS.');
+      } else {
+        showError('Could not start the camera: ' + (e && e.message ? e.message : e));
+      }
+    }
+  }
+
+  function stopScan(){
+    codeReader.reset();
+    scanning = false;
+    scanFrame.classList.add('idle');
+    scanFrame.classList.remove('active');
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+    deviceLabel.textContent = '';
+    setStatus('', 'Idle');
+  }
+
+  async function switchCamera(){
+    if (videoInputDevices.length < 2) return;
+    currentDeviceIndex = (currentDeviceIndex + 1) % videoInputDevices.length;
+    codeReader.reset();
+    setStatus('', 'Switching camera…');
+    try{
+      const constraints = { deviceId: { exact: videoInputDevices[currentDeviceIndex].deviceId } };
+      scanning = true;
+      setStatus('live', 'Scanning…');
+      await codeReader.decodeFromConstraints(
+        { video: constraints, audio: false },
+        video,
+        (result, err) => {
+          if (result) handleResult(result);
+        }
+      );
+      const track = video.srcObject && video.srcObject.getVideoTracks ? video.srcObject.getVideoTracks()[0] : null;
+      if (track && track.label) deviceLabel.textContent = track.label.length > 26 ? track.label.slice(0,24)+'…' : track.label;
+    }catch(e){
+      showError('Could not switch camera: ' + (e && e.message ? e.message : e));
+    }
+  }
+
+  startBtn.addEventListener('click', startScan);
+  stopBtn.addEventListener('click', stopScan);
+  switchBtn.addEventListener('click', switchCamera);
+
+  copyBtn.addEventListener('click', async () => {
+    if (!resultInput.value) return;
+    try{
+      await navigator.clipboard.writeText(resultInput.value);
+      copyBtn.style.background = 'var(--accent-soft)';
+      setTimeout(() => { copyBtn.style.background = ''; }, 400);
+    }catch(e){
+      resultInput.select();
+      document.execCommand('copy');
+    }
+  });
+
+  renderHistory();
+
+  window.addEventListener('beforeunload', () => { try{ codeReader.reset(); }catch(e){} });
+})();
+</script>
+</body>
+</html>
