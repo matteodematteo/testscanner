@@ -332,7 +332,7 @@
     document.getElementById('startBtn').disabled = true;
     return;
   }
-  const { BrowserMultiFormatReader, NotFoundException } = ZXingBrowser;
+  const { BrowserMultiFormatReader } = ZXingBrowser;
 
   const video = document.getElementById('video');
   const scanFrame = document.getElementById('scanFrame');
@@ -450,9 +450,7 @@
         video,
         (result, err) => {
           if (result) handleResult(result);
-          if (err && !(err instanceof NotFoundException)) {
-            // transient decode errors are normal between frames; ignore
-          }
+          // per-frame decode misses are normal while no code is in view; ignore them
         }
       );
 
