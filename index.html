@@ -349,8 +349,6 @@
   const errBanner = document.getElementById('errBanner');
 
   const codeReader = new BrowserMultiFormatReader();
-  let videoInputDevices = [];
-  let currentDeviceIndex = 0;
   let scanning = false;
   let lastValue = '';
   let lastTime = 0;
@@ -407,57 +405,54 @@
     addToHistory(text, format || 'UNKNOWN');
   }
 
-  async function populateDevices(){
-    try{
-      videoInputDevices = await BrowserMultiFormatReader.listVideoInputDevices();
-    }catch(e){
-      videoInputDevices = [];
-    }
-    switchBtn.disabled = videoInputDevices.length < 2;
+  // facingMode-based selection is far more reliable across iOS/Android than
+  // picking a deviceId, since device labels (and thus "which id is the back
+  // camera") are only available *after* permission has already been granted.
+  let currentFacing = 'environment'; // 'environment' = back camera, 'user' = front camera
+
+  function updateDeviceLabel(){
+    const track = video.srcObject && video.srcObject.getVideoTracks ? video.srcObject.getVideoTracks()[0] : null;
+    if (!track) { deviceLabel.textContent = ''; return; }
+    const settings = track.getSettings ? track.getSettings() : {};
+    let text = track.label || (settings.facingMode === 'user' ? 'Front camera' : 'Back camera');
+    deviceLabel.textContent = text.length > 26 ? text.slice(0,24)+'…' : text;
   }
 
-  function pickBackCameraIndex(){
-    if (!videoInputDevices.length) return 0;
-    const idx = videoInputDevices.findIndex(d => /back|rear|environment/i.test(d.label));
-    return idx >= 0 ? idx : videoInputDevices.length - 1;
+  async function openStream(facing){
+    const constraints = { video: { facingMode: { ideal: facing } }, audio: false };
+    await codeReader.decodeFromConstraints(
+      constraints,
+      video,
+      (result, err) => {
+        if (result) handleResult(result);
+        // per-frame decode misses are normal while no code is in view; ignore them
+      }
+    );
+    updateDeviceLabel();
+
+    // Enable the switch button once we can confirm more than one camera exists.
+    try{
+      const devices = await BrowserMultiFormatReader.listVideoInputDevices();
+      switchBtn.disabled = devices.length < 2;
+    }catch(e){
+      switchBtn.disabled = false; // assume most phones have 2+ cameras
+    }
   }
 
   async function startScan(){
     clearError();
     setStatus('', 'Requesting camera…');
     startBtn.disabled = true;
+    currentFacing = 'environment';
 
     try{
-      await populateDevices();
-      if (!videoInputDevices.length){
-        currentDeviceIndex = 0;
-      } else {
-        currentDeviceIndex = pickBackCameraIndex();
-      }
-
-      const constraints = videoInputDevices.length
-        ? { deviceId: { exact: videoInputDevices[currentDeviceIndex].deviceId } }
-        : { facingMode: { ideal: 'environment' } };
-
       scanFrame.classList.remove('idle');
       scanFrame.classList.add('active');
       scanning = true;
       setStatus('live', 'Scanning…');
       stopBtn.disabled = false;
 
-      await codeReader.decodeFromConstraints(
-        { video: constraints, audio: false },
-        video,
-        (result, err) => {
-          if (result) handleResult(result);
-          // per-frame decode misses are normal while no code is in view; ignore them
-        }
-      );
-
-      // refresh device list now that labels are available (iOS Safari quirk)
-      populateDevices();
-      const track = video.srcObject && video.srcObject.getVideoTracks ? video.srcObject.getVideoTracks()[0] : null;
-      if (track && track.label) deviceLabel.textContent = track.label.length > 26 ? track.label.slice(0,24)+'…' : track.label;
+      await openStream(currentFacing);
 
     }catch(e){
       scanning = false;
@@ -490,25 +485,20 @@
   }
 
   async function switchCamera(){
-    if (videoInputDevices.length < 2) return;
-    currentDeviceIndex = (currentDeviceIndex + 1) % videoInputDevices.length;
+    if (!scanning) return;
+    currentFacing = currentFacing === 'environment' ? 'user' : 'environment';
     codeReader.reset();
     setStatus('', 'Switching camera…');
+    clearError();
     try{
-      const constraints = { deviceId: { exact: videoInputDevices[currentDeviceIndex].deviceId } };
       scanning = true;
       setStatus('live', 'Scanning…');
-      await codeReader.decodeFromConstraints(
-        { video: constraints, audio: false },
-        video,
-        (result, err) => {
-          if (result) handleResult(result);
-        }
-      );
-      const track = video.srcObject && video.srcObject.getVideoTracks ? video.srcObject.getVideoTracks()[0] : null;
-      if (track && track.label) deviceLabel.textContent = track.label.length > 26 ? track.label.slice(0,24)+'…' : track.label;
+      await openStream(currentFacing);
     }catch(e){
+      // fall back to the other camera if the requested one isn't available
+      currentFacing = currentFacing === 'environment' ? 'user' : 'environment';
       showError('Could not switch camera: ' + (e && e.message ? e.message : e));
+      setStatus('error', 'Camera unavailable');
     }
   }
 
