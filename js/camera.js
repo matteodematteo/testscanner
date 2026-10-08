@@ -904,22 +904,36 @@ async function detectBarcodeInFrame() {
   const detector = await createDetector();
   const attempt = state.detectionAttempt || 0;
   // Quick center/full-preview passes, then high-resolution difficult-label passes.
+  // The heaviest step (contrast enhancement) runs on every 2nd thorough pass:
+  // empty frames fail cheaply, faint labels still get their full treatment.
   const confirming = Boolean(state.pendingConfirmCode && state.lastDetectionPass);
-  const pass = confirming ? state.lastDetectionPass : {
-    mode: getDetectionCropModes()[attempt % 2],
-    thorough: attempt % 4 >= 2
-  };
+  const pass = confirming ? state.lastDetectionPass : makeDetectionPass(attempt);
   const canvas = drawDetectionFrame(pass.mode, pass.thorough ? 1920 : 1280);
   const context = state.captureContext || canvas.getContext("2d", { willReadFrequently: true });
   const image = context.getImageData(0, 0, canvas.width, canvas.height);
   const text = await detector.detect(image,
     CONFIG.detectorFormats.map((format) => ZXING_FORMAT_MAP[format]).filter(Boolean),
-    { thorough: pass.thorough });
+    { thorough: pass.thorough, enhance: pass.enhance !== false });
   if (session === state.scanSession) {
     state.detectionAttempt = attempt + 1;
     if (text) state.lastDetectionPass = pass;
   }
   return text;
+}
+
+
+function makeDetectionPass(attempt) {
+  const thorough = attempt % 4 >= 2;
+  let enhance = false;
+  if (thorough) {
+    state.thoroughPassCount = (state.thoroughPassCount || 0) + 1;
+    enhance = state.thoroughPassCount % 2 === 1;
+  }
+  return {
+    mode: getDetectionCropModes()[attempt % 2],
+    thorough: thorough,
+    enhance: enhance
+  };
 }
 
 
@@ -1553,6 +1567,7 @@ async function startScanning() {
 
   scheduleFocusRefresh(state.track, { newScan: true });
   state.detectionAttempt = 0;
+  state.thoroughPassCount = 0;
   state.lastDetectionPass = null;
   state.lastScanFrame = null;
   state.isScanning = true;

@@ -94,5 +94,6 @@ const state = {
     historyEditCloseTimer: 0,
     roi: { width: 0.8, height: 0.8 },
     pendingConfirmCode: "",
-    pendingConfirmCount: 0
+    pendingConfirmCount: 0,
+    thoroughPassCount: 0
   };

@@ -93,10 +93,14 @@ self.onmessage = async ({ data }) => {
     let results = await ZXingWASM.readBarcodes(pixels, options);
     // ZXing's tryInvert applies to matrix codes. Also support light bars on
     // dark labels for the linear formats used by this app.
+    // The heavy contrast-enhancement pair runs only when the page asks for
+    // it: empty/moving frames fail here cheaply with original + inverted.
+    // Missing flag means full behavior (keeps direct worker callers exact).
+    const allowEnhance = data.enhance !== false;
     if (data.thorough !== false && !results.some((result) => result.isValid)) {
       invertPixels(pixels);
       results = await ZXingWASM.readBarcodes(pixels, options);
-      if (!results.some((result) => result.isValid)) {
+      if (allowEnhance && !results.some((result) => result.isValid)) {
         invertPixels(pixels);
         if (prepareContrast(pixels)) {
           const enhancedOptions = { ...options, binarizer: "FixedThreshold", minLineCount: 3 };

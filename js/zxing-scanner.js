@@ -6,7 +6,7 @@
   let worker = null;
   let pending = null;
   let sequence = 0;
-  const workerUrl = new URL("zxing-worker.js?v=101", document.currentScript.src);
+  const workerUrl = new URL("zxing-worker.js?v=102", document.currentScript.src);
 
   window.ensureZXingLoaded = function () {
     if (readyPromise) return readyPromise;
@@ -49,7 +49,8 @@
                   timer: setTimeout(() => fail(new Error("Scanner read timed out. Please retry.")), 10000) };
                 try {
                   worker.postMessage({ id, buffer: image.data.buffer, width: image.width,
-                    height: image.height, formats, thorough: options.thorough !== false }, [image.data.buffer]);
+                    height: image.height, formats, thorough: options.thorough !== false,
+                    enhance: options.enhance !== false }, [image.data.buffer]);
                 } catch (error) {
                   fail(error);
                 }
