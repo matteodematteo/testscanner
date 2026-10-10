@@ -2,17 +2,8 @@
 
 /* Status, toast, dialogs, and scroll UI */
 
-function setStatus(message, captureMessage) {
+function setStatus(message) {
   const nextMessage = String(message || "");
-  if (state.capturePageOpen) {
-    const compact = String(captureMessage ?? nextMessage).replace(/\s+/g, " ").trim();
-    const label = compact.length <= 26 ? compact : "Capture in progress";
-    const status = state.els.captureStatus;
-    if (status.textContent !== label) status.textContent = label;
-    // Retain complete diagnostics without making the camera footer grow.
-    if (status.title !== nextMessage) status.title = nextMessage;
-    if (status.getAttribute("aria-label") !== nextMessage) status.setAttribute("aria-label", nextMessage);
-  }
   if (state.lastStatusMessage === nextMessage) {
     return;
   }
@@ -82,7 +73,6 @@ function playCaptureSound() {
 function isAnyDialogOpen() {
   const els = state.els;
   return Boolean(
-    state.capturePageOpen ||
     els?.settingsDialog?.classList.contains("is-open") ||
     els?.confirmDialog?.classList.contains("is-open") ||
     els?.printDialog?.classList.contains("is-open") ||
@@ -162,7 +152,7 @@ function isInsideScrollableWhileLocked(target) {
 
 
 function preventScrollWhileLocked(event) {
-  if (!state.manualScrollLocked || state.capturePageOpen) {
+  if (!state.manualScrollLocked) {
     return;
   }
   if (isInsideScrollableWhileLocked(event.target)) {
@@ -269,9 +259,8 @@ function moveFocusToInput(input, options) {
     return;
   }
 
-  if (state.capturePageOpen) return;
   const shouldOpenKeyboard = Boolean(options?.openKeyboard);
-  if (!shouldOpenKeyboard &&
+  if (!shouldOpenKeyboard && state.inputMode !== "scanner" &&
       (input === state.els.barcodeInput || input === state.els.quantityInput)) {
     return;
   }

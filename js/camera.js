@@ -74,13 +74,117 @@ function getCameraSupportIssue() {
 }
 
 
+/* iOS autostart helpers: Safari requires a user gesture before getUserMedia
+   shows its permission prompt, so a page-load call alone is rejected with
+   NotAllowedError. The app still attempts autostart (covers Android and iOS
+   installs already set to "Allow"), then arms a one-tap fallback so the
+   next tap anywhere starts the camera with a valid gesture. */
 function isCameraPermissionError(error) {
-  return ["NotAllowedError", "SecurityError", "PermissionDeniedError"].includes(error?.name);
+  const name = String(error?.name || "");
+  if (["NotAllowedError", "SecurityError", "PermissionDeniedError"].includes(name)) {
+    return true;
+  }
+  const message = String(error?.message || "").toLowerCase();
+  return /permission|denied|not allowed|gesture|user activation|require.*tap/i.test(message);
 }
 
-function disarmFirstGestureCameraStart() {
-  // Capture is started only by its explicit button.
+
+function showTapToStartCameraHint() {
+  try {
+    if (state.els?.previewPlaceholder) {
+      state.els.previewPlaceholder.textContent = state.isIOS
+        ? "iPhone blocked the automatic camera start (Safari needs one tap). Tap the preview or Start Scanning once to enable the camera."
+        : "Tap the preview or Start Scanning to enable the camera.";
+    }
+    setPreviewActive(false);
+  } catch {
+    // Hint text is optional; never break startup.
+  }
 }
+
+
+function disarmFirstGestureCameraStart() {
+  try {
+    if (typeof state.disarmGestureAutostart === "function") {
+      state.disarmGestureAutostart();
+    }
+  } catch {
+    // Ignore teardown noise.
+  }
+  state.gestureAutostartArmed = false;
+  state.disarmGestureAutostart = null;
+}
+
+
+function armFirstGestureCameraStart() {
+  if (state.gestureAutostartArmed) {
+    return;
+  }
+  state.gestureAutostartArmed = true;
+
+  const tryStartFromGesture = function () {
+    if (state.inputMode === "scanner" || state.cameraStartPromise) {
+      return;
+    }
+    if (state.isCameraRunning) {
+      disarmFirstGestureCameraStart();
+      return;
+    }
+    startScanning().then(function () {
+      disarmFirstGestureCameraStart();
+    }).catch(function (error) {
+      if (isCameraPermissionError(error)) {
+        showTapToStartCameraHint();
+        setStatus("Tap Start Scanning to enable the camera");
+      } else if (error?.name !== "AbortError") {
+        setStatus(error.message || "Tap Start Scanning to retry");
+      }
+    });
+  };
+
+  const disarm = function () {
+    document.removeEventListener("pointerdown", tryStartFromGesture);
+    document.removeEventListener("touchend", tryStartFromGesture);
+    try {
+      state.els?.previewFrame?.removeEventListener("click", tryStartFromGesture);
+    } catch {
+      // Ignore missing preview during teardown.
+    }
+  };
+  state.disarmGestureAutostart = disarm;
+
+  document.addEventListener("pointerdown", tryStartFromGesture, { passive: true });
+  document.addEventListener("touchend", tryStartFromGesture, { passive: true });
+  try {
+    state.els?.previewFrame?.addEventListener("click", tryStartFromGesture);
+    if (state.els?.previewFrame) {
+      state.els.previewFrame.style.cursor = "pointer";
+    }
+  } catch {
+    // Preview tap is a convenience; document taps still work.
+  }
+}
+
+
+async function tryAutoStartCameraScanning() {
+  // Arm the tap fallback BEFORE the permission prompt: on iOS the load-time
+  // request is rejected for missing a gesture, and the next tap must start
+  // the camera even while this first attempt is still pending.
+  if (state.isIOS) {
+    armFirstGestureCameraStart();
+  }
+  try {
+    await startScanning();
+    disarmFirstGestureCameraStart();
+  } catch (error) {
+    if (isCameraPermissionError(error) || !state.isCameraRunning) {
+      showTapToStartCameraHint();
+      armFirstGestureCameraStart();
+    }
+    throw error;
+  }
+}
+
 
 function setPreviewActive(active) {
   state.els.previewPlaceholder.hidden = active;
@@ -91,7 +195,17 @@ function setPreviewActive(active) {
 
 
 function updateScanButton() {
-  state.els.scanBtn.textContent = "Capture barcode";
+  if (!state.isCameraRunning) {
+    state.els.scanBtn.textContent = "Start Scanning";
+    state.els.scanBtn.dataset.mode = "start";
+    return;
+  }
+  if (state.isScanning) {
+    state.els.scanBtn.textContent = "Stop Scanning";
+    state.els.scanBtn.dataset.mode = "stop";
+    return;
+  }
+  state.els.scanBtn.textContent = "Start Scanning";
   state.els.scanBtn.dataset.mode = "start";
 }
 
@@ -146,7 +260,7 @@ function clearResumePreviewTimer() {
 
 function scheduleQuickPreviewResumeCheck() {
   clearResumePreviewTimer();
-  if (!state.capturePageOpen || document.hidden || state.cameraStartPromise) {
+  if (document.hidden || state.cameraStartPromise) {
     return;
   }
 
@@ -160,16 +274,17 @@ function scheduleQuickPreviewResumeCheck() {
 
 
 async function ensurePreviewReadyAfterForeground() {
-  if (!state.capturePageOpen || document.hidden || state.cameraStartPromise || state.isRecoveringPreview) {
+  if (document.hidden || state.cameraStartPromise || state.inputMode === "scanner" || state.isRecoveringPreview) {
     return;
   }
 
   if (!state.isCameraRunning) {
-    // Resume only the capture screen that is still open.
+    // Reopen / foreground return with no camera: restart the full
+    // camera + scanning pipeline (init, refresh and reopen all autostart).
     try {
-      await startScanning();
+      await tryAutoStartCameraScanning();
     } catch {
-      state.els.captureRetryBtn.hidden = false;
+      // tryAutoStartCameraScanning already armed the tap fallback.
     }
     return;
   }
@@ -189,7 +304,7 @@ async function ensurePreviewReadyAfterForeground() {
     window.setTimeout(resolve, 320);
   });
 
-  if (!state.capturePageOpen || document.hidden || state.isRecoveringPreview) {
+  if (document.hidden || state.inputMode === "scanner" || state.isRecoveringPreview) {
     return;
   }
 
@@ -205,7 +320,7 @@ async function ensurePreviewReadyAfterForeground() {
 
 
 async function ensureScanningAfterForegroundResume() {
-  if (!state.capturePageOpen || document.hidden || state.cameraStartPromise || state.isRecoveringPreview) {
+  if (document.hidden || state.inputMode === "scanner" || state.cameraStartPromise || state.isRecoveringPreview) {
     return;
   }
   if (state.isScanning || !state.isCameraRunning) {
@@ -219,33 +334,35 @@ async function ensureScanningAfterForegroundResume() {
       return;
     }
     if (isCameraPermissionError(error) || !state.isCameraRunning) {
-      state.els.captureRetryBtn.hidden = false;
+      showTapToStartCameraHint();
+      armFirstGestureCameraStart();
     }
-    setStatus(error.message || "Tap Capture to enable the camera", "Camera unavailable");
+    setStatus(error.message || "Tap Start Scanning to enable the camera");
   }
 }
 
 
 async function recoverPreviewFromFreeze() {
-  if (!state.capturePageOpen || state.isRecoveringPreview || !state.isCameraRunning) {
+  if (state.isRecoveringPreview || !state.isCameraRunning) {
     return;
   }
 
   state.isRecoveringPreview = true;
   const selectedDeviceId = state.activeDeviceId || state.els.cameraSelect.value;
   stopScanning(true);
-  setStatus("Reconnecting camera…");
+  setStatus("Camera preview paused, reconnecting...");
 
   try {
     await startCamera(selectedDeviceId);
-    // Resume the interrupted capture session.
+    // Reopen must always restart scanning, not just restore the preview.
     await startScanning();
     disarmFirstGestureCameraStart();
   } catch (error) {
     if (isCameraPermissionError(error)) {
-      state.els.captureRetryBtn.hidden = false;
+      showTapToStartCameraHint();
+      armFirstGestureCameraStart();
     }
-    setStatus(error.message || "Camera preview recovery failed", "Camera unavailable");
+    setStatus(error.message || "Camera preview recovery failed");
   } finally {
     state.isRecoveringPreview = false;
   }
@@ -260,7 +377,7 @@ function startPreviewWatchdog() {
 
   state.lastPreviewTime = Number(getPreviewVideoElement()?.currentTime || 0);
   state.previewWatchdogTimer = window.setInterval(function () {
-    if (!state.capturePageOpen || !state.isCameraRunning || state.isRecoveringPreview || document.hidden) {
+    if (!state.isCameraRunning || state.isRecoveringPreview || document.hidden) {
       return;
     }
 
@@ -482,8 +599,9 @@ async function handleDetectedCode(detectedText) {
   }
   playCaptureSound();
   stopScanning(true);
-  closeCapturePage({ captured: true });
-  setStatus("Barcode captured");
+  // The user is about to grab the next object: start the focus hunt now,
+  // during the product lookup, so the next barcode is already sharp.
+  scheduleFocusRefresh(state.track, { newScan: true });
 
   try {
     if (state.isQuantityEntryUnlocked) {
@@ -965,14 +1083,12 @@ async function captureAttempt(session) {
 
   if (!detectedText) {
     confirmAcrossFrames("");
-    // Easy labels finish at HD. Difficult/small labels get full sensor detail
-    // after two real attempts, without delaying the first preview frame.
-    setStatus("Scanning barcode…");
+    setStatus("Scanning... aim at the barcode; no exact box alignment needed");
     return false;
   }
 
   if (!confirmAcrossFrames(detectedText)) {
-    setStatus("Confirming code…");
+    setStatus("Confirming barcode...");
     return false;
   }
 
@@ -980,11 +1096,7 @@ async function captureAttempt(session) {
     return false;
   }
 
-  // Release the scan loop immediately; a slow ERP request must not delay the
-  // next capture. handleDetectedCode closes the page before its first await.
-  handleDetectedCode(detectedText).catch(function (error) {
-    setStatus(error.message || "Could not load the captured barcode");
-  });
+  await handleDetectedCode(detectedText);
   return true;
 }
 
@@ -1014,8 +1126,8 @@ async function runScanLoop() {
       await captureAttempt(session);
     } catch (error) {
       if (session === state.scanSession) {
-        closeCapturePage();
-        setStatus(error.message || "Scanner failed. Tap Capture to retry.", "Scanner unavailable");
+        stopScanning(true);
+        setStatus(error.message || "Scanner failed. Tap Start Scanning to retry.");
       }
     } finally {
       state.isScanInFlight = false;
@@ -1025,24 +1137,61 @@ async function runScanLoop() {
 }
 
 
-async function startCameraStream(preferredCameraId) {
+async function startCameraStream(preferredCameraId, activeVideoConfig) {
   setActivePreviewEngine("zxing-wasm");
   const session = state.scanSession;
-  const generation = state.captureGeneration;
 
-  const request = state.captureRequest || requestCaptureStream(preferredCameraId);
-  const result = await request.promise;
-  if (result.error) throw result.error;
-  const stream = result.stream;
-  const playback = request.playback;
-  request.stream = null;
-  if (state.captureRequest === request) state.captureRequest = null;
-  if (!state.capturePageOpen || generation !== state.captureGeneration || session !== state.scanSession) {
+  const constraints = {
+    audio: false,
+    video: {}
+  };
+  const requestedVideo = activeVideoConfig?.video || {};
+
+  if (requestedVideo.width) {
+    constraints.video.width = {
+      ideal: requestedVideo.width.ideal,
+      max: requestedVideo.width.max
+    };
+  }
+  if (requestedVideo.height) {
+    constraints.video.height = {
+      ideal: requestedVideo.height.ideal,
+      max: requestedVideo.height.max
+    };
+  }
+  if (requestedVideo.aspectRatio) {
+    constraints.video.aspectRatio = { ideal: requestedVideo.aspectRatio.ideal };
+  }
+  if (requestedVideo.frameRate) {
+    constraints.video.frameRate = {
+      ideal: requestedVideo.frameRate.ideal,
+      max: requestedVideo.frameRate.max
+    };
+  }
+  if (requestedVideo.resizeMode) {
+    constraints.video.resizeMode = requestedVideo.resizeMode;
+  }
+
+  if (preferredCameraId) {
+    constraints.video.deviceId = { exact: preferredCameraId };
+  } else {
+    constraints.video.facingMode = { ideal: requestedVideo?.facingMode?.ideal || "environment" };
+  }
+
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+  } catch (error) {
+    if (!["OverconstrainedError", "NotFoundError"].includes(error.name)) throw error;
+    // Stale camera IDs and strict resolution limits must not block camera access.
+    stream = await navigator.mediaDevices.getUserMedia({ audio: false,
+      video: { facingMode: { ideal: "environment" } } });
+  }
+  if (session !== state.scanSession || state.inputMode === "scanner") {
     stream.getTracks().forEach((track) => track.stop());
     throw new DOMException("Camera start canceled", "AbortError");
   }
   const track = stream.getVideoTracks()[0] || null;
-  if (track) cameraTrackConstraints.set(track, request.videoConstraints || track.getConstraints?.() || {});
 
   state.stream = stream;
   state.track = track;
@@ -1060,16 +1209,12 @@ async function startCameraStream(preferredCameraId) {
   } catch {
     // Older browsers ignore the property; the attributes above suffice.
   }
-  if (state.els.cameraPreview.srcObject !== stream) state.els.cameraPreview.srcObject = stream;
-  // Let native autofocus produce the first frame before applying any custom
-  // constraints. startScanning configures focus once playback is ready.
+  state.els.cameraPreview.srcObject = stream;
+  // Start focus while the first frame is arriving, independently of playback
+  // and decoder initialization. Devices with native autofocus need no reset.
+  scheduleFocusRefresh(track);
   // play() resolves when playback starts; no separate metadata timeout needed.
-  const playbackError = playback ? await playback : await state.els.cameraPreview.play().then(() => null, (error) => error);
-  if (playbackError) throw playbackError;
-  if (!state.capturePageOpen || generation !== state.captureGeneration || session !== state.scanSession) {
-    stream.getTracks().forEach((track) => track.stop());
-    throw new DOMException("Camera start canceled", "AbortError");
-  }
+  await state.els.cameraPreview.play();
   refreshDevices(state.activeDeviceId, stream).catch(() => {
     // Device labels are optional; a working camera must not wait for them.
   });
@@ -1079,11 +1224,10 @@ async function startCameraStream(preferredCameraId) {
 // Track-specific state prevents old camera requests affecting a new stream.
 const cameraFocusStates = new WeakMap();
 const cameraConstraintQueues = new WeakMap();
-const cameraTrackConstraints = new WeakMap();
 
 function isCurrentCameraTrack(track) {
   return Boolean(track && track === state.track && track.readyState !== "ended" &&
-    !document.hidden);
+    state.inputMode !== "scanner" && !document.hidden);
 }
 
 
@@ -1093,10 +1237,7 @@ function applyCameraTrackConstraints(track, changes) {
   const previous = cameraConstraintQueues.get(track) || Promise.resolve();
   const pending = previous.catch(() => {}).then(async function () {
     if (!isCurrentCameraTrack(track)) return false;
-    // Some browsers report only image-capture controls from getConstraints()
-    // after focus/torch changes. Retain our full request so these operations
-    // cannot silently reset the video resolution or frame rate.
-    const current = cameraTrackConstraints.get(track) || track.getConstraints?.() || {};
+    const current = track.getConstraints?.() || {};
     const next = { ...current };
     const keys = Object.keys(changes);
     keys.forEach((key) => { delete next[key]; });
@@ -1107,9 +1248,7 @@ function applyCameraTrackConstraints(track, changes) {
     }).filter((entry) => Object.keys(entry).length);
     next.advanced = [...advanced, changes];
     await track.applyConstraints(next);
-    if (!isCurrentCameraTrack(track)) return false;
-    cameraTrackConstraints.set(track, next);
-    return true;
+    return isCurrentCameraTrack(track);
   });
   cameraConstraintQueues.set(track, pending);
   return pending;
@@ -1300,7 +1439,7 @@ async function syncTorchSupport() {
 async function toggleTorch() {
   const liveTrack = getTorchTrack();
   if (!liveTrack?.applyConstraints || !liveTrack.getCapabilities) {
-    setStatus("Flashlight unavailable");
+    setStatus("Torch is not available because the camera is not ready");
     updateTorchUi(false, false);
     return;
   }
@@ -1314,21 +1453,18 @@ async function toggleTorch() {
       state.torchOn = nextTorchState;
     }
     updateTorchUi(true, state.torchOn);
-    setStatus(state.torchOn ? "Flashlight enabled" : "Flashlight disabled");
+    setStatus(state.torchOn ? "Torch enabled" : "Torch disabled");
   } catch (error) {
     state.torchOn = false;
     updateTorchUi(false, false);
-    setStatus(error?.message || (capabilities.torch ? "Torch control failed on this device" : "Torch is not supported on this camera"), "Flashlight unavailable");
+    setStatus(error?.message || (capabilities.torch ? "Torch control failed on this device" : "Torch is not supported on this camera"));
   }
 }
 
 
 async function startCamera(deviceId) {
-  if (!state.capturePageOpen || document.hidden) throw new DOMException("Capture closed", "AbortError");
-  const generation = state.captureGeneration;
   if (state.cameraStartPromise) {
-    try { await state.cameraStartPromise; } catch (error) { if (error.name !== "AbortError") throw error; }
-    if (!state.capturePageOpen || generation !== state.captureGeneration) throw new DOMException("Capture closed", "AbortError");
+    await state.cameraStartPromise;
     if (state.isCameraRunning && (!deviceId || deviceId === state.activeDeviceId)) {
       return;
     }
@@ -1339,16 +1475,15 @@ async function startCamera(deviceId) {
     if (hardwareIssue) throw new Error(hardwareIssue);
 
     cleanupScanTimer();
-    if (state.stream) await stopTracks();
-    else stopScanning(true);
-    if (!state.capturePageOpen || generation !== state.captureGeneration || document.hidden) throw new DOMException("Capture closed", "AbortError");
+    await stopTracks();
 
+    const activeVideoConfig = getActiveVideoConfig();
     // Use the saved camera directly, or let the browser choose a rear camera.
     // Enumerate labeled devices only after the stream has started.
     const preferredCameraId = deviceId || state.activeDeviceId || readSavedCameraId();
-    await startCameraStream(preferredCameraId);
+    await startCameraStream(preferredCameraId, activeVideoConfig);
 
-    if (!state.capturePageOpen || generation !== state.captureGeneration || !state.track || state.track.readyState === "ended") {
+    if (state.inputMode === "scanner" || !state.track || state.track.readyState === "ended") {
       throw new DOMException("Camera start canceled", "AbortError");
     }
 
@@ -1356,15 +1491,12 @@ async function startCamera(deviceId) {
     state.isScanning = false;
     disarmFirstGestureCameraStart();
     await syncTorchSupport();
-    if (!state.capturePageOpen || generation !== state.captureGeneration || document.hidden || !state.track) {
-      throw new DOMException("Capture closed", "AbortError");
-    }
     setPreviewActive(true);
     updateResolutionBadge();
     updateScanButton();
     updateModePill();
     startPreviewWatchdog();
-    setStatus("Ready to capture");
+    setStatus("Camera ready");
   }());
 
   state.cameraStartPromise = startPromise;
@@ -1382,6 +1514,15 @@ async function startCamera(deviceId) {
 }
 
 
+function schedulePreviewWarmStart() {
+  window.setTimeout(function () {
+    startCamera(state.activeDeviceId).catch((error) => {
+      setStatus(error.message || "Camera preview could not start automatically");
+    });
+  }, 0);
+}
+
+
 function clearScanTimeoutTimer() {
   if (state.scanTimeoutTimer) {
     window.clearTimeout(state.scanTimeoutTimer);
@@ -1394,17 +1535,16 @@ function startScanTimeoutTimer() {
   clearScanTimeoutTimer();
   state.scanTimeoutTimer = window.setTimeout(function () {
     if (state.isScanning) {
-      closeCapturePage();
-      setStatus("No barcode found. Tap Capture to try again.");
+      stopScanning();
+      setStatus("Scanning auto-stopped (10s timeout)");
+      showToast("Scan auto-stopped after 10s");
     }
   }, 10000);
 }
 
 
 async function startScanning() {
-  if (!state.capturePageOpen || document.hidden || state.isScanning) return;
-  const generation = state.captureGeneration;
-  state.captureContext ||= state.els.captureCanvas.getContext("2d", { alpha: false, willReadFrequently: true });
+  if (state.isScanning || state.inputMode === "scanner") return;
   // Attach the rejection handler immediately while camera permission is pending.
   const detectorReady = createDetector().then(() => null, (error) => error);
   // Camera preview works fully offline (getUserMedia needs no network).
@@ -1412,32 +1552,29 @@ async function startScanning() {
     await startCamera(state.activeDeviceId);
   }
 
-  if (!state.capturePageOpen || generation !== state.captureGeneration || document.hidden || state.isScanning) return;
+  if (state.isScanning) return;
 
   const session = ++state.scanSession;
-  setStatus("Loading scanner…");
+  setStatus("Loading scanner...");
   try {
     const error = await detectorReady;
     if (error) throw error;
   } catch (error) {
-    if (session === state.scanSession) setStatus(error.message || "Scanner unavailable. Tap Capture to retry.", "Scanner unavailable");
-    throw error;
+    if (session === state.scanSession) setStatus(error.message || "Scanner unavailable. Tap Start Scanning to retry.");
+    return;
   }
-  if (!state.capturePageOpen || generation !== state.captureGeneration || session !== state.scanSession) return;
+  if (session !== state.scanSession || state.inputMode === "scanner") return;
 
   scheduleFocusRefresh(state.track, { newScan: true });
   state.detectionAttempt = 0;
   state.thoroughPassCount = 0;
   state.lastDetectionPass = null;
   state.lastScanFrame = null;
-  // Each explicit capture is a new item, including the same SKU again.
-  state.lastDetectedBarcode = "";
-  state.lastDetectedAt = 0;
   state.isScanning = true;
   startScanTimeoutTimer();
   updateScanButton();
   updateModePill();
-  setStatus("Scanning barcode…");
+  setStatus("Scanning started");
   cleanupScanTimer();
   await runScanLoop();
 }
@@ -1452,7 +1589,7 @@ function stopScanning(keepStatusMessage) {
   updateScanButton();
   updateModePill();
   if (!keepStatusMessage) {
-    setStatus(state.isCameraRunning ? "Capture paused" : "Camera stopped");
+    setStatus(state.isCameraRunning ? "Scanning stopped, preview still live" : "Camera stopped");
   }
 }
 
@@ -1460,11 +1597,11 @@ function stopScanning(keepStatusMessage) {
 async function handleMainButton() {
 
   if (state.isScanning) {
-    closeCapturePage();
+    stopScanning();
     return;
   }
 
-  await openCapturePage();
+  await startScanning();
 }
 
 
@@ -1474,7 +1611,6 @@ async function handleSelectChange() {
 
   const shouldResumeScanning = state.isScanning;
   saveCameraId(selectedId);
-  if (!state.capturePageOpen) { state.activeDeviceId = selectedId; return; }
   stopScanning(true);
   await startCamera(selectedId);
   if (shouldResumeScanning) {

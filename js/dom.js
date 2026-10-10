@@ -9,10 +9,6 @@ function queryCriticalElements() {
   return {
     barcodeInput:       document.getElementById("barcodeInput"),
     scanBtn:            document.getElementById("scanBtn"),
-    capturePage:        document.getElementById("capturePage"),
-    captureBackBtn:     document.getElementById("captureBackBtn"),
-    captureRetryBtn:    document.getElementById("captureRetryBtn"),
-    captureStatus:      document.getElementById("captureStatus"),
     previewFrame:       document.getElementById("previewFrame"),
     cameraPreview:      document.getElementById("cameraPreview"),
     cameraPreviewQuagga:document.getElementById("cameraPreviewQuagga"),
@@ -39,6 +35,7 @@ function queryCriticalElements() {
     apiLoader:          document.getElementById("apiLoader"),
     toast:              document.getElementById("toast"),
     lockScreenScrollBtn:document.getElementById("lockscreenscroll"),
+    inputModeSwitch:    document.getElementById("inputModeSwitch"),
     previewPlaceholder: document.getElementById("previewPlaceholder"),
     cameraBadge:        document.getElementById("cameraBadge"),
     resolutionBadge:    document.getElementById("resolutionBadge"),
@@ -168,7 +165,7 @@ function queryElements() {
 function requireElements(els) {
   // Only validate critical elements at startup; deferred ones are optional
   // until actually needed (they will throw naturally when accessed if missing).
-  var criticalKeys = Object.keys(els);
+  var criticalKeys = Object.keys(queryCriticalElements());
   var missing = criticalKeys.filter(function (key) { return !els[key]; });
   if (missing.length > 0) {
     throw new Error("Missing DOM elements: " + missing.join(", "));
