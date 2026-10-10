@@ -51,6 +51,7 @@
     }
   });
   navigator.serviceWorker.addEventListener("controllerchange", requestVersion);
+  const registerWorker = function () {
   navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(function (registration) {
     requestVersion();
     let lastCheck = Date.now();
@@ -64,4 +65,10 @@
     document.addEventListener("visibilitychange", checkForUpdate);
     setInterval(checkForUpdate, 5 * 60 * 1000);
   }).catch(function () {});
+  };
+  const registerAfterPaint = function () {
+    scheduleIdleWork(registerWorker, 1000);
+  };
+  if (document.readyState === "complete") registerAfterPaint();
+  else window.addEventListener("load", registerAfterPaint, { once: true });
 })();

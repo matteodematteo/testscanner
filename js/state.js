@@ -13,6 +13,12 @@ function getSalesPeriodDate(daysAgo) {
 
 const state = {
     els: null,
+    capturePageOpen: false,
+    captureRequest: null,
+    captureFirstFrameMarked: false,
+    captureGeneration: 0,
+    captureMainUrl: "",
+    captureReturnFocus: null,
     stream: null,
     track: null,
     devices: [],
@@ -53,7 +59,6 @@ const state = {
     isQuantityEntryUnlocked: false,
     lockedScrollY: 0,
     pendingApiRequests: 0,
-    inputMode: "phone",
     manualScrollLocked: false,
     manualScrollLockY: 0,
     cameraStartPromise: null,

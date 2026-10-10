@@ -1,11 +1,10 @@
 "use strict";
 
-/* Event listener bindings — split into critical (synchronous) and deferred
-   (scheduled after first paint) to shave ~80-120 ms off init time. */
+/* Bind all visible controls before declaring the app ready. */
 
 // ─── Critical: bound immediately on init ────────────────────────────────────
 // These are the interactions a user could trigger within the first 200 ms:
-// tapping Start Scanning, typing a barcode, or pressing Enter on barcodeInput.
+// tapping Capture, typing a barcode, or pressing Enter on barcodeInput.
 function bindCriticalEvents() {
   state.els.historyDetailsSwitch.addEventListener("click", function () {
     setHistoryDetailsVisible(!state.showHistoryDetails);
@@ -30,26 +29,19 @@ function bindCriticalEvents() {
     }
   });
 
+  // Finish code/decoder preparation while the user approaches or presses
+  // Capture. Hardware permission still starts only in the click handler.
+  state.els.scanBtn.addEventListener("pointerdown", warmCaptureEngine, { passive: true });
+  state.els.scanBtn.addEventListener("focus", warmCaptureEngine);
   state.els.scanBtn.addEventListener("click", async function () {
     state.els.scanBtn.disabled = true;
     try {
-      await handleMainButton();
+      await openCapturePage();
     } catch (error) {
       setStatus(error.message || "Could not start the camera");
     } finally {
       state.els.scanBtn.disabled = false;
     }
-  });
-
-  // iOS fallback: tapping the preview counts as the required user gesture
-  // and starts the camera when autostart was blocked on page load.
-  state.els.previewFrame.addEventListener("click", function () {
-    if (state.isCameraRunning || state.cameraStartPromise || state.inputMode === "scanner") {
-      return;
-    }
-    startScanning().catch(function (error) {
-      setStatus(error.message || "Tap Start Scanning to enable the camera");
-    });
   });
 
   state.els.barcodeInput.addEventListener("keydown", async function (event) {
@@ -361,16 +353,6 @@ function bindDeferredEvents() {
     toggleScreenScrollLock();
   });
 
-  state.els.inputModeSwitch.addEventListener("click", function (event) {
-    const btn = event.target.closest(".input-mode-option");
-    if (!btn) {
-      return;
-    }
-    setInputMode(btn.dataset.inputMode).catch(function (error) {
-      setStatus(error.message || "Could not switch input mode");
-    });
-  });
-
   state.els.settingsDialog.addEventListener("click", function (event) {
     if (event.target === state.els.settingsDialog) {
       closeSettingsDialog();
@@ -445,6 +427,12 @@ function bindDeferredEvents() {
     state.els.salesPeriodStartInput.value = period.beginDate;
     state.els.salesPeriodEndInput.value = period.endDate;
     state.els.salesPeriodStatus.textContent = "";
+    syncSalesPeriodPresetSelection(button.dataset.salesPeriodPreset);
+  });
+
+  [state.els.salesPeriodStartInput, state.els.salesPeriodEndInput].forEach(function (input) {
+    input.addEventListener("input", function () { syncSalesPeriodPresetSelection(); });
+    input.addEventListener("change", function () { syncSalesPeriodPresetSelection(); });
   });
 
   state.els.salesPeriodApplyBtn.addEventListener("click", function () {
@@ -457,7 +445,8 @@ function bindDeferredEvents() {
   state.els.salesPeriodAllBtn.addEventListener("click", function () {
     state.els.salesPeriodStartInput.value = "";
     state.els.salesPeriodEndInput.value = "";
-    state.els.salesPeriodStatus.textContent = "Click Apply to load all sales.";
+    syncSalesPeriodPresetSelection();
+    state.els.salesPeriodStatus.textContent = "Dates cleared. Click Apply to load all sales.";
   });
 
   state.els.productActivityRetryBtn.addEventListener("click", function () {
@@ -549,8 +538,14 @@ function bindDeferredEvents() {
   });
 
   const markPreviewAsLive = function () {
-    if (!document.hidden) {
-      setPreviewActive(true);
+    if (!document.hidden && state.capturePageOpen) {
+      state.els.previewPlaceholder.hidden = true;
+      state.els.previewPlaceholder.style.display = "none";
+      if (captureEngineLoaded) setPreviewActive(true);
+      if (!state.captureFirstFrameMarked) {
+        state.captureFirstFrameMarked = true;
+        performance.mark("webscanner-camera-frame");
+      }
     }
   };
   
@@ -560,58 +555,35 @@ function bindDeferredEvents() {
   state.els.cameraPreview.addEventListener("timeupdate", markPreviewAsLive);
 
   window.addEventListener("beforeunload", function () {
-    clearResumePreviewTimer();
-    stopScanning(true);
-    stopTracks();
+    closeCapturePage();
   });
 
   document.addEventListener("visibilitychange", function () {
+    if (!state.capturePageOpen) return;
     if (document.hidden) {
-      clearResumePreviewTimer();
-      setPreviewActive(false);
-    } else {
-      state.lastPreviewTime = Number(getPreviewVideoElement()?.currentTime || 0);
-      state.stalledPreviewChecks = 0;
+      // Release hardware when backgrounded; only resume an open capture page.
+      releaseCaptureHardware();
+    } else if (captureEngineLoaded) {
       scheduleQuickPreviewResumeCheck();
     }
   });
-
-  window.addEventListener("pageshow", function () {
-    // Covers reopen from background and bfcache restore: init covers first
-    // load/refresh, visibilitychange covers tab switches. Scheduling is
-    // guarded (cameraStartPromise/document.hidden), so a duplicate call is safe.
-    scheduleQuickPreviewResumeCheck();
-  });
-
   window.addEventListener("focus", function () {
-    // Permission-prompt focus is filtered inside
-    // scheduleQuickPreviewResumeCheck (cameraStartPromise guard), so iOS
-    // reopen via app switcher also restarts scanning here.
-    scheduleQuickPreviewResumeCheck();
+    if (state.capturePageOpen && captureEngineLoaded) scheduleQuickPreviewResumeCheck();
   });
-
   if (navigator.mediaDevices?.addEventListener) {
     navigator.mediaDevices.addEventListener("devicechange", function () {
-      refreshDevices(state.activeDeviceId).catch(() => {
-        // Ignore transient device change errors.
-      });
+      if (state.capturePageOpen && captureEngineLoaded) {
+        refreshDevices(state.activeDeviceId).catch(function () {});
+      }
     });
   }
 }
 
 
 // ─── Public entry point ──────────────────────────────────────────────────────
-// bindEvents() now immediately binds only the critical set; the full set of
-// non-critical handlers is scheduled in idle time (~100 ms delay) so it does
-// not compete with first paint or the scan button becoming interactive.
+// Keep initialization failures visible instead of swallowing binding errors.
 function bindEvents() {
   bindCriticalEvents();
-
-  scheduleIdleWork(function () {
-    try {
-      bindDeferredEvents();
-    } catch (e) {
-      // Silently swallow deferred binding failures — they must never crash init.
-    }
-  }, 100);
+  // All visible controls are usable immediately, including Settings and Clear.
+  bindDeferredEvents();
 }

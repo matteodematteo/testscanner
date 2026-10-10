@@ -1,10 +1,10 @@
 "use strict";
 
 // Keep the wrapper and WASM binary pinned to the same release, served locally.
-importScripts("vendor/zxing-wasm/3.1.2/reader.js");
+importScripts("vendor/zxing-wasm/3.1.5/reader.js");
 const ready = ZXingWASM.prepareZXingModule({
   overrides: {
-    locateFile: (path) => new URL("vendor/zxing-wasm/3.1.2/" + path, self.location.href).href
+    locateFile: (path) => new URL("vendor/zxing-wasm/3.1.5/" + path, self.location.href).href
   },
   fireImmediately: true
 });

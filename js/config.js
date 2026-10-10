@@ -22,7 +22,6 @@ const CONFIG = {
     cameraStorageKey: "web_barcode_scanner_camera",
     roiStorageKey: "web_barcode_scanner_roi",
     productInfoSlideStorageKey: "web_barcode_scanner_pi_slide",
-    inputModeStorageKey: "web_barcode_scanner_input_mode",
     scrollLockStorageKey: "web_barcode_scanner_scroll_lock",
     scanIntervalMs: 16,
     mobileScanIntervalMs: 16,
@@ -59,6 +58,13 @@ const CONFIG = {
       "supplier_name",
       "spec"
     ],
+    // Request full HD immediately; keep this resolution throughout capture.
+    cameraStartupVideo: {
+      facingMode: { ideal: "environment" },
+      width: { ideal: 1920, max: 1920 },
+      height: { ideal: 1080, max: 1080 },
+      frameRate: { ideal: 30, max: 30 }
+    },
     videoConstraints: {
       audio: false,
       video: {
